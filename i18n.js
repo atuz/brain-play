@@ -15,6 +15,14 @@ export function setLanguage(code) { currentLanguage = normalizeLanguage(code) ||
 
 const english = {
   '小小动脑场':'Brain Play', '游戏':'Games', '设置':'Settings', '返回':'Back', '帮助':'Help', '完成':'Done',
+  '游戏设置':'Game settings', '棋盘大小':'Board size', '玩法':'Mode',
+  '经典':'Classic', '斐波那契':'Fibonacci', '经典 2048':'Classic 2048', '斐波那契 2584':'Fibonacci 2584',
+  '每种玩法和尺寸分别保存进度与最高分。':'Each mode and board size keeps its own progress and best score.',
+  '合并相邻的斐波那契数，例如 2＋3＝5、3＋5＝8。':'Merge consecutive Fibonacci numbers, such as 2 + 3 = 5 and 3 + 5 = 8.',
+  '1＋1＝2，其他相同数字不能合并。目标是 2584。':'1 + 1 = 2. Other equal numbers cannot merge. Reach 2584.',
+  '合并相邻的斐波那契数，目标是 2584。':'Merge consecutive Fibonacci numbers to reach 2584.',
+  '达到 2584！你也可以继续挑战更大的数字。':'You reached 2584! Keep going if you like.',
+  '2584 棋盘':'2584 board',
   '语言':'Language', '国家／地区代码':'Country / region code', '音效':'Sound', '动画':'Animations',
   '自动识别':'Detect automatically', '自动':'Auto', '国家代码需要两位英文字母，例如 CA。':'Use a two-letter country code, such as CA.',
   '使用浏览器语言中的地区，可手动修改。':'Uses your browser’s language region. You can change it.',
@@ -113,6 +121,9 @@ function traditional(text) {
   return [...result].map(char => traditionalCharacters[char] || char).join('');
 }
 const patterns = [
+  [/^目标 (\d+)$/, m => `Goal ${m[1]}`],
+  [/^滑动合并相同数字，目标是 (\d+)。$/, m => `Swipe to merge matching numbers and reach ${m[1]}.`],
+  [/^达到 (\d+)！你也可以继续挑战更大的数字。$/, m => `You reached ${m[1]}! Keep going if you like.`],
   [/^计算过程 · (\d+) 步$/, m => `Steps · ${m[1]}`],
   [/^已合并 (\d+) 步，共 3 步$/, m => `${m[1]} of 3 merges complete`],
   [/^(.+) 已选好，再点另一张数字牌。$/, m => `${m[1]} selected. Tap another card.`],

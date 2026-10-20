@@ -1,15 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {seeded} from './shared.js?v=2';
-import {slideLine,slideBoard,hasMoves} from './2048.js?v=2';
-import {parseExpression,solve24,generate24} from './twentyfour.js?v=2';
-import {flip,solveLights,generateLights} from './lights.js?v=2';
-import {shufflePuzzle,solvedBoard,isSolved} from './fifteen.js?v=2';
-import {rotate,generatePipes,checkPipes} from './pipes.js?v=2';
-import {findPath,findPair,reshuffle} from './link.js?v=2';
-import {groupAt,collapse,hasGroups} from './stars.js?v=2';
-import {runs,clues,patterns,patternBits} from './nonogram.js?v=2';
-import {compareGuess,validGuess} from './guess.js?v=2';
+import {seeded} from './shared.js?v=3';
+import {slideLine,slideBoard,hasMoves} from './2048.js?v=3';
+import {parseExpression,solve24,generate24} from './twentyfour.js?v=3';
+import {flip,solveLights,generateLights} from './lights.js?v=3';
+import {shufflePuzzle,solvedBoard,isSolved} from './fifteen.js?v=3';
+import {rotate,generatePipes,checkPipes} from './pipes.js?v=3';
+import {findPath,findPair,reshuffle} from './link.js?v=3';
+import {groupAt,collapse,hasGroups} from './stars.js?v=3';
+import {runs,clues,patterns,patternBits} from './nonogram.js?v=3';
+import {compareGuess,validGuess} from './guess.js?v=3';
 
 test('2048 merges each tile only once per move',()=>{
   assert.deepEqual(slideLine([2,2,2,2]),{line:[4,4,0,0],score:8});
@@ -70,9 +70,9 @@ test('guess feedback handles leading zeros and disallows repeated digits',()=>{
 });
 
 
-import {calculate,createRound,formatFraction,mergeRound,plan24,resetRound,restoreRound,undoRound} from './twentyfour-engine.js?v=2';
-import {browserCountry,resolvePreferences,updatePreferenceURL} from './preferences.js?v=2';
-import {translate} from './i18n.js?v=2';
+import {calculate,createRound,formatFraction,mergeRound,plan24,resetRound,restoreRound,undoRound} from './twentyfour-engine.js?v=3';
+import {browserCountry,resolvePreferences,updatePreferenceURL} from './preferences.js?v=3';
+import {translate} from './i18n.js?v=3';
 
 test('24 card merges preserve exact fractions and use all four original cards',()=>{
   let r=createRound([3,3,8,8]);
@@ -147,4 +147,56 @@ test('UI translations include dynamic game feedback and accessible labels',()=>{
   assert.equal(translate('已合并 2 步，共 3 步','en'),'2 of 3 merges complete');
   assert.equal(translate('第1行第2列，水源，已连通','en'),'Row 1, column 2, source, Connected');
   assert.equal(translate('第1张牌：8/3，来自(8÷3)','en'),'Card 1: 8/3, from (8÷3)');
+});
+
+
+import {mergeTarget,mergeValue,createMergeState,restoreMergeState,normalizeMergeSettings,mergeSlot,spawn} from './merge-engine.js?v=3';
+
+test('Fibonacci merges consecutive values in either order; only 1 can merge with itself',()=>{
+  for(const [a,b,value] of [[1,1,2],[1,2,3],[2,3,5],[3,5,8],[5,8,13],[987,1597,2584]]){
+    assert.equal(mergeValue(a,b,'fibonacci'),value);assert.equal(mergeValue(b,a,'fibonacci'),value);
+  }
+  for(const [a,b] of [[2,2],[3,3],[1,3],[2,5],[0,1],[4,5]])assert.equal(mergeValue(a,b,'fibonacci'),0);
+  assert.deepEqual(slideLine([1,1,2,0],'fibonacci'),{line:[2,2,0,0],score:2});
+  assert.deepEqual(slideLine([1,2,3,5,0],'fibonacci'),{line:[3,8,0,0,0],score:11});
+  assert.deepEqual(slideLine([5,0,3,2,1],'fibonacci'),{line:[8,3,0,0,0],score:11});
+});
+test('3x3 and 5x5 boards preserve direction, sum and input board',()=>{
+  for(const size of [3,5])for(const mode of ['classic','fibonacci']){
+    const a=mode==='classic'?2:3,b=mode==='classic'?2:5;
+    const board=Array(size*size).fill(0);board[0]=a;board[1]=b;
+    const before=[...board];
+    const left=slideBoard(board,'left',size,mode),right=slideBoard(board,'right',size,mode);
+    assert.equal(left.board[0],a+b);assert.equal(right.board[size-1],a+b);
+    assert.deepEqual(board,before);
+    const vertical=Array(size*size).fill(0);vertical[0]=a;vertical[size]=b;
+    assert.equal(slideBoard(vertical,'up',size,mode).board[0],a+b);
+    assert.equal(slideBoard(vertical,'down',size,mode).board[(size-1)*size],a+b);
+    assert.equal(left.board.reduce((a,b)=>a+b,0),board.reduce((a,b)=>a+b,0));
+    assert.equal(hasMoves(Array(size*size).fill(3),size,'fibonacci'),false);
+  }
+});
+test('variants start with the correct tiles and restore separate compatible progress',()=>{
+  for(const size of [3,4,5])for(const mode of ['classic','fibonacci']){
+    const rng=seeded(size),state=createMergeState(size,mode,rng);
+    assert.equal(state.board.length,size*size);assert.equal(state.board.filter(Boolean).length,2);
+    const allowed=mode==='classic'?[0,2,4]:[0,1,2];assert.ok(state.board.every(v=>allowed.includes(v)));
+    state.score=42;state.history=[{board:[...state.board],score:10,won:false}];
+    assert.deepEqual(restoreMergeState(state,size,mode,rng),state);
+    const otherSize=size===3?5:3;
+    assert.equal(restoreMergeState(state,otherSize,mode,rng).board.length,otherSize*otherSize);
+    assert.equal(restoreMergeState(state,otherSize,mode,rng).score,0);
+  }
+  const legacy={board:[2048,...Array(15).fill(0)],score:2048,won:true,history:[]};
+  assert.equal(restoreMergeState(legacy,4,'classic').claimed,true);
+  assert.equal(restoreMergeState(legacy,4,'fibonacci').score,0);
+  assert.deepEqual(spawn([0,0,0],()=>0,'fibonacci'),[1,0,0]);
+});
+test('mode and board settings normalize safely and identify six independent save slots',()=>{
+  const slots=new Set();for(const size of [3,4,5])for(const mode of ['classic','fibonacci'])slots.add(mergeSlot({size,mode}));
+  assert.equal(slots.size,6);
+  assert.equal(mergeTarget('classic',3),512);assert.equal(mergeTarget('classic',4),2048);assert.equal(mergeTarget('fibonacci',3),2584);
+  assert.deepEqual(normalizeMergeSettings({size:'5',mode:'fibonacci'}),{size:5,mode:'fibonacci'});
+  assert.deepEqual(normalizeMergeSettings(null),{size:4,mode:'classic'});
+  assert.deepEqual(normalizeMergeSettings({size:99,mode:'unknown'}),{size:4,mode:'classic'});
 });

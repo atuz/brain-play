@@ -1,4 +1,4 @@
-import { normalizeLanguage } from './i18n.js?v=2';
+import { normalizeLanguage } from './i18n.js?v=3';
 export const normalizeCountry = value => /^[a-z]{2}$/i.test(String(value || '')) ? String(value).toUpperCase() : '';
 export function browserCountry(locales) {
   for (const locale of locales) {

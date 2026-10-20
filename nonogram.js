@@ -1,4 +1,4 @@
-import {el,button,stat,statusNode,sound,finish} from './shared.js?v=2';
+import {el,button,stat,statusNode,sound,finish} from './shared.js?v=3';
 // Original hand-drawn 5×5 puzzles. Clue uniqueness is verified in tests.
 export const patterns=[
 {name:'小小爱心',rows:['01010','11111','11111','01110','00100']},

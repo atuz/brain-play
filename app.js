@@ -1,7 +1,7 @@
-import { el, read, write, dateSeed, seeded } from './shared.js?v=2';
-import { games, preview } from './catalog.js?v=2';
-import { languages, setLanguage, getLanguage, t } from './i18n.js?v=2';
-import { normalizeCountry, resolvePreferences, updatePreferenceURL } from './preferences.js?v=2';
+import { el, read, write, dateSeed, seeded } from './shared.js?v=3';
+import { games, preview } from './catalog.js?v=3';
+import { languages, setLanguage, getLanguage, t } from './i18n.js?v=3';
+import { normalizeCountry, resolvePreferences, updatePreferenceURL } from './preferences.js?v=3';
 
 const main = document.querySelector('#main');
 const header = document.querySelector('#app-header');
@@ -9,7 +9,7 @@ const preferences = resolvePreferences(location.href, read('preferences', {}), n
 let country = preferences.country;
 setLanguage(preferences.language);
 history.replaceState(null, '', preferences.url);
-let cleanup, currentGame, routeVersion = 0;
+let cleanup, currentGame, activeModule, routeVersion = 0;
 
 function applyDocumentPreferences() {
   document.documentElement.lang = getLanguage();
@@ -24,10 +24,11 @@ function headerView(game) {
   const back = game
     ? el('a', { class: 'app-back', href: '#/', 'aria-label': '返回' }, [el('span', { text: '←', 'aria-hidden': 'true' })])
     : el('span', { class: 'brand-mark', 'aria-hidden': 'true' }, [el('i'), el('i'), el('i'), el('i')]);
-  header.append(el('div', { class: 'app-title' }, [back, el('h1', { text: game ? game.name : '小小动脑场' })]));
+  const name = game ? activeModule?.title?.({ read }) || game.name : '小小动脑场';
+  header.append(el('div', { class: 'app-title' }, [back, el('h1', { text: name })]));
   const actions = el('div', { class: 'app-header-actions' });
   if (game) actions.append(el('button', { type: 'button', class: 'app-icon', text: '?', 'aria-label': '帮助', onclick: () => showHelp(game) }));
-  actions.append(el('button', { type: 'button', class: 'app-icon', text: '⚙', 'aria-label': '设置', onclick: showSettings }));
+  if (!game || activeModule?.settings) actions.append(el('button', { type: 'button', class: 'app-icon', text: '⚙', 'aria-label': game ? '游戏设置' : '设置', onclick: game ? showGameSettings : showSettings }));
   header.append(actions);
 }
 
@@ -58,8 +59,34 @@ function dialog(title, closeLabel) {
 }
 
 function showHelp(game) {
-  const modal = dialog(t(game.name), '关闭帮助');
-  modal.append(el('ol', { class: 'help-list' }, game.help.map(text => el('li', { text }))));
+  const modal = dialog(activeModule?.title?.({ read }) || t(game.name), '关闭帮助');
+  const help = activeModule?.help?.({ read }) || game.help;
+  modal.append(el('ol', { class: 'help-list' }, help.map(text => el('li', { text }))));
+  modal.showModal();
+}
+
+function showGameSettings() {
+  const config = activeModule?.settings?.({ read, write });
+  if (!config) return;
+  const modal = dialog('游戏设置', '关闭设置');
+  const form = el('form', { class: 'settings-form' });
+  const fields = new Map();
+  for (const field of config.fields) {
+    const select = el('select', { id: `game-setting-${field.key}`, 'aria-label': field.label });
+    for (const option of field.options) select.append(el('option', { value: option.value, text: option.label }));
+    select.value = String(config.value[field.key]);
+    fields.set(field.key, select);
+    form.append(el('label', { class: 'settings-label', for: select.id, text: field.label }), select);
+  }
+  if (config.note) form.append(el('p', { class: 'settings-note', text: config.note }));
+  form.append(el('button', { type: 'submit', class: 'btn settings-done', text: '完成' }));
+  form.addEventListener('submit', event => {
+    event.preventDefault();
+    config.save(Object.fromEntries([...fields].map(([key, field]) => [key, field.value])));
+    modal.close();
+    void route(false);
+  });
+  modal.append(form);
   modal.showModal();
 }
 
@@ -105,16 +132,17 @@ function showSettings() {
 }
 
 const mounts = {
-  '2048': () => import('./2048.js?v=2'), twentyfour: () => import('./twentyfour.js?v=2'),
-  lights: () => import('./lights.js?v=2'), fifteen: () => import('./fifteen.js?v=2'),
-  pipes: () => import('./pipes.js?v=2'), nonogram: () => import('./nonogram.js?v=2'),
-  link: () => import('./link.js?v=2'), stars: () => import('./stars.js?v=2'), guess: () => import('./guess.js?v=2'),
+  '2048': () => import('./2048.js?v=3'), twentyfour: () => import('./twentyfour.js?v=3'),
+  lights: () => import('./lights.js?v=3'), fifteen: () => import('./fifteen.js?v=3'),
+  pipes: () => import('./pipes.js?v=3'), nonogram: () => import('./nonogram.js?v=3'),
+  link: () => import('./link.js?v=3'), stars: () => import('./stars.js?v=3'), guess: () => import('./guess.js?v=3'),
 };
 
 async function route(scroll = true) {
   const version = ++routeVersion;
   cleanup?.();
   cleanup = null;
+  activeModule = null;
   const raw = location.hash.slice(1) || '/';
   const [path, query = ''] = raw.split('?');
   const id = path.split('/')[2];
@@ -130,6 +158,11 @@ async function route(scroll = true) {
   try {
     const module = await mounts[id]();
     if (version !== routeVersion) return;
+    activeModule = module;
+    headerView(currentGame);
+    const name = t(module.title?.({ read }) || currentGame.name);
+    panel.setAttribute('aria-label', name);
+    document.title = `${name} · Brain Play`;
     cleanup = module.mount(panel, {
       daily, seed, rng: daily ? seeded(seed + games.indexOf(currentGame)) : Math.random,
       load: () => read(saveKey), save: state => write(saveKey, state), read, write,

@@ -1,4 +1,4 @@
-import {el,button,stat,statusNode,sound,finish} from './shared.js?v=2';
+import {el,button,stat,statusNode,sound,finish} from './shared.js?v=3';
 export function groupAt(board,index,size=8){const color=board[index];if(!color)return [];const seen=new Set([index]),queue=[index];while(queue.length){const i=queue.pop(),r=Math.floor(i/size),c=i%size;for(const [dr,dc]of [[1,0],[-1,0],[0,1],[0,-1]]){const rr=r+dr,cc=c+dc,j=rr*size+cc;if(rr>=0&&rr<size&&cc>=0&&cc<size&&!seen.has(j)&&board[j]===color){seen.add(j);queue.push(j);}}}return [...seen];}
 export function collapse(board,size=8){const columns=[];for(let c=0;c<size;c++){const values=Array.from({length:size},(_,r)=>board[r*size+c]).filter(Boolean);if(values.length)columns.push([...Array(size-values.length).fill(0),...values]);}const out=Array(size*size).fill(0);columns.forEach((col,c)=>col.forEach((v,r)=>out[r*size+c]=v));return out;}
 export function hasGroups(board,size=8){return board.some((v,i)=>v&&((i%size<size-1&&v===board[i+1])||(i+size<board.length&&v===board[i+size])));}
