@@ -1,15 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {seeded} from './shared.js?v=4';
-import {slideLine,slideBoard,hasMoves} from './2048.js?v=4';
-import {parseExpression,solve24,generate24} from './twentyfour.js?v=4';
-import {flip,solveLights,generateLights} from './lights.js?v=4';
-import {shufflePuzzle,solvedBoard,isSolved} from './fifteen.js?v=4';
-import {rotate,generatePipes,checkPipes} from './pipes.js?v=4';
-import {findPath,findPair,reshuffle} from './link.js?v=4';
-import {groupAt,collapse,hasGroups} from './stars.js?v=4';
-import {runs,clues,patterns,patternBits} from './nonogram.js?v=4';
-import {compareGuess,validGuess} from './guess.js?v=4';
+import {seeded} from './shared.js?v=7';
+import {slideLine,slideBoard,hasMoves} from './2048.js?v=7';
+import {parseExpression,solve24,generate24} from './twentyfour.js?v=7';
+import {flip,solveLights,generateLights} from './lights.js?v=7';
+import {shufflePuzzle,solvedBoard,isSolved} from './fifteen.js?v=7';
+import {rotate,generatePipes,checkPipes} from './pipes.js?v=7';
+import {findPath,findPair,reshuffle} from './link.js?v=7';
+import {groupAt,collapse,hasGroups} from './stars.js?v=7';
+import {runs,clues,patterns,patternBits} from './nonogram.js?v=7';
+import {compareGuess,validGuess} from './guess.js?v=7';
 
 test('2048 merges each tile only once per move',()=>{
   assert.deepEqual(slideLine([2,2,2,2]),{line:[4,4,0,0],score:8});
@@ -70,9 +70,9 @@ test('guess feedback handles leading zeros and disallows repeated digits',()=>{
 });
 
 
-import {calculate,createRound,formatFraction,mergeRound,plan24,resetRound,restoreRound,undoRound} from './twentyfour-engine.js?v=4';
-import {browserCountry,resolvePreferences,updatePreferenceURL} from './preferences.js?v=4';
-import {translate} from './i18n.js?v=4';
+import {calculate,createRound,formatFraction,mergeRound,plan24,resetRound,restoreRound,undoRound} from './twentyfour-engine.js?v=7';
+import {browserCountry,resolvePreferences,updatePreferenceURL} from './preferences.js?v=7';
+import {translate} from './i18n.js?v=7';
 
 test('24 card merges preserve exact fractions and use all four original cards',()=>{
   let r=createRound([3,3,8,8]);
@@ -150,7 +150,7 @@ test('UI translations include dynamic game feedback and accessible labels',()=>{
 });
 
 
-import {mergeTarget,mergeValue,createMergeState,restoreMergeState,normalizeMergeSettings,mergeSlot,spawn} from './merge-engine.js?v=4';
+import {mergeTarget,mergeValue,createMergeState,restoreMergeState,normalizeMergeSettings,mergeSlot,spawn} from './merge-engine.js?v=7';
 
 test('Fibonacci merges consecutive values in either order; only 1 can merge with itself',()=>{
   for(const [a,b,value] of [[1,1,2],[1,2,3],[2,3,5],[3,5,8],[5,8,13],[987,1597,2584]]){
@@ -202,7 +202,7 @@ test('mode and board settings normalize safely and identify six independent save
 });
 
 
-import {connectAppHost} from './app-host.js?v=4';
+import {connectAppHost} from './app-host.js?v=7';
 test('native App navigation detects the WK bridge, preserves its receiver and dispatches close',()=>{
   const messages=[];
   const handler={postMessage(message){assert.equal(this,handler);messages.push(message);}};
@@ -224,4 +224,53 @@ test('App mode survives language changes and game routing',()=>{
   const url=updatePreferenceURL('https://atuz.github.io/brain-play/?app=1&country=CA#/game/fifteen','en','CA');
   assert.equal(url.searchParams.get('app'),'1');assert.equal(url.hash,'#/game/fifteen');
   assert.equal(connectAppHost(url.href).embedded,true);
+});
+
+import {tileInDirection,adjacent} from './fifteen.js?v=7';
+import {collapseTrace} from './stars.js?v=7';
+import {strokeCells} from './nonogram.js?v=7';
+
+test('sliding puzzle arrows move numbered tiles in the requested direction, including all edges',()=>{
+  for(let zero=0;zero<16;zero++){
+    const board=solvedBoard();[board[zero],board[15]]=[board[15],board[zero]];
+    for(const [direction,dr,dc]of [['up',-1,0],['down',1,0],['left',0,-1],['right',0,1]]){
+      const source=tileInDirection(board,direction);
+      if(source<0){assert.ok(direction==='up'?zero>=12:direction==='down'?zero<4:direction==='left'?zero%4===3:zero%4===0);continue;}
+      assert.equal(adjacent(board,source),true);assert.equal(Math.floor(zero/4)-Math.floor(source/4),dr);assert.equal(zero%4-source%4,dc);
+    }
+  }
+});
+test('2048 movement traces carry each source once and agree with final values in every mode and direction',()=>{
+  const rng=seeded(286);
+  for(const size of [3,4,5])for(const mode of ['classic','fibonacci'])for(const dir of ['up','down','left','right'])for(let trial=0;trial<20;trial++){
+    const values=mode==='classic'?[0,2,4,8,16]:[0,1,2,3,5,8];
+    const board=Array.from({length:size*size},()=>values[Math.floor(rng()*values.length)]),result=slideBoard(board,dir,size,mode);
+    assert.deepEqual(result.movements.map(m=>m.from).sort((a,b)=>a-b),board.flatMap((v,i)=>v?[i]:[]));
+    const totals=Array(board.length).fill(0),counts=Array(board.length).fill(0);
+    for(const {from,to}of result.movements){totals[to]+=board[from];counts[to]++;assert.ok(counts[to]<=2);if(dir==='up'||dir==='down')assert.equal(from%size,to%size);else assert.equal(Math.floor(from/size),Math.floor(to/size));}
+    assert.deepEqual(totals,result.board);assert.deepEqual(result.merged.sort((a,b)=>a-b),counts.flatMap((n,i)=>n===2?[i]:[]));
+  }
+});
+test('stars keep each surviving piece identity through gravity and empty-column removal',()=>{
+  const board=[0,0,2,0, 1,0,0,0, 1,0,3,0, 4,0,3,0],result=collapseTrace(board,4);
+  assert.deepEqual(result.board,[0,0,0,0,1,2,0,0,1,3,0,0,4,3,0,0]);
+  assert.deepEqual(result.movements.map(m=>[m.from,m.to]),[[4,4],[8,8],[12,12],[2,5],[10,9],[14,13]]);
+  assert.deepEqual(result.movements.map(m=>board[m.from]),result.movements.map(m=>result.board[m.to]));
+});
+test('link forced reshuffles preserve holes and fruit counts, even with degenerate randomness',()=>{
+  for(const positions of [[0,5,30,35],[0,2,8,14,32,35],[6,8],[4,5,9,10]]){
+    const board=Array(36).fill(0);positions.forEach((p,i)=>board[p]=1+Math.floor(i/2));
+    const next=reshuffle(board,()=>.999999);
+    assert.deepEqual(next.map(Boolean),board.map(Boolean));assert.deepEqual([...next].sort(),[...board].sort());assert.ok(findPair(next));
+  }
+});
+test('nonogram strokes interpolate skipped cells and lock a line without painting diagonal neighbors',()=>{
+  assert.deepEqual(strokeCells(0,4),[0,1,2,3,4]);assert.deepEqual(strokeCells(24,4),[24,19,14,9,4]);
+  assert.deepEqual(strokeCells(6,24,5,'row'),[6,7,8,9]);assert.deepEqual(strokeCells(6,24,5,'col'),[6,11,16,21]);
+  assert.deepEqual(strokeCells(12,12),[12]);
+});
+test('new touch feedback is translated in all supported interfaces',()=>{
+  assert.equal(translate('选中 4 颗，再点一次得 80 分。','en'),'4 selected. Tap again for +80 points.');
+  assert.equal(translate('第 3 位数字','en'),'Digit 3');
+  assert.equal(translate('重新开始？','zh-TW'),'重新開始？');
 });

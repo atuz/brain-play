@@ -36,17 +36,22 @@ export function slideLine(line, mode = 'classic') {
 export function slideBoard(board, direction, size = Math.sqrt(board.length), mode = 'classic') {
   if (!boardSizes.includes(size) || board.length !== size * size) throw Error('Invalid board size');
   if (!['left', 'right', 'up', 'down'].includes(direction)) throw Error('Invalid direction');
-  const out = [...board];
+  const out = Array(board.length).fill(0), movements = [], merged = [];
   let score = 0;
   for (let row = 0; row < size; row++) {
     const indices = Array.from({ length: size }, (_, col) => direction === 'left' ? row * size + col
       : direction === 'right' ? row * size + size - 1 - col
       : direction === 'up' ? col * size + row : (size - 1 - col) * size + row);
-    const result = slideLine(indices.map(i => board[i]), mode);
-    indices.forEach((i, col) => { out[i] = result.line[col]; });
-    score += result.score;
+    const sources=indices.filter(i=>board[i]);
+    let dest=0;
+    for(let k=0;k<sources.length;k++) {
+      const from=sources[k],other=sources[k+1],value=mergeValue(board[from],board[other],mode),to=indices[dest++];
+      movements.push({from,to});
+      if(value){out[to]=value;score+=value;merged.push(to);movements.push({from:other,to});k++;}
+      else out[to]=board[from];
+    }
   }
-  return { board: out, score, moved: out.some((value, i) => value !== board[i]) };
+  return { board: out, score, moved: out.some((value, i) => value !== board[i]), movements, merged };
 }
 export function hasMoves(board, size = Math.sqrt(board.length), mode = 'classic') {
   return board.includes(0) || ['left', 'up'].some(direction => slideBoard(board, direction, size, mode).moved);

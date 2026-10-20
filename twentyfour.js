@@ -1,15 +1,16 @@
-import { t } from './i18n.js?v=4';
-import { el, button, stat, statusNode, sound, finish } from './shared.js?v=4';
+import {createMotion} from './motion.js?v=7';
+import { t } from './i18n.js?v=7';
+import { el, button, stat, statusNode, sound, finish } from './shared.js?v=7';
 import {
   calculate, createRound, displayOp, formatFraction, generate24,
   mergeRound, plan24, resetRound, restoreRound, undoRound,
-} from './twentyfour-engine.js?v=4';
-export { parseExpression, solve24, generate24 } from './twentyfour-engine.js?v=4';
+} from './twentyfour-engine.js?v=7';
+export { parseExpression, solve24, generate24 } from './twentyfour-engine.js?v=7';
 
 export function mount(root, ctx) {
   let round = restoreRound(ctx.load(), ctx.rng);
   let selected = [], operation = null, hintId = null, busy = false, alive = true;
-  const animations = new Set();
+  const animations = new Set(), motion=createMotion();
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   const layout = root.closest('.game-layout');
   layout?.classList.add('layout-twentyfour');
@@ -19,7 +20,7 @@ export function mount(root, ctx) {
   const moves = stat('本局合并', '0 / 3');
   const status = statusNode();
   const pile = el('span', { class: 'tf-pile', 'aria-hidden': 'true' });
-  const newDeal = button('', () => startNewRound(), 'plain tf-new-deal');
+  const newDeal = button('', () => motion.confirmRestart(round.history.length>0&&!round.done,()=>startNewRound()), 'plain tf-new-deal');
   newDeal.append(pile, el('span', { text: '发新牌' }));
   const table = el('div', { class: 'tf-table', 'aria-label': '24 点牌桌' });
   const goal = el('div', { class: 'tf-goal' }, [
@@ -54,12 +55,11 @@ export function mount(root, ctx) {
     render();
     status.set('已撤销上一步，可以换个思路。');
   }, 'plain');
-  const reset = button('↺ 重来', async () => {
+  const reset = button('↺ 重来', () => {
     if (busy) return;
-    round = resetRound(round);
-    clearSelection();
-    render();
-    await deal();
+    motion.confirmRestart(round.history.length>0&&!round.done,async()=>{
+      round=resetRound(round);clearSelection();render();await deal();
+    });
   }, 'plain');
   const hint = button('✧ 提示一步', showHint, 'plain');
   const tools = el('div', { class: 'tf-tools' }, [undo, reset, hint]);
@@ -202,7 +202,7 @@ export function mount(root, ctx) {
     if (reduceMotion.matches || ctx.read('animations', true) === false || !node.animate || !alive) return;
     const animation = node.animate(frames, options);
     animations.add(animation);
-    try { await animation.finished; } catch {} finally { animations.delete(animation); }
+    try { await animation.finished; } catch {} finally { animations.delete(animation); if(options.fill!=='forwards')animation.cancel(); }
   }
 
   async function deal() {
@@ -282,7 +282,7 @@ export function mount(root, ctx) {
     });
     status.set('两张牌正在合并…');
     await Promise.all([...flights, ...shifts]);
-    ghosts.forEach(({ node }) => node.remove());
+    ghosts.forEach(({node})=>{for(const animation of node.getAnimations())animation.cancel();node.remove();});
     if (!alive) return;
     result.classList.remove('tf-result-pending');
     if (!round.done) sound();
@@ -351,7 +351,7 @@ export function mount(root, ctx) {
   render();
   if (round.cards.length === 4) void deal();
   return () => {
-    alive = false;
+    alive = false;motion.dispose();
     for (const animation of animations) animation.cancel();
     window.removeEventListener('keydown', keyboard);
     layout?.classList.remove('layout-twentyfour');

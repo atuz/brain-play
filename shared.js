@@ -1,4 +1,4 @@
-import { t } from './i18n.js?v=4';
+import { t } from './i18n.js?v=7';
 const prefix = 'brain-play:v1:';
 export const read = (key, fallback = null) => { try { return JSON.parse(localStorage.getItem(prefix + key)) ?? fallback; } catch { return fallback; } };
 export const write = (key, value) => { try { localStorage.setItem(prefix + key, JSON.stringify(value)); return true; } catch { return false; } };
@@ -15,7 +15,17 @@ let audioContext;
 export function sound(win = false) { if (!read('sound', false)) return; try { audioContext ??= new (window.AudioContext || window.webkitAudioContext)(); audioContext.resume(); const oscillator = audioContext.createOscillator(); const gain = audioContext.createGain(); oscillator.connect(gain); gain.connect(audioContext.destination); oscillator.type = 'sine'; oscillator.frequency.setValueAtTime(win ? 523 : 440, audioContext.currentTime); if (win) oscillator.frequency.setValueAtTime(784,audioContext.currentTime+.12); gain.gain.setValueAtTime(.035, audioContext.currentTime); gain.gain.exponentialRampToValueAtTime(.001, audioContext.currentTime + (win ? .4 : .08)); oscillator.start(); oscillator.stop(audioContext.currentTime + (win ? .4 : .08)); } catch {} }
 export function stat(label, value = 0) { const output = el('strong', {text:value}); return {node:el('div',{class:'stat'},[el('small',{text:label}),output]),set:v=>output.textContent=v}; }
 export function statusNode() { const node=el('p',{class:'status','aria-live':'polite'}); return {node,set:(text,kind='')=>{node.textContent=t(text);node.className=`status ${kind}`;}}; }
-export function controls(onMove) { const pad=el('div',{class:'direction-pad','aria-label':'方向控制'}); for(const [key,text] of [['up','↑'],['left','←'],['down','↓'],['right','→']]) pad.append(el('button',{type:'button','aria-label':{up:'向上',left:'向左',down:'向下',right:'向右'}[key],text,onclick:()=>onMove(key)})); return pad; }
-export function keyboardAndSwipe(target, onMove) { const keys={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',w:'up',s:'down',a:'left',d:'right'}; const handler=e=>{ if (document.querySelector('dialog[open]') || e.target.closest('input,textarea,select') || e.ctrlKey || e.metaKey || e.altKey) return; const direction=keys[e.key]; if(direction){e.preventDefault();onMove(direction);} }; window.addEventListener('keydown',handler); let start; const down=e=>{if(!e.isPrimary)return;start=[e.clientX,e.clientY];target.setPointerCapture?.(e.pointerId);}; const up=e=>{if(!start)return;const dx=e.clientX-start[0],dy=e.clientY-start[1];start=null;if(Math.max(Math.abs(dx),Math.abs(dy))<25)return;onMove(Math.abs(dx)>Math.abs(dy)?(dx>0?'right':'left'):(dy>0?'down':'up'));}; target.addEventListener('pointerdown',down);target.addEventListener('pointerup',up);const cancel=()=>{start=null;};target.addEventListener('pointercancel',cancel);return()=>{window.removeEventListener('keydown',handler);target.removeEventListener('pointerdown',down);target.removeEventListener('pointerup',up);target.removeEventListener('pointercancel',cancel);}; }
+export function controls(onMove) { const pad=el('div',{class:'direction-pad','aria-label':'方向控制'}); for(const [key,text] of [['up','↑'],['left','←'],['down','↓'],['right','→']]) pad.append(el('button',{type:'button','aria-label':{up:'向上',left:'向左',down:'向下',right:'向右'}[key],text,'data-direction':key,onclick:()=>onMove(key)})); return pad; }
+export function keyboardAndSwipe(target, onMove) {
+  const keys={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',w:'up',s:'down',a:'left',d:'right'};
+  const handler=e=>{if(document.querySelector('dialog[open]')||e.target.closest('input,textarea,select')||e.ctrlKey||e.metaKey||e.altKey)return;const direction=keys[e.key];if(direction){e.preventDefault();onMove(direction);}};
+  let start,swiped=false;
+  const down=e=>{if(!e.isPrimary||e.button>0)return;start=[e.clientX,e.clientY,e.pointerId];swiped=false;e.target.setPointerCapture?.(e.pointerId);};
+  const up=e=>{if(!start||e.pointerId!==start[2])return;const dx=e.clientX-start[0],dy=e.clientY-start[1];start=null;if(Math.max(Math.abs(dx),Math.abs(dy))<25)return;swiped=true;onMove(Math.abs(dx)>Math.abs(dy)?(dx>0?'right':'left'):(dy>0?'down':'up'));};
+  const cancel=()=>{start=null;swiped=false;};
+  const click=e=>{if(swiped){e.preventDefault();e.stopImmediatePropagation();swiped=false;}};
+  window.addEventListener('keydown',handler);target.addEventListener('pointerdown',down);target.addEventListener('pointerup',up);target.addEventListener('pointercancel',cancel);target.addEventListener('click',click,true);
+  return()=>{window.removeEventListener('keydown',handler);target.removeEventListener('pointerdown',down);target.removeEventListener('pointerup',up);target.removeEventListener('pointercancel',cancel);target.removeEventListener('click',click,true);};
+}
 export function saveGame(id,state) { if(!write(`game:${id}`,state)) toast('本机存储不可用，本次仍可继续玩'); }
 export function finish(id) { const completed=read('completed',{}); completed[id]=(completed[id]||0)+1;write('completed',completed);sound(true); }

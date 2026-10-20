@@ -14,6 +14,19 @@ export function normalizeLanguage(value) {
 export function setLanguage(code) { currentLanguage = normalizeLanguage(code) || 'en'; }
 
 const english = {
+  '目标排列':'Goal layout','进度只保存在当前浏览器。':'Progress is saved in this browser only.',
+  '排好 1—15，空格留在右下角。':'Order 1–15. Leave the gap at the bottom right.',
+  '箭头和滑动方向表示数字移动的方向。':'Arrows and swipes move the numbered tiles in that direction.',
+  '重新开始？':'Start over?', '本局进度将重新开始。':'This round will start over.',
+  '继续玩':'Keep playing','重新开始':'Start over',
+  '点选闪亮的两个水果。':'Tap the two highlighted fruit.',
+  '点选一组同色星星，再点一次消除。':'Tap a matching group, then tap again to clear it.',
+  '试试闪亮的格子。':'Try the highlighted light.',
+  '转动闪亮的管道，试着接通它。':'Rotate the highlighted pipe to connect it.',
+  '转动管道接通水源，红点表示漏口。':'Connect pipes to the source. Red dots mark leaks.',
+  '拖动连续涂格；切换 × 标空。':'Drag to fill a line. Switch to × to mark empty cells.',
+  '拖动连续涂格；一笔可以一次撤销。':'Drag to paint a line. Undo reverses the whole stroke.',
+  '下一关':'Next puzzle', '删除数字':'Delete digit','猜测记录':'Guess history',
   '小小动脑场':'Brain Play', '游戏':'Games', '设置':'Settings', '返回':'Back', '帮助':'Help', '完成':'Done',
   '游戏设置':'Game settings', '棋盘大小':'Board size', '玩法':'Mode',
   '经典':'Classic', '斐波那契':'Fibonacci', '经典 2048':'Classic 2048', '斐波那契 2584':'Fibonacci 2584',
@@ -115,13 +128,15 @@ const english = {
 const traditionalPairs = [
   ['设置','設定'],['默认','預設'],['保存','儲存'],['提示','提示'],['本机','本機'],['界面','介面'],['重复','重複'],
 ];
-const traditionalCharacters = Object.fromEntries(`设設 语語 国國 区區 码碼 动動 戏戲 数數 点點 连連 灭滅 华華 龙龍 织織 猜猜 简簡 体體 选選 运運 算算 张張 牌牌 这這 个個 为為 来來 发發 合合 并併 过過 关關 页頁 进進 度度 当當 前前 浏瀏 览覽 器器 自自 动動 识識 别別 写寫 处處 时時 间間 线線 传傳 递遞 阅閱 读讀 转轉 换換 复復 开開 够夠 获獲 得得 剩剩 余餘 对對 消消 还還 值值 样樣 录錄 验驗 护護 让讓 从從 顺順 负負 结結 果果 块塊 邻鄰 橙橙 蓝藍 绿綠 黄黃 树樹 热熱 杯杯 帆帆 花花 朵朵 箭箭 头頭 图圖 案案 爱愛 心心 复復 标標 记記 涂塗 长長 两兩 组組 计計 显顯 获獲 单單 级級 达達 到到 战戰 继繼 续續 边邊 缘緣 移移 换換 脑腦 脑腦 场場 声聲 音音 证證 误誤 试試 无無 解解 键鍵 盘盤 后後 台臺 确確 实實 准準 请請 检檢 查查 括括 号號 没沒 有有 给給 把把 闭閉 仅僅 式式 练練 习習 启啟 画畫 户戶 断斷 输輸 入入 待待 击擊 应應 注註 帐帳 号號 奖獎 励勵 层層 独獨 立立 与與 会會 侧側 储儲 内內 减減 参參 围圍 帮幫 弯彎 归歸 径徑 择擇 晓曉 暂暫 机機 条條 灯燈 游遊 种種 经經 绕繞 着著 载載 里裡 针針 销銷 闪閃 问問 题題 双雙 莲蓮 苏蘇 断斷 错錯 满滿 尝嘗 颗顆 总總 终終 局局 获獲 关關 胜勝 顶頂` .split(' ').filter(Boolean).map(pair => [pair[0], pair[1]]));
+const traditionalCharacters = Object.fromEntries(`设設 语語 国國 区區 码碼 动動 戏戲 数數 点點 连連 灭滅 华華 龙龍 织織 猜猜 简簡 体體 选選 运運 算算 张張 牌牌 这這 个個 为為 来來 发發 合合 并併 过過 关關 页頁 进進 度度 当當 前前 浏瀏 览覽 器器 自自 动動 识識 别別 写寫 处處 时時 间間 线線 传傳 递遞 阅閱 读讀 转轉 换換 复復 开開 够夠 获獲 得得 剩剩 余餘 对對 消消 还還 值值 样樣 录錄 验驗 护護 让讓 从從 顺順 负負 结結 果果 块塊 邻鄰 橙橙 蓝藍 绿綠 黄黃 树樹 热熱 杯杯 帆帆 花花 朵朵 箭箭 头頭 图圖 案案 爱愛 心心 复復 标標 记記 涂塗 长長 两兩 组組 计計 显顯 获獲 单單 级級 达達 到到 战戰 继繼 续續 边邊 缘緣 移移 换換 脑腦 脑腦 场場 声聲 音音 证證 误誤 试試 无無 解解 键鍵 盘盤 后後 台臺 确確 实實 准準 请請 检檢 查查 括括 号號 没沒 有有 给給 把把 闭閉 仅僅 式式 练練 习習 启啟 画畫 户戶 断斷 输輸 入入 待待 击擊 应應 注註 帐帳 号號 奖獎 励勵 层層 独獨 立立 与與 会會 侧側 储儲 内內 减減 参參 围圍 帮幫 弯彎 归歸 径徑 择擇 晓曉 暂暫 机機 条條 灯燈 游遊 种種 经經 绕繞 着著 载載 里裡 针針 销銷 闪閃 问問 题題 双雙 莲蓮 苏蘇 断斷 错錯 满滿 尝嘗 颗顆 总總 终終 局局 获獲 关關 胜勝 顶頂 笔筆 实實 测測 删刪 将將` .split(' ').filter(Boolean).map(pair => [pair[0], pair[1]]));
 function traditional(text) {
   let result = text;
   for (const [a, b] of traditionalPairs) result = result.replaceAll(a, b);
   return [...result].map(char => traditionalCharacters[char] || char).join('');
 }
 const patterns = [
+  [/^选中 (\d+) 颗，再点一次得 (\d+) 分。$/,m=>`${m[1]} selected. Tap again for +${m[2]} points.`],
+  [/^第 (\d+) 位数字$/,m=>`Digit ${m[1]}`],
   [/^目标 (\d+)$/, m => `Goal ${m[1]}`],
   [/^滑动合并相同数字，目标是 (\d+)。$/, m => `Swipe to merge matching numbers and reach ${m[1]}.`],
   [/^达到 (\d+)！你也可以继续挑战更大的数字。$/, m => `You reached ${m[1]}! Keep going if you like.`],

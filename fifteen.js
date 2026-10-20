@@ -1,6 +1,57 @@
-import {el,button,stat,statusNode,controls,keyboardAndSwipe,sound,finish} from './shared.js?v=4';
+import {el,button,stat,statusNode,controls,keyboardAndSwipe,sound,finish} from './shared.js?v=7';
+import {createMotion} from './motion.js?v=7';
 export const solvedBoard=()=>Array.from({length:16},(_,i)=>(i+1)%16);
 export function isSolved(board){return board.every((v,i)=>v===(i+1)%16);}
 export function adjacent(board,index){const z=board.indexOf(0);return Math.abs(Math.floor(z/4)-Math.floor(index/4))+Math.abs(z%4-index%4)===1;}
 export function shufflePuzzle(rng=Math.random){let board=solvedBoard(),previous=-1;for(let k=0;k<180;k++){const z=board.indexOf(0),options=board.map((_,i)=>i).filter(i=>i!==previous&&adjacent(board,i));const i=options[Math.floor(rng()*options.length)];[board[z],board[i]]=[board[i],board[z]];previous=z;}if(isSolved(board))[board[14],board[15]]=[board[15],board[14]];return board;}
-export function mount(root,ctx){let state=ctx.load()||fresh();const moves=stat('步数'),placed=stat('已归位'),status=statusNode(),board=el('div',{class:'board board-fifteen','aria-label':'数字华容道棋盘'});const undo=button('撤销',()=>{const old=state.history.pop();if(old){state.board=old;state.moves--;state.done=false;render();}});root.append(el('div',{class:'game-toolbar'},[el('div',{class:'stats'},[moves.node,placed.node]),el('div',{class:'actions'},[undo,button('新一局',()=>{state=fresh();render();},'plain')])]),board,controls(directionMove),status.node,el('p',{class:'keyboard-help',text:'点击空格旁的数字，或用方向键移动空格'}));function fresh(){return {board:shufflePuzzle(ctx.rng),moves:0,history:[],done:false};}function move(i){if(state.done||!adjacent(state.board,i))return;state.history.push([...state.board]);if(state.history.length>200)state.history.shift();const z=state.board.indexOf(0);[state.board[z],state.board[i]]=[state.board[i],state.board[z]];state.moves++;if(isSolved(state.board)){state.done=true;finish('fifteen');}sound();render();}function directionMove(dir){const z=state.board.indexOf(0),r=Math.floor(z/4),c=z%4;const [dr,dc]={up:[-1,0],down:[1,0],left:[0,-1],right:[0,1]}[dir];if(r+dr>=0&&r+dr<4&&c+dc>=0&&c+dc<4)move((r+dr)*4+c+dc);}function render(){board.replaceChildren(...state.board.map((v,i)=>el('button',{type:'button',class:`cell ${v?'':'empty'} ${v===i+1?'correct':''}`,text:v||'','aria-label':v?`数字 ${v}`:'空格',disabled:!v,onclick:()=>move(i)})));moves.set(state.moves);placed.set(`${state.board.filter((v,i)=>v&&v===i+1).length}/15`);undo.disabled=!state.history.length;status.set(state.done?`排列完成！用了 ${state.moves} 步。`:'按从左到右、从上到下的顺序，排好 1—15。',state.done?'success':'');ctx.save(state);}render();const key=e=>{if(document.querySelector('dialog[open]')||e.target.closest('input,textarea,select'))return;const dir={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right'}[e.key];if(dir){e.preventDefault();directionMove(dir);}};window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key);}
+// Direction always describes the numbered tile, never the empty square.
+export function tileInDirection(board, direction) {
+  const z=board.indexOf(0),r=Math.floor(z/4),c=z%4;
+  const delta={up:[1,0],down:[-1,0],left:[0,1],right:[0,-1]}[direction];
+  if(!delta)return -1;
+  const rr=r+delta[0],cc=c+delta[1];
+  return rr>=0&&rr<4&&cc>=0&&cc<4?rr*4+cc:-1;
+}
+export function mount(root,ctx) {
+  let state=ctx.load()||fresh(),busy=false,queued=[];
+  const motion=createMotion(),moves=stat('步数'),placed=stat('已归位'),status=statusNode();
+  const board=el('div',{class:'board board-fifteen','aria-label':'数字华容道棋盘'});
+  const pad=controls(directionMove);
+  const goal=el('details',{class:'puzzle-goal'},[
+    el('summary',{text:'目标排列'}),
+    el('div',{class:'goal-grid','aria-label':'按从左到右、从上到下的顺序，排好 1—15。'},solvedBoard().map(v=>el('span',{class:v?'':'empty',text:v||''}))),
+  ]);
+  const undo=button('撤销',()=>{if(busy)return;const old=state.history.pop();if(old){const before=[...state.board];state.board=old;state.moves--;state.done=false;transition(before);}});
+  const restart=button('新一局',()=>{if(!busy)motion.confirmRestart(state.moves>0&&!state.done,()=>{state=fresh();render();});},'plain');
+  root.append(el('div',{class:'game-toolbar'},[el('div',{class:'stats'},[moves.node,placed.node]),el('div',{class:'actions'},[undo,restart])]),goal,board,pad,status.node);
+  function fresh(){return {board:shufflePuzzle(ctx.rng),moves:0,history:[],done:false};}
+  async function transition(before) {
+    busy=true; updateControls();
+    const movements=before.flatMap((v,from)=>v&&state.board.indexOf(v)!==from?[{from,to:state.board.indexOf(v)}]:[]);
+    await motion.grid(board,movements,render,150);
+    if(!motion.alive)return;
+    busy=false;updateControls();
+    if(state.done)motion.pop(status.node);
+    const next=queued.shift();if(next)directionMove(next);
+  }
+  function move(i){
+    if(busy||state.done)return;
+    if(!adjacent(state.board,i)){motion.shake(board.children[i]);return;}
+    const before=[...state.board];state.history.push(before);if(state.history.length>200)state.history.shift();
+    const z=state.board.indexOf(0);[state.board[z],state.board[i]]=[state.board[i],state.board[z]];state.moves++;
+    if(isSolved(state.board)){state.done=true;finish('fifteen');}
+    sound();transition(before);
+  }
+  function directionMove(dir){if(state.done){queued=[];return;}if(busy){if(queued.length<3)queued.push(dir);return;}const i=tileInDirection(state.board,dir);if(i>=0)move(i);else{const next=queued.shift();if(next)directionMove(next);}}
+  function updateControls(){
+    undo.disabled=busy||!state.history.length;restart.disabled=busy;
+    for(const key of pad.children)key.disabled=state.done||tileInDirection(state.board,key.dataset.direction)<0;
+  }
+  function render(){
+    board.replaceChildren(...state.board.map((v,i)=>el('button',{type:'button',class:`cell ${v?'':'empty'} ${v===i+1?'correct':''} ${v&&adjacent(state.board,i)?'movable':''}`,text:v||'','aria-label':v?`数字 ${v}`:'空格',disabled:!v,onclick:()=>move(i)})));
+    moves.set(state.moves);placed.set(`${state.board.filter((v,i)=>v&&v===i+1).length}/15`);updateControls();
+    status.set(state.done?`排列完成！用了 ${state.moves} 步。`:'排好 1—15，空格留在右下角。',state.done?'success':'');ctx.save(state);
+  }
+  render();const removeInput=keyboardAndSwipe(board,directionMove);
+  return()=>{queued=[];removeInput();motion.dispose();};
+}
