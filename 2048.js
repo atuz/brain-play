@@ -1,4 +1,4 @@
-import {el,button,stat,statusNode,controls,keyboardAndSwipe,read,saveGame,copy,sound,finish} from './shared.js';
+import {el,button,stat,statusNode,controls,keyboardAndSwipe,read,saveGame,copy,sound,finish} from './shared.js?v=2';
 export function slideLine(line) { const values=line.filter(Boolean), out=[]; let score=0; for(let i=0;i<values.length;i++){if(values[i]===values[i+1]){const v=values[i]*2;out.push(v);score+=v;i++;}else out.push(values[i]);}while(out.length<line.length)out.push(0);return {line:out,score}; }
 export function slideBoard(board,direction) { const out=[...board];let score=0;for(let a=0;a<4;a++){const indices=Array.from({length:4},(_,b)=>direction==='left'?a*4+b:direction==='right'?a*4+3-b:direction==='up'?b*4+a:(3-b)*4+a);const result=slideLine(indices.map(i=>board[i]));indices.forEach((i,j)=>out[i]=result.line[j]);score+=result.score;}return {board:out,score,moved:out.some((v,i)=>v!==board[i])}; }
 export function hasMoves(board) {return board.includes(0)||['left','up'].some(dir=>slideBoard(board,dir).moved);}

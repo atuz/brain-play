@@ -1,15 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {seeded} from './shared.js';
-import {slideLine,slideBoard,hasMoves} from './2048.js';
-import {parseExpression,solve24,generate24} from './twentyfour.js';
-import {flip,solveLights,generateLights} from './lights.js';
-import {shufflePuzzle,solvedBoard,isSolved} from './fifteen.js';
-import {rotate,generatePipes,checkPipes} from './pipes.js';
-import {findPath,findPair,reshuffle} from './link.js';
-import {groupAt,collapse,hasGroups} from './stars.js';
-import {runs,clues,patterns,patternBits} from './nonogram.js';
-import {compareGuess,validGuess} from './guess.js';
+import {seeded} from './shared.js?v=2';
+import {slideLine,slideBoard,hasMoves} from './2048.js?v=2';
+import {parseExpression,solve24,generate24} from './twentyfour.js?v=2';
+import {flip,solveLights,generateLights} from './lights.js?v=2';
+import {shufflePuzzle,solvedBoard,isSolved} from './fifteen.js?v=2';
+import {rotate,generatePipes,checkPipes} from './pipes.js?v=2';
+import {findPath,findPair,reshuffle} from './link.js?v=2';
+import {groupAt,collapse,hasGroups} from './stars.js?v=2';
+import {runs,clues,patterns,patternBits} from './nonogram.js?v=2';
+import {compareGuess,validGuess} from './guess.js?v=2';
 
 test('2048 merges each tile only once per move',()=>{
   assert.deepEqual(slideLine([2,2,2,2]),{line:[4,4,0,0],score:8});
@@ -67,4 +67,84 @@ function countNonogramSolutions(target){const targetClues=clues(target),options=
 test('every published nonogram has exactly one solution',()=>{for(const p of patterns)assert.equal(countNonogramSolutions(patternBits(p)),1,p.name);});
 test('guess feedback handles leading zeros and disallows repeated digits',()=>{
  assert.deepEqual(compareGuess('1234','1356'),{a:1,b:1});assert.deepEqual(compareGuess('0123','3210'),{a:0,b:4});assert.equal(validGuess('0123'),true);assert.equal(validGuess('1123'),false);assert.equal(validGuess('123'),false);
+});
+
+
+import {calculate,createRound,formatFraction,mergeRound,plan24,resetRound,restoreRound,undoRound} from './twentyfour-engine.js?v=2';
+import {browserCountry,resolvePreferences,updatePreferenceURL} from './preferences.js?v=2';
+import {translate} from './i18n.js?v=2';
+
+test('24 card merges preserve exact fractions and use all four original cards',()=>{
+  let r=createRound([3,3,8,8]);
+  const initial=JSON.stringify(r);
+  r=mergeRound(r,2,0,'÷');
+  assert.equal(formatFraction(r.cards.find(c=>c.id===4)),'8/3');
+  assert.equal(JSON.stringify(createRound([3,3,8,8])),initial);
+  r=mergeRound(r,1,4,'-');
+  assert.equal(formatFraction(r.cards.find(c=>c.id===5)),'1/3');
+  r=mergeRound(r,3,5,'÷');
+  assert.equal(r.done,true);assert.equal(formatFraction(r.cards[0]),'24');
+  assert.equal(r.cards[0].mask,15);assert.equal(r.steps.length,3);
+  assert.equal(restoreRound(JSON.parse(JSON.stringify(r))).done,true);
+});
+test('24 invalid merges leave the round intact and respect operand order',()=>{
+  let r=mergeRound(createRound([3,3,8,8]),0,1,'-');
+  const before=JSON.stringify(r);
+  assert.throws(()=>mergeRound(r,2,4,'÷'),/0/);
+  assert.throws(()=>mergeRound(r,2,2,'+'));
+  assert.throws(()=>mergeRound(r,0,2,'+'));
+  assert.equal(JSON.stringify(r),before);
+  assert.deepEqual(calculate({n:2,d:1},{n:7,d:1},'-'),{n:-5,d:1});
+  assert.deepEqual(calculate({n:0,d:1},{n:2,d:3},'÷'),{n:0,d:1});
+});
+test('24 undo, reset and resume retain solve credit and hint usage',()=>{
+  let r=createRound([7,6,9,2]);r.assisted=true;r.claimed=true;
+  const start=JSON.stringify(r);
+  r=mergeRound(r,0,1,'+');
+  const restored=restoreRound(JSON.parse(JSON.stringify(r)));
+  assert.deepEqual(restored,r);assert.equal(JSON.stringify(undoRound(restored)),start);
+  const reset=resetRound(restored);
+  assert.equal(reset.claimed,true);assert.equal(reset.assisted,true);assert.equal(reset.history.length,0);
+  const legacy=restoreRound({numbers:[3,3,8,8],done:true,revealed:true});
+  assert.equal(legacy.claimed,true);assert.equal(legacy.assisted,true);assert.equal(legacy.cards.length,4);
+  const corrupt=restoreRound({numbers:[1,1,1,1],version:2,cards:null});
+  assert.equal(corrupt.cards.length,4);
+});
+test('24 hints form legal plans from intermediate positions',()=>{
+  const rng=seeded(243);
+  for(let trial=0;trial<50;trial++){
+    let r=createRound(generate24(rng).numbers);
+    while(r.cards.length>1){
+      const plan=plan24(r.cards);assert.ok(plan?.length);
+      const step=plan[0];r=mergeRound(r,step.first,step.second,step.op);
+      assert.equal(r.cards.reduce((mask,c)=>mask|c.mask,0),15);
+    }
+    assert.equal(r.done,true);
+  }
+  assert.equal(plan24(createRound([1,1,1,1]).cards),null);
+});
+test('app URL country overrides browser region; missing country uses browser without IP lookup',()=>{
+  const result=resolvePreferences('https://atuz.github.io/brain-play/?country=jp&lang=en&source=app#/game/twentyfour', {language:'zh-CN',country:'US'},['zh-TW'],'en-CA');
+  assert.equal(result.country,'JP');assert.equal(result.language,'en');
+  assert.equal(result.url.hash,'#/game/twentyfour');assert.equal(result.url.searchParams.get('source'),'app');
+  assert.equal(result.url.searchParams.get('country'),'JP');
+  const fallback=resolvePreferences('https://example.com/?country=bad#/',{country:'US'},['zh-Hant-TW','en-CA']);
+  assert.equal(fallback.country,'TW');assert.equal(fallback.language,'zh-TW');
+  assert.equal(browserCountry(['en','fr-CA']),'CA');
+  const unknown=resolvePreferences('https://example.com/#/',{},['zh']);
+  assert.equal(unknown.country,'');assert.equal(unknown.url.searchParams.has('country'),false);
+});
+test('language changes preserve country, query parameters and game route',()=>{
+  const url=updatePreferenceURL('https://example.com/?country=CA&source=app#/game/link','zh-TW','CA');
+  assert.equal(url.searchParams.get('lang'),'zh-TW');assert.equal(url.searchParams.get('country'),'CA');
+  assert.equal(url.searchParams.get('source'),'app');assert.equal(url.hash,'#/game/link');
+  assert.equal(resolvePreferences('https://example.com/',{language:'en'},['zh-CN']).language,'en');
+});
+test('UI translations include dynamic game feedback and accessible labels',()=>{
+  assert.equal(translate('帮助 选择 撤销 减 灯','zh-TW'),'幫助 選擇 撤銷 減 燈');
+  assert.equal(translate('设置','en'),'Settings');assert.equal(translate('设置','zh-TW'),'設定');
+  assert.equal(translate('合成了 8/3，还剩 3 张牌。','en'),'Made 8/3. 3 cards left.');
+  assert.equal(translate('已合并 2 步，共 3 步','en'),'2 of 3 merges complete');
+  assert.equal(translate('第1行第2列，水源，已连通','en'),'Row 1, column 2, source, Connected');
+  assert.equal(translate('第1张牌：8/3，来自(8÷3)','en'),'Card 1: 8/3, from (8÷3)');
 });

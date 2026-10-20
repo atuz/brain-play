@@ -1,4 +1,4 @@
-import {el,button,stat,statusNode,sound,finish} from './shared.js';
+import {el,button,stat,statusNode,sound,finish} from './shared.js?v=2';
 export const dirs=[[-1,0,1,4,'n'],[0,1,2,8,'e'],[1,0,4,1,'s'],[0,-1,8,2,'w']];
 export const rotate=mask=>((mask<<1)&15)|((mask>>3)&1);
 export function generatePipes(rng=Math.random,size=5){const board=Array(size*size).fill(0),seen=new Set([0]);function visit(i){const neighbors=dirs.map(d=>({d,rank:rng()})).sort((a,b)=>a.rank-b.rank);for(const {d:[dr,dc,bit,back]}of neighbors){const r=Math.floor(i/size)+dr,c=i%size+dc,j=r*size+c;if(r<0||r>=size||c<0||c>=size||seen.has(j))continue;seen.add(j);board[i]|=bit;board[j]|=back;visit(j);}}visit(0);const solution=[...board];for(let i=0;i<board.length;i++)for(let k=Math.floor(rng()*4);k>0;k--)board[i]=rotate(board[i]);if(checkPipes(board,size).won)board[0]=rotate(board[0]);return {board,solution};}

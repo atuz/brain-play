@@ -1,22 +1,144 @@
-import {el,read,write,dateSeed,seeded,toast} from './shared.js';
-const games=[
-{id:'2048',name:'2048',category:'数字策略',desc:'滑一滑，让小数字慢慢长大。',time:'3—10 分钟',tint:'#eee8d6',rules:['滑动棋盘或按方向键，让所有数字向同一方向移动。','两个相同数字相遇会合并；每次有效移动后出现一个新数字。','合出 2048 就达成目标，也可以继续挑战。'],tip:'试着把最大的数字留在一个角落，给小数字腾出空间。'},
-{id:'twentyfour',name:'24 点',category:'数字策略',desc:'四个数字，能拼出多少种可能？',time:'1—5 分钟',tint:'#f0e6d4',rules:['每个数字恰好使用一次。','使用加、减、乘、除和括号，把结果算成 24。','可以用输入框和运算按钮作答；每道随机题都保证有解。'],tip:'先想想 24 能拆成哪些乘法，例如 3×8、4×6 或 2×12。'},
-{id:'link',name:'水果连连看',category:'轻松消除',desc:'找出一对水果，给眼力一点挑战。',time:'3—8 分钟',tint:'#e5ebdf',rules:['点击两枚相同的水果进行配对。','连接路线最多转两次弯，途中不能经过其他水果。','路线可以经过棋盘外侧；没有可消组合时会自动重新排列。'],tip:'先看看边缘和相邻的水果，空出来的地方能成为新通道。'},
-{id:'stars',name:'消灭星星',category:'轻松消除',desc:'先想一步，再收获一大片。',time:'3—8 分钟',tint:'#e4e9e0',rules:['点击至少两颗上下或左右相邻的同色星星，整组消除。','一次消除 n 颗，获得 5×n² 分。空位向下填，空列向左收拢。','没有可消组合时结束；剩余越少，额外奖励越高。'],tip:'消除上面的星星之前，看看下面的组合能不能让更多同色靠在一起。'},
-{id:'lights',name:'熄灯',category:'逻辑解谜',desc:'看似简单的一点，藏着连锁反应。',time:'2—8 分钟',tint:'#e6ebd8',rules:['棋盘上有亮灯和灭灯两种状态。','点一个格子，它和上下左右的灯都会翻转。','让所有灯熄灭；每一局都保证可以完成。'],tip:'重复点击同一格两次，效果会互相抵消。提示会标出一个可点击的格子。'},
-{id:'fifteen',name:'数字华容道',category:'数字策略',desc:'挪动一格，让每个数字回到原位。',time:'3—10 分钟',tint:'#e9e5db',rules:['点击空格旁边的数字，把它移入空格。','目标是按从左到右、从上到下的顺序排好 1—15，空格留在右下角。','方向键控制空格移动；每一局都从正确排列合法打乱，保证有解。'],tip:'可以先排好第一行和第一列，再处理右下方的小区域。'},
-{id:'pipes',name:'接水管',category:'逻辑解谜',desc:'转动一小段，把整个世界连起来。',time:'3—8 分钟',tint:'#e2eade',rules:['点击一块管道，让它顺时针旋转 90 度。','中间的金色圆点是水源，绿色表示当前与水源连通。','连接所有 25 个格子，并让每个管口都接上相邻管道。'],tip:'从边缘和只有一个出口的管道开始，往往更容易找到方向。'},
-{id:'nonogram',name:'迷你数织',category:'逻辑解谜',desc:'读懂数字，让藏起来的图案出现。',time:'2—6 分钟',tint:'#e4eadf',rules:['每行、每列旁的数字，表示连续涂色格子的长度和顺序。','例如「2 1」表示连续涂两格，至少留一格，再涂一格。','用「标空」记下不涂色的位置；右键也可以标空。'],tip:'先看提示为 5 的整行、整列，或者只剩一种放法的地方。'},
-{id:'guess',name:'猜数字',category:'数字策略',desc:'从一点点线索，找到唯一答案。',time:'3—10 分钟',tint:'#ece3da',rules:['答案由四个不重复的数字组成，可以以 0 开头。','A 表示数字和位置都正确；B 表示数字正确、位置不对。','例如答案 1234，猜 1356，会得到 1A1B。不限次数。'],tip:'先用不同数字收集线索，再调整它们的位置，比只盯着一组数字更有效。'}
-];
-const main=document.querySelector('#main');
-document.querySelector('.skip').addEventListener('click',event=>{event.preventDefault();main.focus();main.scrollIntoView();});let cleanup,routeVersion=0,category='全部游戏';
-const soundButton=document.querySelector('#sound-toggle');
-function updateSound(){const enabled=read('sound',false);soundButton.setAttribute('aria-pressed',String(enabled));soundButton.setAttribute('aria-label',enabled?'关闭音效':'开启音效');soundButton.title=enabled?'关闭音效':'开启音效';soundButton.querySelector('span').textContent=enabled?'音效开':'音效关';}
-soundButton.addEventListener('click',()=>{write('sound',!read('sound',false));updateSound();toast(read('sound',false)?'音效已开启':'音效已关闭');});updateSound();
-function miniGrid(values,extra=''){return `<div class="mini-grid ${extra}" aria-hidden="true">${values.map(([text,kind=''])=>`<span class="${kind}">${text}</span>`).join('')}</div>`;}
-function preview(id){if(id==='2048')return miniGrid([['2'],['4'],['8','gold'],[''],['4'],['8','gold'],['16','mid'],[''],['8','gold'],['16','mid'],['32','filled'],[''],[''],['2'],['4'],['64','filled']]);if(id==='twentyfour')return '<div class="mini-cards" aria-hidden="true"><span>3</span><span>8</span><span>4</span><span>1</span></div>';if(id==='nonogram')return miniGrid('0101011111111110111000100'.split('').map(v=>['',v==='1'?'filled':'']),'five');if(id==='lights')return miniGrid(Array.from({length:25},(_,i)=>['',([0,2,3,6,7,10,12,14,17,18,21,24].includes(i)?'gold':'mid')]),'five');if(id==='link')return miniGrid(['🍋','🍓','🍇','🍐','🍇','🍋','🍊','🍓','🍐','🍇','🍋','🍊'].map(v=>[v]));if(id==='stars')return miniGrid(Array.from({length:16},(_,i)=>[['●','★','◆','✦'][i%4],['filled','gold','mid',''][[0,1,1,0,0,2,1,2,1,2,2,0,1,1,0,0][i]]]),'mini-colors');if(id==='fifteen')return miniGrid([['1','mid'],['2','mid'],['3','mid'],['4','mid'],['5'],['6'],['7'],['8'],['9'],['10'],[''],['12'],['13'],['14'],['11'],['15']]);if(id==='pipes')return miniGrid(['┌','─','┐','├','┐','│','└','┴','┘'].map(v=>[v]),'mini-pipes');return '<div class="mini-bulls" aria-hidden="true"><div><span></span><span></span><span></span><span></span></div><div><span></span><span></span><span></span><span></span></div><div><span></span><span></span><span></span><span></span></div></div>';}
-function home(){document.title='小小动脑场 · 给脑袋放个有趣的假';const hero=el('section',{class:'hero'}),intro=el('div');intro.append(el('div',{class:'eyebrow',text:'一点挑战 · 一点小欢喜'}));const title=el('h1');title.innerHTML='给脑袋放个<br><em>有趣的假。</em>';intro.append(title,el('p',{},['不用赶时间，也没有复杂规则。',el('br'),'挑一个小游戏，享受想通那一刻的小小满足。']),el('div',{class:'hero-tags'},[el('span',{text:'打开就玩'}),el('span',{text:'手机也顺手'}),el('span',{text:'慢慢想也没关系'})]));const today=new Date(),date=`${today.getMonth()+1} 月 ${today.getDate()} 日`;const daily=el('a',{class:'daily-card',href:'#/game/nonogram?daily=1','aria-label':'开始今日数织挑战'}),dailyInfo=el('div');dailyInfo.append(el('div',{class:'daily-label',text:`DAILY PUZZLE / ${date}`}),el('h2',{text:'今天，解开一幅小图案'}),el('p',{},['5×5 迷你数织',el('br'),'一点逻辑，一点发现的乐趣。']),el('span',{class:'daily-link',text:'开始今日挑战　↗'}));const art=el('div',{class:'daily-preview'});art.innerHTML=preview('nonogram');daily.append(dailyInfo,art);hero.append(intro,daily);main.replaceChildren(hero);const section=el('section',{'aria-label':'全部小游戏'}),top=el('div',{class:'section-top'}),heading=el('h2',{text:'挑一个，开始吧'});heading.append(el('small',{text:`${games.length} 个小游戏` }));const filters=el('div',{class:'filters','aria-label':'筛选游戏'}),grid=el('div',{class:'game-grid'});for(const name of ['全部游戏','数字策略','逻辑解谜','轻松消除'])filters.append(el('button',{type:'button',class:`filter ${name===category?'active':''}`,text:name,'aria-pressed':name===category,onclick:()=>{category=name;for(const b of filters.children){b.classList.toggle('active',b.textContent===name);b.setAttribute('aria-pressed',String(b.textContent===name));}drawCards();}}));top.append(heading,filters);section.append(top,grid);main.append(section,el('div',{class:'note-strip'},[el('b',{text:'✳','aria-hidden':'true'}),el('span',{},[el('strong',{text:'把进度留给下次，把好心情留给现在。'}),el('br'),'游戏会自动保存到当前浏览器，随时回来接着玩。'])]));function drawCards(){grid.replaceChildren(...games.filter(g=>category==='全部游戏'||g.category===category).map(g=>{const card=el('a',{class:'game-card',href:`#/game/${g.id}`,'aria-label':`开始玩${g.name}`}),art=el('div',{class:'card-art',style:`--tint:${g.tint}`});art.innerHTML=preview(g.id);const saved=read(`game:${g.id}`);card.append(art,el('div',{class:'card-content'},[el('div',{class:'card-title'},[el('h3',{text:g.name}),el('span',{class:'arrow','aria-hidden':'true',text:'↗'})]),el('p',{class:'card-desc',text:g.desc}),el('div',{class:'card-meta'},[el('span',{class:'tag',text:g.category}),el('span',{text:saved&&!saved.done?'继续上次 →':g.time})])]));return card;}));}drawCards();}
-async function route(){const version=++routeVersion;cleanup?.();cleanup=null;const raw=location.hash.slice(1)||'/',[path,query='']=raw.split('?'),id=path.split('/')[2],game=games.find(g=>g.id===id);if(path==='/'||!game){home();window.scrollTo(0,0);return;}const daily=new URLSearchParams(query).get('daily')==='1',seed=dateSeed(),saveKey=`game:${game.id}${daily?':daily:'+seed:''}`;document.title=`${game.name} · 小小动脑场`;const heading=el('div',{class:'game-heading'},[el('div',{},[el('h1',{text:game.name}),el('p',{text:game.desc})])]);if(daily)heading.append(el('span',{class:'daily-badge',text:'今日挑战'}));const panel=el('section',{class:'play-panel','aria-label':game.name+'游戏区域'}),rules=el('aside',{class:'rules'},[el('h2',{text:'怎么玩'}),el('ol',{},game.rules.map(text=>el('li',{text}))),el('div',{class:'tip'},[el('strong',{text:'一点小提示'}),document.createTextNode(game.tip)])]);main.replaceChildren(el('div',{class:'crumb'},[el('a',{href:'#/',text:'游戏大厅'}),el('span',{text:'/'}),el('span',{text:game.name})]),heading,el('div',{class:'game-layout'},[panel,rules]),el('div',{class:'game-bottom'},[el('a',{href:'#/',text:'← 换个游戏玩'}),el('span',{text:'本机自动保存 · 无需登录'})]));const mountMap={'2048':()=>import('./2048.js'),twentyfour:()=>import('./twentyfour.js'),lights:()=>import('./lights.js'),fifteen:()=>import('./fifteen.js'),pipes:()=>import('./pipes.js'),nonogram:()=>import('./nonogram.js'),link:()=>import('./link.js'),stars:()=>import('./stars.js'),guess:()=>import('./guess.js')};try{const module=await mountMap[id]();if(version!==routeVersion)return;cleanup=module.mount(panel,{daily,seed,rng:daily?seeded(seed+games.indexOf(game)):Math.random,load:()=>read(saveKey),save:state=>write(saveKey,state),read,write});}catch(error){console.error(error);panel.replaceChildren(el('p',{class:'status error',text:'游戏加载遇到了问题，请刷新页面后重试。'}));}window.scrollTo(0,0);}
-window.addEventListener('hashchange',route);route();
+import { el, read, write, dateSeed, seeded } from './shared.js?v=2';
+import { games, preview } from './catalog.js?v=2';
+import { languages, setLanguage, getLanguage, t } from './i18n.js?v=2';
+import { normalizeCountry, resolvePreferences, updatePreferenceURL } from './preferences.js?v=2';
+
+const main = document.querySelector('#main');
+const header = document.querySelector('#app-header');
+const preferences = resolvePreferences(location.href, read('preferences', {}), navigator.languages || [navigator.language], Intl.DateTimeFormat().resolvedOptions().locale);
+let country = preferences.country;
+setLanguage(preferences.language);
+history.replaceState(null, '', preferences.url);
+let cleanup, currentGame, routeVersion = 0;
+
+function applyDocumentPreferences() {
+  document.documentElement.lang = getLanguage();
+  document.documentElement.dataset.motion = read('animations', true) ? 'on' : 'off';
+  document.querySelector('.skip').textContent = t('跳到主要内容');
+}
+applyDocumentPreferences();
+document.querySelector('.skip').addEventListener('click', event => { event.preventDefault(); main.focus(); main.scrollIntoView(); });
+
+function headerView(game) {
+  header.replaceChildren();
+  const back = game
+    ? el('a', { class: 'app-back', href: '#/', 'aria-label': '返回' }, [el('span', { text: '←', 'aria-hidden': 'true' })])
+    : el('span', { class: 'brand-mark', 'aria-hidden': 'true' }, [el('i'), el('i'), el('i'), el('i')]);
+  header.append(el('div', { class: 'app-title' }, [back, el('h1', { text: game ? game.name : '小小动脑场' })]));
+  const actions = el('div', { class: 'app-header-actions' });
+  if (game) actions.append(el('button', { type: 'button', class: 'app-icon', text: '?', 'aria-label': '帮助', onclick: () => showHelp(game) }));
+  actions.append(el('button', { type: 'button', class: 'app-icon', text: '⚙', 'aria-label': '设置', onclick: showSettings }));
+  header.append(actions);
+}
+
+function home() {
+  headerView();
+  document.title = `${t('小小动脑场')} · Brain Play`;
+  const grid = el('section', { class: 'home-games', 'aria-label': '游戏' });
+  for (const game of games) {
+    const card = el('a', { class: 'home-game', href: `#/game/${game.id}`, 'aria-label': `${t('开始玩')} ${t(game.name)}` });
+    const art = el('span', { class: 'home-game-art', style: `--tint:${game.tint}` });
+    art.innerHTML = preview(game.id);
+    card.append(art, el('span', { class: 'home-game-name', text: game.name }));
+    grid.append(card);
+  }
+  main.replaceChildren(grid);
+}
+
+function dialog(title, closeLabel) {
+  const modal = el('dialog', { class: 'app-dialog', 'aria-label': title });
+  const titleId = 'dialog-title';
+  const close = el('button', { type: 'button', class: 'app-icon', text: '×', 'aria-label': closeLabel, onclick: () => modal.close() });
+  modal.append(el('div', { class: 'dialog-header' }, [el('h2', { id: titleId, text: title }), close]));
+  modal.setAttribute('aria-labelledby', titleId);
+  modal.addEventListener('click', event => { if (event.target === modal && (event.clientX < modal.getBoundingClientRect().left || event.clientX > modal.getBoundingClientRect().right || event.clientY < modal.getBoundingClientRect().top || event.clientY > modal.getBoundingClientRect().bottom)) modal.close(); });
+  modal.addEventListener('close', () => modal.remove());
+  document.body.append(modal);
+  return modal;
+}
+
+function showHelp(game) {
+  const modal = dialog(t(game.name), '关闭帮助');
+  modal.append(el('ol', { class: 'help-list' }, game.help.map(text => el('li', { text }))));
+  modal.showModal();
+}
+
+function showSettings() {
+  const modal = dialog('设置', '关闭设置');
+  const form = el('form', { class: 'settings-form' });
+  const language = el('select', { id: 'setting-language', 'aria-label': '语言' });
+  languages.forEach(item => language.append(el('option', { value: item.code, text: item.name })));
+  language.value = getLanguage();
+  const code = el('input', { id: 'setting-country', type: 'text', maxlength: '2', inputmode: 'text', autocapitalize: 'characters', autocomplete: 'off', placeholder: 'CA', 'aria-label': '国家／地区代码' });
+  code.value = country;
+  const auto = el('button', { type: 'button', class: 'btn plain small', text: '自动', onclick: () => {
+    code.value = resolvePreferences(location.origin + location.pathname, {}, navigator.languages || [navigator.language], Intl.DateTimeFormat().resolvedOptions().locale).country;
+  } });
+  const audio = el('input', { type: 'checkbox', id: 'setting-sound', checked: read('sound', false) });
+  const motion = el('input', { type: 'checkbox', id: 'setting-motion', checked: read('animations', true) });
+  form.append(
+    el('label', { class: 'settings-label', for: 'setting-language', text: '语言' }), language,
+    el('label', { class: 'settings-label', for: 'setting-country', text: '国家／地区代码' }),
+    el('div', { class: 'country-field' }, [code, auto]),
+    el('label', { class: 'settings-toggle', for: 'setting-sound' }, [el('span', { text: '音效' }), audio]),
+    el('label', { class: 'settings-toggle', for: 'setting-motion' }, [el('span', { text: '动画' }), motion]),
+    el('p', { class: 'settings-note', text: '进度只保存在当前浏览器。' }),
+    el('button', { type: 'submit', class: 'btn settings-done', text: '完成' }),
+  );
+  form.addEventListener('submit', event => {
+    event.preventDefault();
+    if (code.value.trim() && !normalizeCountry(code.value.trim())) { code.setCustomValidity(t('国家代码需要两位英文字母，例如 CA。')); code.reportValidity(); return; }
+    code.setCustomValidity('');
+    country = normalizeCountry(code.value.trim());
+    setLanguage(language.value);
+    write('preferences', { language: getLanguage(), country });
+    write('sound', audio.checked);
+    write('animations', motion.checked);
+    history.replaceState(null, '', updatePreferenceURL(location.href, getLanguage(), country));
+    applyDocumentPreferences();
+    modal.close();
+    void route(false);
+  });
+  code.addEventListener('input', () => code.setCustomValidity(''));
+  modal.append(form);
+  modal.showModal();
+}
+
+const mounts = {
+  '2048': () => import('./2048.js?v=2'), twentyfour: () => import('./twentyfour.js?v=2'),
+  lights: () => import('./lights.js?v=2'), fifteen: () => import('./fifteen.js?v=2'),
+  pipes: () => import('./pipes.js?v=2'), nonogram: () => import('./nonogram.js?v=2'),
+  link: () => import('./link.js?v=2'), stars: () => import('./stars.js?v=2'), guess: () => import('./guess.js?v=2'),
+};
+
+async function route(scroll = true) {
+  const version = ++routeVersion;
+  cleanup?.();
+  cleanup = null;
+  const raw = location.hash.slice(1) || '/';
+  const [path, query = ''] = raw.split('?');
+  const id = path.split('/')[2];
+  currentGame = games.find(game => game.id === id);
+  if (!currentGame) { home(); if (scroll) window.scrollTo(0, 0); return; }
+  headerView(currentGame);
+  document.title = `${t(currentGame.name)} · Brain Play`;
+  const daily = new URLSearchParams(query).get('daily') === '1';
+  const seed = dateSeed();
+  const saveKey = `game:${id}${daily ? ':daily:' + seed : ''}`;
+  const panel = el('section', { class: 'play-panel', 'aria-label': t(currentGame.name) });
+  main.replaceChildren(el('div', { class: 'game-layout' }, [panel]));
+  try {
+    const module = await mounts[id]();
+    if (version !== routeVersion) return;
+    cleanup = module.mount(panel, {
+      daily, seed, rng: daily ? seeded(seed + games.indexOf(currentGame)) : Math.random,
+      load: () => read(saveKey), save: state => write(saveKey, state), read, write,
+    });
+  } catch (error) {
+    console.error(error);
+    panel.replaceChildren(el('p', { class: 'status error', text: '游戏加载遇到了问题，请刷新页面后重试。' }));
+  }
+  if (scroll) window.scrollTo(0, 0);
+}
+window.addEventListener('hashchange', () => route());
+void route();
