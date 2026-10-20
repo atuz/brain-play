@@ -1,8 +1,11 @@
-import { el, read, write, dateSeed, seeded } from './shared.js?v=3';
-import { games, preview } from './catalog.js?v=3';
-import { languages, setLanguage, getLanguage, t } from './i18n.js?v=3';
-import { normalizeCountry, resolvePreferences, updatePreferenceURL } from './preferences.js?v=3';
+import { el, read, write, dateSeed, seeded, toast } from './shared.js?v=4';
+import { games, preview } from './catalog.js?v=4';
+import { languages, setLanguage, getLanguage, t } from './i18n.js?v=4';
+import { normalizeCountry, resolvePreferences, updatePreferenceURL } from './preferences.js?v=4';
 
+import { connectAppHost } from './app-host.js?v=4';
+
+const appHost = connectAppHost(location.href, window);
 const main = document.querySelector('#main');
 const header = document.querySelector('#app-header');
 const preferences = resolvePreferences(location.href, read('preferences', {}), navigator.languages || [navigator.language], Intl.DateTimeFormat().resolvedOptions().locale);
@@ -19,16 +22,23 @@ function applyDocumentPreferences() {
 applyDocumentPreferences();
 document.querySelector('.skip').addEventListener('click', event => { event.preventDefault(); main.focus(); main.scrollIntoView(); });
 
+function returnToApp() {
+  if (!appHost.close()) toast('请使用 App 顶部的返回按钮。');
+}
+
 function headerView(game) {
   header.replaceChildren();
   const back = game
     ? el('a', { class: 'app-back', href: '#/', 'aria-label': '返回' }, [el('span', { text: '←', 'aria-hidden': 'true' })])
-    : el('span', { class: 'brand-mark', 'aria-hidden': 'true' }, [el('i'), el('i'), el('i'), el('i')]);
+    : appHost.embedded
+      ? el('button', { type: 'button', class: 'app-back', 'data-testid': 'app-exit', 'aria-label': '返回 App', title: '返回 App', text: '←', onclick: returnToApp })
+      : el('span', { class: 'brand-mark', 'aria-hidden': 'true' }, [el('i'), el('i'), el('i'), el('i')]);
   const name = game ? activeModule?.title?.({ read }) || game.name : '小小动脑场';
   header.append(el('div', { class: 'app-title' }, [back, el('h1', { text: name })]));
   const actions = el('div', { class: 'app-header-actions' });
   if (game) actions.append(el('button', { type: 'button', class: 'app-icon', text: '?', 'aria-label': '帮助', onclick: () => showHelp(game) }));
   if (!game || activeModule?.settings) actions.append(el('button', { type: 'button', class: 'app-icon', text: '⚙', 'aria-label': game ? '游戏设置' : '设置', onclick: game ? showGameSettings : showSettings }));
+  if (game && appHost.embedded) actions.append(el('button', { type: 'button', class: 'app-icon app-exit', 'data-testid': 'app-exit', text: '×', 'aria-label': '返回 App', title: '返回 App', onclick: returnToApp }));
   header.append(actions);
 }
 
@@ -132,10 +142,10 @@ function showSettings() {
 }
 
 const mounts = {
-  '2048': () => import('./2048.js?v=3'), twentyfour: () => import('./twentyfour.js?v=3'),
-  lights: () => import('./lights.js?v=3'), fifteen: () => import('./fifteen.js?v=3'),
-  pipes: () => import('./pipes.js?v=3'), nonogram: () => import('./nonogram.js?v=3'),
-  link: () => import('./link.js?v=3'), stars: () => import('./stars.js?v=3'), guess: () => import('./guess.js?v=3'),
+  '2048': () => import('./2048.js?v=4'), twentyfour: () => import('./twentyfour.js?v=4'),
+  lights: () => import('./lights.js?v=4'), fifteen: () => import('./fifteen.js?v=4'),
+  pipes: () => import('./pipes.js?v=4'), nonogram: () => import('./nonogram.js?v=4'),
+  link: () => import('./link.js?v=4'), stars: () => import('./stars.js?v=4'), guess: () => import('./guess.js?v=4'),
 };
 
 async function route(scroll = true) {
@@ -174,4 +184,5 @@ async function route(scroll = true) {
   if (scroll) window.scrollTo(0, 0);
 }
 window.addEventListener('hashchange', () => route());
-void route();
+void route().then(() => appHost.ready());
+window.addEventListener('pageshow', () => appHost.ready());

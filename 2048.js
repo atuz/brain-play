@@ -1,6 +1,6 @@
-import { el, button, stat, statusNode, controls, keyboardAndSwipe, sound, finish } from './shared.js?v=3';
-import { normalizeMergeSettings, mergeTarget, mergeSlot, tileRank, slideBoard, hasMoves, spawn, createMergeState, restoreMergeState } from './merge-engine.js?v=3';
-export { slideLine, slideBoard, hasMoves, spawn } from './merge-engine.js?v=3';
+import { el, button, stat, statusNode, controls, keyboardAndSwipe, sound, finish } from './shared.js?v=4';
+import { normalizeMergeSettings, mergeTarget, mergeSlot, tileRank, slideBoard, hasMoves, spawn, createMergeState, restoreMergeState } from './merge-engine.js?v=4';
+export { slideLine, slideBoard, hasMoves, spawn } from './merge-engine.js?v=4';
 
 export function settings(ctx) {
   return {

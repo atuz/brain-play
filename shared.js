@@ -1,4 +1,4 @@
-import { t } from './i18n.js?v=3';
+import { t } from './i18n.js?v=4';
 const prefix = 'brain-play:v1:';
 export const read = (key, fallback = null) => { try { return JSON.parse(localStorage.getItem(prefix + key)) ?? fallback; } catch { return fallback; } };
 export const write = (key, value) => { try { localStorage.setItem(prefix + key, JSON.stringify(value)); return true; } catch { return false; } };

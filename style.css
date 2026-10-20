@@ -117,3 +117,5 @@ html[data-motion=off] *,html[data-motion=off] *:before,html[data-motion=off] *:a
 .board-2048[data-size="5"] .tile{font-size:clamp(17px,5vw,26px);border-radius:7px}
 .board-2048[data-size="5"] .tile[data-digits="4"]{font-size:clamp(13px,3.7vw,20px)}
 .board-2048[data-size="5"] .tile[data-digits="5"],.board-2048[data-size="5"] .tile[data-digits="6"]{font-size:12px}
+
+button.app-back{border:0;background:transparent;padding:0}.app-icon.app-exit{font-size:25px}

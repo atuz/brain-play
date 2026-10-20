@@ -30,6 +30,17 @@ https://atuz.github.io/brain-play/?country=CA&lang=en#/game/twentyfour
 - 参数放在 `#` 前。进入游戏、返回首页、切换语言都会保留国家码与其他查询参数；切换语言保留当前游戏进度。
 - 设置中可手动修改国家码、语言、音效和动画；“自动”重新读取浏览器地区。
 
+## iOS WebView 返回
+
+App 链接增加 `app=1`，例如 `https://atuz.github.io/brain-play/?app=1&country=US&lang=zh-CN#/`。
+网页也会自动识别原生注入的 `window.webkit.messageHandlers.brainPlay`，不依赖 User-Agent 猜测。
+
+- 首页左上角显示“返回 App”；游戏页面保留返回小游戏首页的箭头，右上角的 × 返回 App。
+- 网页通过 `brainPlay.postMessage({type: 'close', source: 'brain-play', version: 1})` 请求原生 pop；不会用网页历史模拟退出 App。
+- 页面就绪发送相同结构的 `type: 'ready'` 消息。原生在收到可信页面的 ready 后隐藏备用返回栏；加载失败时恢复备用栏。
+- App 只接受本站 `/brain-play/` 主页面发来的消息，其他来源和子 frame 不处理。语言设置、游戏切换会保留 `app` 参数。
+- `app=0` 可以显式关闭网页的 App 导航；普通浏览器不会出现“返回 App”。
+
 ## 本地开发
 
 需要 Node.js 20+ 与 Python 3。

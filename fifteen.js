@@ -1,4 +1,4 @@
-import {el,button,stat,statusNode,controls,keyboardAndSwipe,sound,finish} from './shared.js?v=3';
+import {el,button,stat,statusNode,controls,keyboardAndSwipe,sound,finish} from './shared.js?v=4';
 export const solvedBoard=()=>Array.from({length:16},(_,i)=>(i+1)%16);
 export function isSolved(board){return board.every((v,i)=>v===(i+1)%16);}
 export function adjacent(board,index){const z=board.indexOf(0);return Math.abs(Math.floor(z/4)-Math.floor(index/4))+Math.abs(z%4-index%4)===1;}

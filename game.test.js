@@ -1,15 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {seeded} from './shared.js?v=3';
-import {slideLine,slideBoard,hasMoves} from './2048.js?v=3';
-import {parseExpression,solve24,generate24} from './twentyfour.js?v=3';
-import {flip,solveLights,generateLights} from './lights.js?v=3';
-import {shufflePuzzle,solvedBoard,isSolved} from './fifteen.js?v=3';
-import {rotate,generatePipes,checkPipes} from './pipes.js?v=3';
-import {findPath,findPair,reshuffle} from './link.js?v=3';
-import {groupAt,collapse,hasGroups} from './stars.js?v=3';
-import {runs,clues,patterns,patternBits} from './nonogram.js?v=3';
-import {compareGuess,validGuess} from './guess.js?v=3';
+import {seeded} from './shared.js?v=4';
+import {slideLine,slideBoard,hasMoves} from './2048.js?v=4';
+import {parseExpression,solve24,generate24} from './twentyfour.js?v=4';
+import {flip,solveLights,generateLights} from './lights.js?v=4';
+import {shufflePuzzle,solvedBoard,isSolved} from './fifteen.js?v=4';
+import {rotate,generatePipes,checkPipes} from './pipes.js?v=4';
+import {findPath,findPair,reshuffle} from './link.js?v=4';
+import {groupAt,collapse,hasGroups} from './stars.js?v=4';
+import {runs,clues,patterns,patternBits} from './nonogram.js?v=4';
+import {compareGuess,validGuess} from './guess.js?v=4';
 
 test('2048 merges each tile only once per move',()=>{
   assert.deepEqual(slideLine([2,2,2,2]),{line:[4,4,0,0],score:8});
@@ -70,9 +70,9 @@ test('guess feedback handles leading zeros and disallows repeated digits',()=>{
 });
 
 
-import {calculate,createRound,formatFraction,mergeRound,plan24,resetRound,restoreRound,undoRound} from './twentyfour-engine.js?v=3';
-import {browserCountry,resolvePreferences,updatePreferenceURL} from './preferences.js?v=3';
-import {translate} from './i18n.js?v=3';
+import {calculate,createRound,formatFraction,mergeRound,plan24,resetRound,restoreRound,undoRound} from './twentyfour-engine.js?v=4';
+import {browserCountry,resolvePreferences,updatePreferenceURL} from './preferences.js?v=4';
+import {translate} from './i18n.js?v=4';
 
 test('24 card merges preserve exact fractions and use all four original cards',()=>{
   let r=createRound([3,3,8,8]);
@@ -150,7 +150,7 @@ test('UI translations include dynamic game feedback and accessible labels',()=>{
 });
 
 
-import {mergeTarget,mergeValue,createMergeState,restoreMergeState,normalizeMergeSettings,mergeSlot,spawn} from './merge-engine.js?v=3';
+import {mergeTarget,mergeValue,createMergeState,restoreMergeState,normalizeMergeSettings,mergeSlot,spawn} from './merge-engine.js?v=4';
 
 test('Fibonacci merges consecutive values in either order; only 1 can merge with itself',()=>{
   for(const [a,b,value] of [[1,1,2],[1,2,3],[2,3,5],[3,5,8],[5,8,13],[987,1597,2584]]){
@@ -199,4 +199,29 @@ test('mode and board settings normalize safely and identify six independent save
   assert.deepEqual(normalizeMergeSettings({size:'5',mode:'fibonacci'}),{size:5,mode:'fibonacci'});
   assert.deepEqual(normalizeMergeSettings(null),{size:4,mode:'classic'});
   assert.deepEqual(normalizeMergeSettings({size:99,mode:'unknown'}),{size:4,mode:'classic'});
+});
+
+
+import {connectAppHost} from './app-host.js?v=4';
+test('native App navigation detects the WK bridge, preserves its receiver and dispatches close',()=>{
+  const messages=[];
+  const handler={postMessage(message){assert.equal(this,handler);messages.push(message);}};
+  const connection=connectAppHost('https://atuz.github.io/brain-play/?country=CA#/',{webkit:{messageHandlers:{brainPlay:handler}}});
+  assert.equal(connection.embedded,true);assert.equal(connection.ready(),true);assert.equal(connection.close(),true);
+  assert.deepEqual(messages,[{type:'ready',source:'brain-play',version:1},{type:'close',source:'brain-play',version:1}]);
+});
+test('ordinary browsers never request an App pop; App hints without a working bridge fail safely',()=>{
+  const browser=connectAppHost('https://example.com/#/game/2048');
+  assert.equal(browser.embedded,false);assert.equal(browser.close(),false);
+  const marked=connectAppHost('https://example.com/?app=1#/game/twentyfour');
+  assert.equal(marked.embedded,true);assert.equal(marked.ready(),false);assert.equal(marked.close(),false);
+  const throwing={webkit:{messageHandlers:{brainPlay:{postMessage(){throw Error('Host unavailable');}}}}};
+  assert.equal(connectAppHost('https://example.com/?app=1',throwing).close(),false);
+  const disabled=connectAppHost('https://example.com/?app=0',throwing);
+  assert.equal(disabled.embedded,false);assert.equal(disabled.ready(),false);
+});
+test('App mode survives language changes and game routing',()=>{
+  const url=updatePreferenceURL('https://atuz.github.io/brain-play/?app=1&country=CA#/game/fifteen','en','CA');
+  assert.equal(url.searchParams.get('app'),'1');assert.equal(url.hash,'#/game/fifteen');
+  assert.equal(connectAppHost(url.href).embedded,true);
 });
