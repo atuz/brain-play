@@ -1,9 +1,9 @@
-import { el, read, write, dateSeed, seeded, toast } from './shared.js?v=10';
-import { games, preview } from './catalog.js?v=10';
-import { languages, setLanguage, getLanguage, t } from './i18n.js?v=10';
-import { normalizeCountry, resolvePreferences, updatePreferenceURL } from './preferences.js?v=10';
+import { el, read, write, dateSeed, seeded, toast } from './shared.js?v=11';
+import { games, preview } from './catalog.js?v=11';
+import { languages, setLanguage, getLanguage, t } from './i18n.js?v=11';
+import { normalizeCountry, resolvePreferences, updatePreferenceURL } from './preferences.js?v=11';
 
-import { connectAppHost } from './app-host.js?v=10';
+import { connectAppHost } from './app-host.js?v=11';
 
 const appHost = connectAppHost(location.href, window);
 const main = document.querySelector('#main');
@@ -144,10 +144,11 @@ function showSettings() {
 }
 
 const mounts = {
-  '2048': () => import('./2048.js?v=10'), twentyfour: () => import('./twentyfour.js?v=10'),
-  lights: () => import('./lights.js?v=10'), fifteen: () => import('./fifteen.js?v=10'),
-  pipes: () => import('./pipes.js?v=10'), nonogram: () => import('./nonogram.js?v=10'),
-  link: () => import('./link.js?v=10'), stars: () => import('./stars.js?v=10'), guess: () => import('./guess.js?v=10'),
+  domino: () => import('./domino.js?v=11'),
+  '2048': () => import('./2048.js?v=11'), twentyfour: () => import('./twentyfour.js?v=11'),
+  lights: () => import('./lights.js?v=11'), fifteen: () => import('./fifteen.js?v=11'),
+  pipes: () => import('./pipes.js?v=11'), nonogram: () => import('./nonogram.js?v=11'),
+  link: () => import('./link.js?v=11'), stars: () => import('./stars.js?v=11'), guess: () => import('./guess.js?v=11'),
 };
 
 async function route(scroll = true) {

@@ -6,7 +6,7 @@
   "description": "小小动脑场：无依赖、适合手机的益智小游戏合集",
   "scripts": {
     "dev": "python3 -m http.server 4173 --bind 127.0.0.1",
-    "test": "node --test game.test.js",
+    "test": "node --test *.test.js",
     "check": "node check.mjs"
   }
 }

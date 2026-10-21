@@ -1,15 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {seeded} from './shared.js?v=10';
-import {slideLine,slideBoard,hasMoves} from './2048.js?v=10';
-import {parseExpression,solve24,generate24} from './twentyfour.js?v=10';
-import {flip,solveLights,generateLights} from './lights.js?v=10';
-import {shufflePuzzle,solvedBoard,isSolved} from './fifteen.js?v=10';
-import {rotate,generatePipes,checkPipes} from './pipes.js?v=10';
-import {findPath,findPair,reshuffle} from './link.js?v=10';
-import {groupAt,collapse,hasGroups} from './stars.js?v=10';
-import {runs,clues,patterns,patternBits} from './nonogram.js?v=10';
-import {compareGuess,validGuess} from './guess.js?v=10';
+import {seeded} from './shared.js?v=11';
+import {slideLine,slideBoard,hasMoves} from './2048.js?v=11';
+import {parseExpression,solve24,generate24} from './twentyfour.js?v=11';
+import {flip,solveLights,generateLights} from './lights.js?v=11';
+import {shufflePuzzle,solvedBoard,isSolved} from './fifteen.js?v=11';
+import {rotate,generatePipes,checkPipes} from './pipes.js?v=11';
+import {findPath,findPair,reshuffle} from './link.js?v=11';
+import {groupAt,collapse,hasGroups} from './stars.js?v=11';
+import {runs,clues,patterns,patternBits} from './nonogram.js?v=11';
+import {compareGuess,validGuess} from './guess.js?v=11';
 
 test('2048 merges each tile only once per move',()=>{
   assert.deepEqual(slideLine([2,2,2,2]),{line:[4,4,0,0],score:8});
@@ -70,9 +70,9 @@ test('guess feedback handles leading zeros and disallows repeated digits',()=>{
 });
 
 
-import {calculate,createRound,formatFraction,mergeRound,plan24,resetRound,restoreRound,undoRound} from './twentyfour-engine.js?v=10';
-import {browserCountry,resolvePreferences,updatePreferenceURL} from './preferences.js?v=10';
-import {translate} from './i18n.js?v=10';
+import {calculate,createRound,formatFraction,mergeRound,plan24,resetRound,restoreRound,undoRound} from './twentyfour-engine.js?v=11';
+import {browserCountry,resolvePreferences,updatePreferenceURL} from './preferences.js?v=11';
+import {translate} from './i18n.js?v=11';
 
 test('24 card merges preserve exact fractions and use all four original cards',()=>{
   let r=createRound([3,3,8,8]);
@@ -150,7 +150,7 @@ test('UI translations include dynamic game feedback and accessible labels',()=>{
 });
 
 
-import {mergeTarget,mergeValue,createMergeState,restoreMergeState,normalizeMergeSettings,mergeSlot,spawn} from './merge-engine.js?v=10';
+import {mergeTarget,mergeValue,createMergeState,restoreMergeState,normalizeMergeSettings,mergeSlot,spawn} from './merge-engine.js?v=11';
 
 test('Fibonacci merges consecutive values in either order; only 1 can merge with itself',()=>{
   for(const [a,b,value] of [[1,1,2],[1,2,3],[2,3,5],[3,5,8],[5,8,13],[987,1597,2584]]){
@@ -202,7 +202,7 @@ test('mode and board settings normalize safely and identify six independent save
 });
 
 
-import {connectAppHost} from './app-host.js?v=10';
+import {connectAppHost} from './app-host.js?v=11';
 test('native App navigation detects the WK bridge, preserves its receiver and dispatches close',()=>{
   const messages=[];
   const handler={postMessage(message){assert.equal(this,handler);messages.push(message);}};
@@ -226,9 +226,9 @@ test('App mode survives language changes and game routing',()=>{
   assert.equal(connectAppHost(url.href).embedded,true);
 });
 
-import {tileInDirection,adjacent} from './fifteen.js?v=10';
-import {collapseTrace} from './stars.js?v=10';
-import {strokeCells} from './nonogram.js?v=10';
+import {tileInDirection,adjacent} from './fifteen.js?v=11';
+import {collapseTrace} from './stars.js?v=11';
+import {strokeCells} from './nonogram.js?v=11';
 
 test('sliding puzzle arrows move numbered tiles in the requested direction, including all edges',()=>{
   for(let zero=0;zero<16;zero++){

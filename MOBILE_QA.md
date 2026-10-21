@@ -53,3 +53,13 @@ The numbered sliding game is called “数字拼图” / “15 Puzzle” to dist
 Validated English translations for all 114 static and variant rule/name strings. Opened every guide in the browser; verified each has instructions, constraints and a stated goal or score-ending condition.
 
 Follow-up UI validation: opened all nine guides in Simplified Chinese, Traditional Chinese and English. At 320 × 740, English dialogs fit within the viewport with no horizontal overflow; each guide contains three sections. Verified the 3 × 3 classic 512 target and Fibonacci sequence/2584 target through the actual game settings. Fruit Link’s persistent rule remains visible after requesting a hint. No browser warnings or errors during these checks.
+
+## 蚂蚁多米诺（v11）
+
+- 12 个原创固定关卡的记录解法：逐步执行实际行走、搬起、放下与一次推动；全部开门且出口可达。交换骨牌遍历顺序后结果一致。
+- 规则回归：出口与其他牌同时倒下不算最后；延时改变两侧先后；分叉只接受从上方落牌；普通牌被落牌击中会撞坏；搭桥支持左右方向、真实补地面并让人物通过。
+- 390×844 页面实测：第一关推倒、走进门才获胜，通关后撤销；第二关失败反馈、保留摆放重试、搬牌携带状态刷新恢复；第六关绕梯搬搭桥牌、启动连锁、从新桥走过进门；第七关上下层搬运与落牌分叉。
+- 320×740 英文界面：无横向溢出，无中文遗漏，按钮可见；繁体界面与图鉴／帮助文本均有翻译。方向按钮至少 44×44 CSS px。
+- 开启动画后查看人物走动、骨牌依次倒下和搭桥；播放中取消能回到原摆放，播放中刷新可恢复已完成的连锁结果。关闭动画也能执行同样规则。
+- 本机存储校验：拒绝缺牌、重复牌、移动的出口牌、非法人物位置；允许已铺桥上的人物位置恢复。12 关的提示针对初始布置，不是运行时任意局面求解。
+- 验证环境为桌面浏览器的手机尺寸预览；这次没有安装 App 或连接实体手机测试。
