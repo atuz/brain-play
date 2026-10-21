@@ -1,5 +1,5 @@
-import {el,button,stat,statusNode,sound,finish} from './shared.js?v=7';
-import {createMotion,floatScore} from './motion.js?v=7';
+import {el,button,stat,statusNode,sound,finish} from './shared.js?v=10';
+import {createMotion,floatScore} from './motion.js?v=10';
 export function groupAt(board,index,size=8){const color=board[index];if(!color)return [];const seen=new Set([index]),queue=[index];while(queue.length){const i=queue.pop(),r=Math.floor(i/size),c=i%size;for(const [dr,dc]of [[1,0],[-1,0],[0,1],[0,-1]]){const rr=r+dr,cc=c+dc,j=rr*size+cc;if(rr>=0&&rr<size&&cc>=0&&cc<size&&!seen.has(j)&&board[j]===color){seen.add(j);queue.push(j);}}}return [...seen];}
 export function collapseTrace(board,size=8){
   const out=Array(board.length).fill(0),movements=[];let column=0;
@@ -45,7 +45,7 @@ export function mount(root,ctx){
     const labels=['','绿','黄','橙','蓝','紫'],shapes=['','●','★','◆','✿','✦'];
     board.replaceChildren(...state.board.map((v,i)=>el('button',{type:'button',class:`cell c${v} ${v?'':'empty'} ${selected.includes(i)?'group-selected':''}`,text:shapes[v]||'','aria-label':v?`第${Math.floor(i/8)+1}行第${i%8+1}列 ${labels[v]}色星星`:'空格','aria-pressed':selected.includes(i),disabled:!v,onclick:()=>choose(i)})));
     score.set(state.score);const record=Math.max(state.score,ctx.read('best:stars',0));ctx.write('best:stars',record);best.set(record);undo.disabled=busy||!state.history.length;restart.disabled=busy;
-    status.set(state.done?`本局结束！剩 ${state.board.filter(Boolean).length} 颗星星，最终得分 ${state.score}。`:'点选一组同色星星，再点一次消除。',state.done?'success':'');ctx.save(state);
+    status.set(state.done?`本局结束！剩 ${state.board.filter(Boolean).length} 颗星星，最终得分 ${state.score}。`:'',state.done?'success':'');ctx.save(state);
   }
   render();return()=>motion.dispose();
 }

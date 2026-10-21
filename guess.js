@@ -1,6 +1,6 @@
-import {el,button,stat,statusNode,shuffle,finish} from './shared.js?v=7';
-import {createMotion} from './motion.js?v=7';
-import {t} from './i18n.js?v=7';
+import {el,button,stat,statusNode,shuffle,finish} from './shared.js?v=10';
+import {createMotion} from './motion.js?v=10';
+import {t} from './i18n.js?v=10';
 export function compareGuess(secret,guess){let a=0,b=0;for(let i=0;i<4;i++)if(secret[i]===guess[i])a++;else if(secret.includes(guess[i]))b++;return {a,b};}
 export function validGuess(guess){return /^\d{4}$/.test(guess)&&new Set(guess).size===4;}
 export function mount(root,ctx){
@@ -43,7 +43,7 @@ export function mount(root,ctx){
   function render(){
     attempts.set(state.guesses.length);updateEntry();keypad.hidden=state.done;again.hidden=!state.done;
     list.replaceChildren(...state.guesses.map((value,i)=>{const result=compareGuess(state.secret,value);return el('div',{class:'guess-row'},[el('span',{text:String(i+1).padStart(2,'0')}),el('div',{class:'guess-digits'},value.split('').map(v=>el('span',{text:v}))),el('span',{class:'guess-result'},[el('strong',{text:`${result.a}A`}),el('span',{text:`${result.b}B`})])]);}).reverse());
-    status.set(state.done?`猜中了 ${state.secret}！你用了 ${state.guesses.length} 次。`:'输入四个不重复的数字',state.done?'success':'');save();
+    status.set(state.done?`猜中了 ${state.secret}！你用了 ${state.guesses.length} 次。`:'',state.done?'success':'');save();
   }
   const key=e=>{
     if(document.querySelector('dialog[open]')||e.target.closest('input,textarea,select')||e.ctrlKey||e.metaKey||e.altKey)return;

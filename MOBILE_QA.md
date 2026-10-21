@@ -42,3 +42,14 @@ Tests validate all four movement directions, three merge-board sizes and both ru
 ## Scope
 
 This release changes the web games. It does not add an offline game cache or alter the native iOS bridge. Browser interaction checks are mobile-viewport checks, not a claim that every game was tested on physical iOS and Android hardware.
+
+
+## Rules and goals follow-up
+
+Every game now has a persistent, tappable one-sentence rule above the board. The full guide has separate controls, restrictions and victory sections; Pop Stars instead explains its score-based ending. Fruit Link explicitly allows at most two turns / three straight segments, disallows crossing fruit, permits outside-border paths and requires clearing every pair. Hints no longer replace the persistent rules.
+
+The numbered sliding game is called “数字拼图” / “15 Puzzle” to distinguish it from classic Cao Cao Huarong Dao. Game rules and saved-state identifiers are unchanged. Merge-game help follows the selected size/mode, including the 512 target on a classic 3 × 3 board and the Fibonacci sequence, special 1 + 1 rule and 2584 goal.
+
+Validated English translations for all 114 static and variant rule/name strings. Opened every guide in the browser; verified each has instructions, constraints and a stated goal or score-ending condition.
+
+Follow-up UI validation: opened all nine guides in Simplified Chinese, Traditional Chinese and English. At 320 × 740, English dialogs fit within the viewport with no horizontal overflow; each guide contains three sections. Verified the 3 × 3 classic 512 target and Fibonacci sequence/2584 target through the actual game settings. Fruit Link’s persistent rule remains visible after requesting a hint. No browser warnings or errors during these checks.

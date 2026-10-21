@@ -14,6 +14,56 @@ export function normalizeLanguage(value) {
 export function setLanguage(code) { currentLanguage = normalizeLanguage(code) || 'en'; }
 
 const english = {
+  "按 1、2、3、5、8、13… 数列，只能合并相邻两数，例如 2＋3＝5。1＋1＝2；其他相同数不能合并。每个数字每次滑动仅合并一次。":"Use the sequence 1, 2, 3, 5, 8, 13… Only consecutive terms merge, such as 2 + 3 = 5. Also, 1 + 1 = 2; other equal numbers cannot merge. Each tile merges at most once per swipe.",
+  "怎么玩":"How to play",
+  "规则与限制":"Rules",
+  "怎么算赢":"How to win",
+  "目标与结算":"Goal & scoring",
+  "玩法与目标":"Rules and goal",
+  "玩法 ›":"Rules ›",
+  "数字拼图":"15 Puzzle",
+  "数字拼图棋盘":"15 Puzzle board",
+  "滑动合并相同数字，合出 2048 达标。":"Merge matching numbers to make 2048.",
+  "向上下左右滑动，整盘数字一起移动。两个相同数字相碰会合成它们的和。":"Swipe up, down, left or right to move all tiles. Matching numbers combine into their sum.",
+  "每个数字在一次滑动中只能合并一次；有效移动后会出现一个新数字。无法移动时本局结束，可以撤销。":"Each tile can merge only once per swipe. A successful move adds a new tile. The round ends when no moves remain; you can undo.",
+  "合出 2048 即达成目标；达标后可以继续挑战更大的数字。":"Make a 2048 tile to win. You can keep playing for larger numbers afterward.",
+  "四张牌每张用一次，最后算出 24。":"Use each of the four cards once to make 24.",
+  "点一张牌，选加、减、乘、除，再点另一张牌，把两张牌合成一张。也可以先选两张牌再选运算。":"Tap a card, choose +, −, × or ÷, then tap another card to merge them. You can also select two cards before the operation.",
+  "四张原始牌都必须用，而且每张只能用一次。减法、除法按点选顺序计算；允许分数，不能除以 0。":"Use all four original cards exactly once. Subtraction and division follow selection order. Fractions are allowed; division by zero is not.",
+  "经过三次合并，只剩一张牌且数值恰好等于 24，即获胜。走错可以撤销或重来这副牌。":"Win after three merges when the single remaining card equals exactly 24. Undo a move or reset the same hand to try again.",
+  "相同水果最多拐 2 次弯连起来，全部配完获胜。":"Match identical fruit with up to 2 turns. Clear every pair to win.",
+  "依次点两个相同的水果；如果能用一条符合规则的线连接，它们就会消除。":"Tap two identical fruit in turn. They disappear if a valid path connects them.",
+  "连线只能横走或竖走，最多拐 2 次弯（3 段线）。不能穿过其他水果，可以绕棋盘外侧。":"The path runs horizontally or vertically, with at most 2 right-angle turns (3 straight segments). It cannot cross other fruit, but can go around the board.",
+  "消除全部水果即获胜。没有可配对组合时，会自动重新排列剩余水果。":"Clear every fruit to win. If no matches remain, the remaining fruit are automatically reshuffled.",
+  "至少 2 颗相邻同色星星成组；尽量清盘得高分。":"Match 2 or more adjacent stars. Clear as much as possible to score.",
+  "点一组同色星星查看数量和得分，再点这组中的任意一颗消除。":"Tap a matching group to preview its size and score. Tap any star in that group again to clear it.",
+  "至少 2 颗，上下左右相邻才算一组；斜着相邻不算。消除后上方星星落下，空列向左收拢。":"A group needs at least 2 matching stars joined horizontally or vertically, never diagonally. Stars fall after a clear, then empty columns close to the left.",
+  "这是计分游戏：一次消除越多，得分越高。没有可消除的组时本局结束；尽量清空棋盘，剩余越少，结算奖励越高。":"This is a score game: larger groups earn more points. The round ends when no groups remain. Aim to clear the board; fewer remaining stars give a larger end bonus.",
+  "点一格会翻转十字范围，把所有灯熄灭即获胜。":"Tap to toggle a cross of lights. Turn every light off to win.",
+  "点任意一盏灯，会同时翻转它自己和上下左右紧邻的灯：亮变灭，灭变亮。":"Tap any light to toggle it and its immediate neighbors above, below, left and right. On becomes off; off becomes on.",
+  "灭着的灯也可以点。边缘格只影响棋盘内的相邻灯，斜角不受影响；可以撤销，也可以查看下一步提示。":"Dark lights can be tapped too. Edge cells affect only neighbors inside the board, never diagonals. Undo and next-move hints are available.",
+  "让棋盘上的所有灯同时熄灭，即获胜。":"Win when every light on the board is off at the same time.",
+  "数字滑入空格，排好 1—15，空格留在右下角。":"Slide tiles into the gap. Order 1–15 with the gap at bottom right.",
+  "这是数字滑块拼图。点空格旁的数字，让它滑入空格；也可以滑动棋盘或按方向按钮。":"This is a numbered sliding puzzle. Tap a tile beside the gap to slide it in. You can also swipe the board or use the direction buttons.",
+  "每次只能把上下左右紧邻空格的一块数字移入，不能斜着移动。箭头与滑动方向都表示数字移动的方向。":"Only one tile immediately above, below, left or right of the gap can move into it. Diagonal moves are not allowed. Arrows and swipes describe the numbered tile’s direction.",
+  "从左到右、从上到下排成 1—15，最后一个空格留在右下角，即获胜。可点“目标排列”查看示意。":"Win by ordering 1–15 from left to right, top to bottom, with the gap at bottom right. Open “Goal layout” to see the target.",
+  "旋转管道，全部接通金色水源且没有漏口即获胜。":"Rotate pipes. Connect every tile to the gold source without leaks to win.",
+  "点管道，让它顺时针旋转 90°。从中央金色水源开始，把管口与相邻管口接起来。":"Tap a pipe to rotate it 90° clockwise. Start at the central gold source and match openings on neighboring tiles.",
+  "已接通水源的管道会变绿，红点表示漏口。每个管口都要和相邻管口对上，不能朝向棋盘外侧。":"Connected pipes turn green; red dots mark leaks. Every opening must meet a neighboring opening, with none pointing off the board.",
+  "全部 25 格都连通水源，并且所有管口都没有漏口，即获胜。":"Win when all 25 tiles connect to the source and no openings leak.",
+  "根据行列数字涂出隐藏图案，全部涂对即过关。":"Use row and column clues to fill the hidden picture. Fill it correctly to win.",
+  "根据左侧和上方的数字涂格子；拖动可连续涂一行或一列。用“× 标空”记录确定不涂的格子。":"Fill cells using the clues on the left and top. Drag to paint a row or column. Use “× Empty” to mark cells you know should stay empty.",
+  "数字表示按顺序连续涂色的格数。例如“2 1”表示连续涂 2 格，至少空 1 格，再涂 1 格。各行、各列的提示都要同时满足。":"Clues list filled runs in order. “2 1” means fill 2 consecutive cells, leave at least 1 gap, then fill 1 cell. All row and column clues must hold together.",
+  "把隐藏图案的所有格子涂对，即过关。空格不必全部标 ×；一笔拖涂可以一次撤销。":"Reveal the hidden picture with exactly the correct filled cells to win. Empty cells do not all need × marks. Undo reverses an entire stroke.",
+  "猜 4 个不重复数字，得到 4A 即获胜。":"Guess 4 different digits. Get 4A to win.",
+  "用数字键盘输入 4 个不同数字，再点“猜一下”。可以点某一位修改数字，也可以删除重填。":"Enter 4 different digits on the keypad, then tap “Guess”. Tap a position to edit it, or delete and enter another digit.",
+  "可以以 0 开头。A 表示数字和位置都对，B 表示数字对但位置不对。例如 1A2B 表示一位完全正确、另两位位置不对；不告诉你具体是哪几位。":"A leading 0 is allowed. A means a correct digit in the correct position; B means a correct digit in the wrong position. 1A2B means one exact match and two misplaced digits, without telling you which ones.",
+  "四个数字及其位置都正确，得到 4A，即获胜。不限制猜测次数；根据每次 A/B 反馈逐步排除。":"Win with 4A: all four digits in their correct positions. Guesses are unlimited. Use each A/B result to eliminate possibilities.",
+  "相邻斐波那契数可合并，合出 2584 达标。":"Merge consecutive Fibonacci numbers to make 2584.",
+  "向上下左右滑动，整盘数字一起移动。有效移动后会出现一个新数字。":"Swipe up, down, left or right to move all tiles. A successful move adds a new tile.",
+  "相邻的斐波那契数可以合并，例如 2＋3＝5、3＋5＝8。1＋1＝2；其他相同数字不能合并。":"Consecutive Fibonacci numbers merge, such as 2 + 3 = 5 and 3 + 5 = 8. 1 + 1 = 2; other equal numbers cannot merge.",
+  "两个相同数字相碰会合成它们的和，例如 2＋2＝4。每个数字在一次滑动中只能合并一次。":"Matching numbers combine into their sum, such as 2 + 2 = 4. Each tile can merge only once per swipe.",
+
   '目标排列':'Goal layout','进度只保存在当前浏览器。':'Progress is saved in this browser only.',
   '排好 1—15，空格留在右下角。':'Order 1–15. Leave the gap at the bottom right.',
   '箭头和滑动方向表示数字移动的方向。':'Arrows and swipes move the numbered tiles in that direction.',
@@ -126,15 +176,18 @@ const english = {
 };
 
 const traditionalPairs = [
+  ['并且','並且'],
   ['设置','設定'],['默认','預設'],['保存','儲存'],['提示','提示'],['本机','本機'],['界面','介面'],['重复','重複'],
 ];
-const traditionalCharacters = Object.fromEntries(`设設 语語 国國 区區 码碼 动動 戏戲 数數 点點 连連 灭滅 华華 龙龍 织織 猜猜 简簡 体體 选選 运運 算算 张張 牌牌 这這 个個 为為 来來 发發 合合 并併 过過 关關 页頁 进進 度度 当當 前前 浏瀏 览覽 器器 自自 动動 识識 别別 写寫 处處 时時 间間 线線 传傳 递遞 阅閱 读讀 转轉 换換 复復 开開 够夠 获獲 得得 剩剩 余餘 对對 消消 还還 值值 样樣 录錄 验驗 护護 让讓 从從 顺順 负負 结結 果果 块塊 邻鄰 橙橙 蓝藍 绿綠 黄黃 树樹 热熱 杯杯 帆帆 花花 朵朵 箭箭 头頭 图圖 案案 爱愛 心心 复復 标標 记記 涂塗 长長 两兩 组組 计計 显顯 获獲 单單 级級 达達 到到 战戰 继繼 续續 边邊 缘緣 移移 换換 脑腦 脑腦 场場 声聲 音音 证證 误誤 试試 无無 解解 键鍵 盘盤 后後 台臺 确確 实實 准準 请請 检檢 查查 括括 号號 没沒 有有 给給 把把 闭閉 仅僅 式式 练練 习習 启啟 画畫 户戶 断斷 输輸 入入 待待 击擊 应應 注註 帐帳 号號 奖獎 励勵 层層 独獨 立立 与與 会會 侧側 储儲 内內 减減 参參 围圍 帮幫 弯彎 归歸 径徑 择擇 晓曉 暂暫 机機 条條 灯燈 游遊 种種 经經 绕繞 着著 载載 里裡 针針 销銷 闪閃 问問 题題 双雙 莲蓮 苏蘇 断斷 错錯 满滿 尝嘗 颗顆 总總 终終 局局 获獲 关關 胜勝 顶頂 笔筆 实實 测測 删刪 将將` .split(' ').filter(Boolean).map(pair => [pair[0], pair[1]]));
+const traditionalCharacters = Object.fromEntries(`设設 语語 国國 区區 码碼 动動 戏戲 数數 点點 连連 灭滅 华華 龙龍 织織 猜猜 简簡 体體 选選 运運 算算 张張 牌牌 这這 个個 为為 来來 发發 合合 并併 过過 关關 页頁 进進 度度 当當 前前 浏瀏 览覽 器器 自自 动動 识識 别別 写寫 处處 时時 间間 线線 传傳 递遞 阅閱 读讀 转轉 换換 复復 开開 够夠 获獲 得得 剩剩 余餘 对對 消消 还還 值值 样樣 录錄 验驗 护護 让讓 从從 顺順 负負 结結 果果 块塊 邻鄰 橙橙 蓝藍 绿綠 黄黃 树樹 热熱 杯杯 帆帆 花花 朵朵 箭箭 头頭 图圖 案案 爱愛 心心 复復 标標 记記 涂塗 长長 两兩 组組 计計 显顯 获獲 单單 级級 达達 到到 战戰 继繼 续續 边邊 缘緣 移移 换換 脑腦 脑腦 场場 声聲 音音 证證 误誤 试試 无無 解解 键鍵 盘盤 后後 台臺 确確 实實 准準 请請 检檢 查查 括括 号號 没沒 有有 给給 把把 闭閉 仅僅 式式 练練 习習 启啟 画畫 户戶 断斷 输輸 入入 待待 击擊 应應 注註 帐帳 号號 奖獎 励勵 层層 独獨 立立 与與 会會 侧側 储儲 内內 减減 参參 围圍 帮幫 弯彎 归歸 径徑 择擇 晓曉 暂暫 机機 条條 灯燈 游遊 种種 经經 绕繞 着著 载載 里裡 针針 销銷 闪閃 问問 题題 双雙 莲蓮 苏蘇 断斷 错錯 满滿 尝嘗 颗顆 总總 终終 局局 获獲 关關 胜勝 顶頂 笔筆 实實 测測 删刪 将將 赢贏 么麼 规規 则則 隐隱 横橫 竖豎 紧緊 盏盞 尽盡 红紅 许許 须須 诉訴 们們 现現 于於 拢攏 变變 响響 钮鈕 据據 几幾 馈饋` .split(' ').filter(Boolean).map(pair => [pair[0], pair[1]]));
 function traditional(text) {
   let result = text;
   for (const [a, b] of traditionalPairs) result = result.replaceAll(a, b);
   return [...result].map(char => traditionalCharacters[char] || char).join('');
 }
 const patterns = [
+  [/^滑动合并相同数字，合出 (\d+) 达标。$/,m=>`Merge matching numbers to make ${m[1]}.`],
+  [/^合出 (\d+) 即达成目标；达标后可以继续玩。没有合法移动时本局结束，可以撤销或新开一局。$/,m=>`Make a ${m[1]} tile to win, then keep playing if you like. The round ends when no legal moves remain; undo or start a new round.`],
   [/^选中 (\d+) 颗，再点一次得 (\d+) 分。$/,m=>`${m[1]} selected. Tap again for +${m[2]} points.`],
   [/^第 (\d+) 位数字$/,m=>`Digit ${m[1]}`],
   [/^目标 (\d+)$/, m => `Goal ${m[1]}`],

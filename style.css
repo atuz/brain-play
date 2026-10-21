@@ -136,3 +136,10 @@ html[data-motion=off] .cell.hinted{animation:none!important}@media(prefers-reduc
 .link-stage{padding-top:36px;padding-bottom:36px}.board-link .cell.selected{transform:none}
 .nonogram .clue.col{text-orientation:upright}
 .guess-keypad[hidden],.guess-next[hidden]{display:none}.guess-next{display:block;min-height:44px;margin:14px auto}
+
+/* One persistent rule line; the full guide separates controls, constraints and the goal. */
+.rule-strip{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;border:1px solid #dce4d4;border-radius:10px;background:#f0f4e9;color:var(--green);padding:10px 12px;margin:-6px 0 17px;text-align:left;min-height:44px;font:inherit}
+.rule-summary{font-size:12px;line-height:1.65;font-weight:500}.rule-more{flex-shrink:0;font-size:11px;font-weight:650;white-space:nowrap}.rule-strip:hover{background:#e7efde}
+.help-sections{display:grid;gap:17px}.help-section h3{font-size:12px;line-height:1.5;margin:0 0 6px;color:var(--green);font-weight:750}.help-section p{font-size:13px;line-height:1.85;margin:0;color:#586e53}.help-section+.help-section{border-top:1px solid var(--line);padding-top:16px}
+.play-panel>.status:empty{min-height:0;margin:0}.play-panel .rule-strip+.puzzle-goal{margin-top:-6px}
+@media(max-width:380px){.rule-strip{padding:9px 10px;gap:8px}.rule-summary{font-size:11px}.rule-more{font-size:10px}}

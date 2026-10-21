@@ -1,7 +1,7 @@
-import { el, button, stat, statusNode, controls, keyboardAndSwipe, sound, finish } from './shared.js?v=7';
-import { normalizeMergeSettings, mergeTarget, mergeSlot, tileRank, slideBoard, hasMoves, spawn, createMergeState, restoreMergeState } from './merge-engine.js?v=7';
-import {createMotion,floatScore} from './motion.js?v=7';
-export { slideLine, slideBoard, hasMoves, spawn } from './merge-engine.js?v=7';
+import { el, button, stat, statusNode, controls, keyboardAndSwipe, sound, finish } from './shared.js?v=10';
+import { normalizeMergeSettings, mergeTarget, mergeSlot, tileRank, slideBoard, hasMoves, spawn, createMergeState, restoreMergeState } from './merge-engine.js?v=10';
+import {createMotion,floatScore} from './motion.js?v=10';
+export { slideLine, slideBoard, hasMoves, spawn } from './merge-engine.js?v=10';
 
 export function settings(ctx) {
   return {
@@ -20,6 +20,20 @@ export function help(ctx) {
   return mode === 'fibonacci'
     ? ['合并相邻的斐波那契数，例如 2＋3＝5、3＋5＝8。', '1＋1＝2，其他相同数字不能合并。目标是 2584。', '可以撤销上一步。']
     : [`滑动合并相同数字，目标是 ${mergeTarget(mode, size)}。`, '可以撤销上一步。'];
+}
+export function summary(ctx){
+  const {size,mode}=normalizeMergeSettings(ctx.read('options:2048'));
+  return mode==='fibonacci'?'相邻斐波那契数可合并，合出 2584 达标。':`滑动合并相同数字，合出 ${mergeTarget(mode,size)} 达标。`;
+}
+export function rules(ctx){
+  const {size,mode}=normalizeMergeSettings(ctx.read('options:2048')),target=mergeTarget(mode,size);
+  return [
+    {title:'怎么玩',text:'向上下左右滑动，整盘数字一起移动。有效移动后会出现一个新数字。'},
+    {title:'规则与限制',text:mode==='fibonacci'
+      ?'按 1、2、3、5、8、13… 数列，只能合并相邻两数，例如 2＋3＝5。1＋1＝2；其他相同数不能合并。每个数字每次滑动仅合并一次。'
+      :'两个相同数字相碰会合成它们的和，例如 2＋2＝4。每个数字在一次滑动中只能合并一次。'},
+    {title:'怎么算赢',text:`合出 ${target} 即达成目标；达标后可以继续玩。没有合法移动时本局结束，可以撤销或新开一局。`},
+  ];
 }
 export function mount(root, ctx) {
   const motion=createMotion();let busy=false,queued=[];
@@ -85,7 +99,7 @@ export function mount(root, ctx) {
     restart.disabled=busy;
     if (!hasMoves(state.board, size, mode)) status.set('没有可以移动的格子了，试试撤销或新开一局。');
     else if (state.won) status.set(`达到 ${target}！你也可以继续挑战更大的数字。`, 'success');
-    else status.set(mode === 'fibonacci' ? '合并相邻的斐波那契数，目标是 2584。' : `滑动合并相同数字，目标是 ${target}。`);
+    else status.set('');
   }
   render();
   const removeInput=keyboardAndSwipe(board,move);

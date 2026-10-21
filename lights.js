@@ -1,6 +1,6 @@
-import {el,button,stat,statusNode,copy,sound,finish} from './shared.js?v=7';
-import {createMotion} from './motion.js?v=7';
-import {t} from './i18n.js?v=7';
+import {el,button,stat,statusNode,copy,sound,finish} from './shared.js?v=10';
+import {createMotion} from './motion.js?v=10';
+import {t} from './i18n.js?v=10';
 export function flip(board,index,size=5){const out=[...board],r=Math.floor(index/size),c=index%size;for(const [dr,dc] of [[0,0],[-1,0],[1,0],[0,-1],[0,1]]){const rr=r+dr,cc=c+dc;if(rr>=0&&rr<size&&cc>=0&&cc<size)out[rr*size+cc]=1-out[rr*size+cc];}return out;}
 export function solveLights(board,size=5){const n=size*size,m=board.map((v,i)=>{const influence=flip(Array(n).fill(0),i,size);return [...influence,v];});let row=0;const pivots=[];for(let c=0;c<n&&row<n;c++){let p=row;while(p<n&&!m[p][c])p++;if(p===n)continue;[m[p],m[row]]=[m[row],m[p]];for(let r=0;r<n;r++)if(r!==row&&m[r][c])for(let j=c;j<=n;j++)m[r][j]^=m[row][j];pivots.push(c);row++;}for(let r=row;r<n;r++)if(m[r][n])return null;const result=Array(n).fill(0);for(let r=0;r<pivots.length;r++)result[pivots[r]]=m[r][n];return result.map((v,i)=>v?i:-1).filter(i=>i>=0);}
 export function generateLights(rng=Math.random){let board=Array(25).fill(0);for(let i=0;i<25;i++)if(rng()<.4)board=flip(board,i);if(!board.some(Boolean))board=flip(board,12);return board;}
@@ -26,7 +26,7 @@ export function mount(root,ctx){
   function render(){
     cells.forEach((cell,i)=>{const v=state.board[i];cell.className=`cell ${v?'on':''} ${i===hinted?'hinted':''}`;cell.setAttribute('aria-label',t(`第${Math.floor(i/5)+1}行第${i%5+1}列，${v?'亮':'灭'}`));cell.setAttribute('aria-pressed',String(!!v));});
     moves.set(state.moves);lit.set(state.board.reduce((a,b)=>a+b,0));undo.disabled=!state.history.length;hint.disabled=state.done;
-    status.set(state.done?`全部熄灭！用了 ${state.moves} 步。`:'点一下，会同时翻转自己和上下左右的灯。',state.done?'success':'');ctx.save(state);
+    status.set(state.done?`全部熄灭！用了 ${state.moves} 步。`:'',state.done?'success':'');ctx.save(state);
   }
   render();return()=>motion.dispose();
 }

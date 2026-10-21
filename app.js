@@ -1,9 +1,9 @@
-import { el, read, write, dateSeed, seeded, toast } from './shared.js?v=7';
-import { games, preview } from './catalog.js?v=7';
-import { languages, setLanguage, getLanguage, t } from './i18n.js?v=7';
-import { normalizeCountry, resolvePreferences, updatePreferenceURL } from './preferences.js?v=7';
+import { el, read, write, dateSeed, seeded, toast } from './shared.js?v=10';
+import { games, preview } from './catalog.js?v=10';
+import { languages, setLanguage, getLanguage, t } from './i18n.js?v=10';
+import { normalizeCountry, resolvePreferences, updatePreferenceURL } from './preferences.js?v=10';
 
-import { connectAppHost } from './app-host.js?v=7';
+import { connectAppHost } from './app-host.js?v=10';
 
 const appHost = connectAppHost(location.href, window);
 const main = document.querySelector('#main');
@@ -70,8 +70,10 @@ function dialog(title, closeLabel) {
 
 function showHelp(game) {
   const modal = dialog(activeModule?.title?.({ read }) || t(game.name), '关闭帮助');
-  const help = activeModule?.help?.({ read }) || game.help;
-  modal.append(el('ol', { class: 'help-list' }, help.map(text => el('li', { text }))));
+  const rules=activeModule?.rules?.({read})||game.rules;
+  modal.append(el('div',{class:'help-sections'},rules.map(section=>el('section',{class:'help-section'},[
+    el('h3',{text:section.title}),el('p',{text:section.text}),
+  ]))));
   modal.showModal();
 }
 
@@ -142,10 +144,10 @@ function showSettings() {
 }
 
 const mounts = {
-  '2048': () => import('./2048.js?v=7'), twentyfour: () => import('./twentyfour.js?v=7'),
-  lights: () => import('./lights.js?v=7'), fifteen: () => import('./fifteen.js?v=7'),
-  pipes: () => import('./pipes.js?v=7'), nonogram: () => import('./nonogram.js?v=7'),
-  link: () => import('./link.js?v=7'), stars: () => import('./stars.js?v=7'), guess: () => import('./guess.js?v=7'),
+  '2048': () => import('./2048.js?v=10'), twentyfour: () => import('./twentyfour.js?v=10'),
+  lights: () => import('./lights.js?v=10'), fifteen: () => import('./fifteen.js?v=10'),
+  pipes: () => import('./pipes.js?v=10'), nonogram: () => import('./nonogram.js?v=10'),
+  link: () => import('./link.js?v=10'), stars: () => import('./stars.js?v=10'), guess: () => import('./guess.js?v=10'),
 };
 
 async function route(scroll = true) {
@@ -177,6 +179,11 @@ async function route(scroll = true) {
       daily, seed, rng: daily ? seeded(seed + games.indexOf(currentGame)) : Math.random,
       load: () => read(saveKey), save: state => write(saveKey, state), read, write,
     });
+    const summary=module.summary?.({read})||currentGame.summary;
+    const ruleStrip=el('button',{type:'button',class:'rule-strip','aria-label':'玩法与目标',onclick:()=>showHelp(currentGame)},[
+      el('span',{class:'rule-summary',text:summary}),el('span',{class:'rule-more',text:'玩法 ›','aria-hidden':'true'}),
+    ]);
+    panel.querySelector('.game-toolbar').after(ruleStrip);
   } catch (error) {
     console.error(error);
     panel.replaceChildren(el('p', { class: 'status error', text: '游戏加载遇到了问题，请刷新页面后重试。' }));

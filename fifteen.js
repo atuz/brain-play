@@ -1,5 +1,5 @@
-import {el,button,stat,statusNode,controls,keyboardAndSwipe,sound,finish} from './shared.js?v=7';
-import {createMotion} from './motion.js?v=7';
+import {el,button,stat,statusNode,controls,keyboardAndSwipe,sound,finish} from './shared.js?v=10';
+import {createMotion} from './motion.js?v=10';
 export const solvedBoard=()=>Array.from({length:16},(_,i)=>(i+1)%16);
 export function isSolved(board){return board.every((v,i)=>v===(i+1)%16);}
 export function adjacent(board,index){const z=board.indexOf(0);return Math.abs(Math.floor(z/4)-Math.floor(index/4))+Math.abs(z%4-index%4)===1;}
@@ -15,7 +15,7 @@ export function tileInDirection(board, direction) {
 export function mount(root,ctx) {
   let state=ctx.load()||fresh(),busy=false,queued=[];
   const motion=createMotion(),moves=stat('步数'),placed=stat('已归位'),status=statusNode();
-  const board=el('div',{class:'board board-fifteen','aria-label':'数字华容道棋盘'});
+  const board=el('div',{class:'board board-fifteen','aria-label':'数字拼图棋盘'});
   const pad=controls(directionMove);
   const goal=el('details',{class:'puzzle-goal'},[
     el('summary',{text:'目标排列'}),
@@ -50,7 +50,7 @@ export function mount(root,ctx) {
   function render(){
     board.replaceChildren(...state.board.map((v,i)=>el('button',{type:'button',class:`cell ${v?'':'empty'} ${v===i+1?'correct':''} ${v&&adjacent(state.board,i)?'movable':''}`,text:v||'','aria-label':v?`数字 ${v}`:'空格',disabled:!v,onclick:()=>move(i)})));
     moves.set(state.moves);placed.set(`${state.board.filter((v,i)=>v&&v===i+1).length}/15`);updateControls();
-    status.set(state.done?`排列完成！用了 ${state.moves} 步。`:'排好 1—15，空格留在右下角。',state.done?'success':'');ctx.save(state);
+    status.set(state.done?`排列完成！用了 ${state.moves} 步。`:'',state.done?'success':'');ctx.save(state);
   }
   render();const removeInput=keyboardAndSwipe(board,directionMove);
   return()=>{queued=[];removeInput();motion.dispose();};

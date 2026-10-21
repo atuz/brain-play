@@ -1,6 +1,6 @@
-import {el,button,stat,statusNode,sound,finish} from './shared.js?v=7';
-import {createMotion} from './motion.js?v=7';
-import {t} from './i18n.js?v=7';
+import {el,button,stat,statusNode,sound,finish} from './shared.js?v=10';
+import {createMotion} from './motion.js?v=10';
+import {t} from './i18n.js?v=10';
 // Original hand-drawn 5×5 puzzles. Clue uniqueness is verified in tests.
 export const patterns=[
 {name:'小小爱心',rows:['01010','11111','11111','01110','00100']},
@@ -65,7 +65,7 @@ export function mount(root,ctx){
     cells.forEach((cell,i)=>{const v=state.cells[i];cell.className=`cell ${v===1?'filled':v===-1?'cross':''}`;cell.textContent=v===-1?'×':'';cell.setAttribute('aria-label',t(`第${Math.floor(i/5)+1}行第${i%5+1}列，${v===1?'已涂色':v===-1?'标为空':'未标记'}`));});
     filled.set(state.cells.filter(v=>v===1).length);undo.disabled=!state.history.length;paint.classList.toggle('active',mode===1);cross.classList.toggle('active',mode===-1);paint.setAttribute('aria-pressed',String(mode===1));cross.setAttribute('aria-pressed',String(mode===-1));
     next.hidden=!state.done;next.className='btn next-puzzle';
-    status.set(state.done?`图案揭晓：${patterns[state.level].name}。完成了！`:'拖动连续涂格；切换 × 标空。',state.done?'success':'');ctx.save(state);
+    status.set(state.done?`图案揭晓：${patterns[state.level].name}。完成了！`:'',state.done?'success':'');ctx.save(state);
   }
   complete();return()=>{stroke=null;board.removeEventListener('pointerdown',down);board.removeEventListener('pointermove',move);board.removeEventListener('pointerup',up);board.removeEventListener('pointercancel',up);motion.dispose();};
 }
