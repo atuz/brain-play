@@ -1,8 +1,8 @@
-import {el,button,sound,finish,keyboardAndSwipe} from './shared.js?v=11';
-import {createMotion,motionEnabled} from './motion.js?v=11';
-import {t} from './i18n.js?v=11';
-import {levels} from './domino-levels.js?v=11';
-import {at,clone,hasFloor,neighbors,pathTo,edit,initialPosition,simulate,validPosition,walkable} from './domino-engine.js?v=11';
+import {el,button,sound,finish,keyboardAndSwipe} from './shared.js?v=12';
+import {createMotion,motionEnabled} from './motion.js?v=12';
+import {t} from './i18n.js?v=12';
+import {levels} from './domino-levels.js?v=12';
+import {at,clone,hasFloor,neighbors,pathTo,edit,initialPosition,simulate,validPosition,walkable} from './domino-engine.js?v=12';
 
 const types={
   normal:['普通牌','碰到下一张牌，继续连锁。',''],
@@ -78,6 +78,9 @@ export function mount(root,ctx){
   const viewTop=()=>level.ladders.length?0:3,viewRows=()=>level.height-viewTop();
   function placeNode(node,p){node.style.left=`${p.x/level.width*100}%`;node.style.top=`${(p.y-viewTop())/viewRows()*100}%`;}
   function buildWorld(){
+    // A new stage has a different coordinate system. Snap its first frame;
+    // only subsequent player/piece moves should interpolate from old positions.
+    world.classList.add('dc-reset');
     world.style.setProperty('--dc-cols',level.width);world.style.setProperty('--dc-rows',viewRows());
     world.style.aspectRatio=`${level.width}/${viewRows()}`;
     surfaces.replaceChildren();tileLayer.replaceChildren();stones.replaceChildren();stoneNodes.clear();
@@ -92,6 +95,7 @@ export function mount(root,ctx){
     placeNode(door,level.exit);
     for(const p of level.pieces){const node=el('div',{class:`dc-stone dc-${p.type}`,'data-stone-id':p.id},[el('span',{class:'dc-stone-face',text:types[p.type][2]})]);stoneNodes.set(p.id,node);stones.append(node);}
   }
+  function settleStage(){void world.offsetHeight;world.classList.remove('dc-reset');}
   function renderScene(){
     const p=player(),visible=playingPieces();placeNode(ant,p);ant.style.setProperty('--dc-facing',facing);ant.classList.toggle('walking',walking);
     const held=state.attempt?null:state.position.carrying;
@@ -212,7 +216,7 @@ export function mount(root,ctx){
     }
     if(state.history.length){stop();state.position=state.history.pop();notice='';save();render();}
   }
-  function loadLevel(index){stop();state=fresh(index);level=levels[index];result=null;frame=null;notice='';buildWorld();save();render();}
+  function loadLevel(index){stop();state=fresh(index);level=levels[index];result=null;frame=null;notice='';facing=1;buildWorld();save();render();settleStage();}
   function chooseLevel(){
     const modal=el('dialog',{class:'app-dialog dc-level-dialog','aria-label':'选择骨牌关卡'});
     const close=()=>modal.close();
@@ -231,6 +235,6 @@ export function mount(root,ctx){
   window.addEventListener('keydown',shortcuts);
   const detach=keyboardAndSwipe(world,step);
   if(state.attempt)result=simulate(level,state.position.pieces,state.attempt.id,state.attempt.dir);
-  buildWorld();render();
+  buildWorld();render();settleStage();
   return()=>{alive=false;stop();detach();window.removeEventListener('keydown',shortcuts);for(const modal of dialogs)modal.close();dialogs.clear();motion.dispose();};
 }

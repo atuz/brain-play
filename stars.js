@@ -1,5 +1,5 @@
-import {el,button,stat,statusNode,sound,finish} from './shared.js?v=11';
-import {createMotion,floatScore} from './motion.js?v=11';
+import {el,button,stat,statusNode,sound,finish} from './shared.js?v=12';
+import {createMotion,floatScore} from './motion.js?v=12';
 export function groupAt(board,index,size=8){const color=board[index];if(!color)return [];const seen=new Set([index]),queue=[index];while(queue.length){const i=queue.pop(),r=Math.floor(i/size),c=i%size;for(const [dr,dc]of [[1,0],[-1,0],[0,1],[0,-1]]){const rr=r+dr,cc=c+dc,j=rr*size+cc;if(rr>=0&&rr<size&&cc>=0&&cc<size&&!seen.has(j)&&board[j]===color){seen.add(j);queue.push(j);}}}return [...seen];}
 export function collapseTrace(board,size=8){
   const out=Array(board.length).fill(0),movements=[];let column=0;

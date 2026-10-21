@@ -54,7 +54,7 @@ Validated English translations for all 114 static and variant rule/name strings.
 
 Follow-up UI validation: opened all nine guides in Simplified Chinese, Traditional Chinese and English. At 320 × 740, English dialogs fit within the viewport with no horizontal overflow; each guide contains three sections. Verified the 3 × 3 classic 512 target and Fibonacci sequence/2584 target through the actual game settings. Fruit Link’s persistent rule remains visible after requesting a hint. No browser warnings or errors during these checks.
 
-## 蚂蚁多米诺（v11）
+## 蚂蚁多米诺（v12）
 
 - 12 个原创固定关卡的记录解法：逐步执行实际行走、搬起、放下与一次推动；全部开门且出口可达。交换骨牌遍历顺序后结果一致。
 - 规则回归：出口与其他牌同时倒下不算最后；延时改变两侧先后；分叉只接受从上方落牌；普通牌被落牌击中会撞坏；搭桥支持左右方向、真实补地面并让人物通过。
@@ -63,3 +63,5 @@ Follow-up UI validation: opened all nine guides in Simplified Chinese, Tradition
 - 开启动画后查看人物走动、骨牌依次倒下和搭桥；播放中取消能回到原摆放，播放中刷新可恢复已完成的连锁结果。关闭动画也能执行同样规则。
 - 本机存储校验：拒绝缺牌、重复牌、移动的出口牌、非法人物位置；允许已铺桥上的人物位置恢复。12 关的提示针对初始布置，不是运行时任意局面求解。
 - 验证环境为桌面浏览器的手机尺寸预览；这次没有安装 App 或连接实体手机测试。
+
+- 换关时先取消旧坐标的过渡，强制完成新舞台布局后恢复行走动画；已实测单层→双层关卡，人物与平台立即位于新关卡坐标，无需刷新。

@@ -1,7 +1,7 @@
-import { el, button, stat, statusNode, controls, keyboardAndSwipe, sound, finish } from './shared.js?v=11';
-import { normalizeMergeSettings, mergeTarget, mergeSlot, tileRank, slideBoard, hasMoves, spawn, createMergeState, restoreMergeState } from './merge-engine.js?v=11';
-import {createMotion,floatScore} from './motion.js?v=11';
-export { slideLine, slideBoard, hasMoves, spawn } from './merge-engine.js?v=11';
+import { el, button, stat, statusNode, controls, keyboardAndSwipe, sound, finish } from './shared.js?v=12';
+import { normalizeMergeSettings, mergeTarget, mergeSlot, tileRank, slideBoard, hasMoves, spawn, createMergeState, restoreMergeState } from './merge-engine.js?v=12';
+import {createMotion,floatScore} from './motion.js?v=12';
+export { slideLine, slideBoard, hasMoves, spawn } from './merge-engine.js?v=12';
 
 export function settings(ctx) {
   return {
