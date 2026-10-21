@@ -1,6 +1,6 @@
-import {el,button,stat,statusNode,shuffle,finish} from './shared.js?v=12';
-import {createMotion} from './motion.js?v=12';
-import {t} from './i18n.js?v=12';
+import {el,button,stat,statusNode,shuffle,finish} from './shared.js?v=13';
+import {createMotion} from './motion.js?v=13';
+import {t} from './i18n.js?v=13';
 export function compareGuess(secret,guess){let a=0,b=0;for(let i=0;i<4;i++)if(secret[i]===guess[i])a++;else if(secret.includes(guess[i]))b++;return {a,b};}
 export function validGuess(guess){return /^\d{4}$/.test(guess)&&new Set(guess).size===4;}
 export function mount(root,ctx){

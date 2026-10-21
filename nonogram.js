@@ -1,6 +1,6 @@
-import {el,button,stat,statusNode,sound,finish} from './shared.js?v=12';
-import {createMotion} from './motion.js?v=12';
-import {t} from './i18n.js?v=12';
+import {el,button,stat,statusNode,sound,finish} from './shared.js?v=13';
+import {createMotion} from './motion.js?v=13';
+import {t} from './i18n.js?v=13';
 // Original hand-drawn 5×5 puzzles. Clue uniqueness is verified in tests.
 export const patterns=[
 {name:'小小爱心',rows:['01010','11111','11111','01110','00100']},

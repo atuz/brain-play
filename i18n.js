@@ -1,4 +1,4 @@
-import {dominoEnglish,dominoTraditional} from './domino-i18n.js?v=12';
+import {dominoEnglish,dominoTraditional} from './domino-i18n.js?v=13';
 export const languages = [
   { code: 'zh-CN', name: '简体中文' },
   { code: 'zh-TW', name: '繁體中文' },

@@ -1,6 +1,6 @@
-import {el,button,stat,statusNode,copy,sound,finish} from './shared.js?v=12';
-import {createMotion} from './motion.js?v=12';
-import {t} from './i18n.js?v=12';
+import {el,button,stat,statusNode,copy,sound,finish} from './shared.js?v=13';
+import {createMotion} from './motion.js?v=13';
+import {t} from './i18n.js?v=13';
 export function flip(board,index,size=5){const out=[...board],r=Math.floor(index/size),c=index%size;for(const [dr,dc] of [[0,0],[-1,0],[1,0],[0,-1],[0,1]]){const rr=r+dr,cc=c+dc;if(rr>=0&&rr<size&&cc>=0&&cc<size)out[rr*size+cc]=1-out[rr*size+cc];}return out;}
 export function solveLights(board,size=5){const n=size*size,m=board.map((v,i)=>{const influence=flip(Array(n).fill(0),i,size);return [...influence,v];});let row=0;const pivots=[];for(let c=0;c<n&&row<n;c++){let p=row;while(p<n&&!m[p][c])p++;if(p===n)continue;[m[p],m[row]]=[m[row],m[p]];for(let r=0;r<n;r++)if(r!==row&&m[r][c])for(let j=c;j<=n;j++)m[r][j]^=m[row][j];pivots.push(c);row++;}for(let r=row;r<n;r++)if(m[r][n])return null;const result=Array(n).fill(0);for(let r=0;r<pivots.length;r++)result[pivots[r]]=m[r][n];return result.map((v,i)=>v?i:-1).filter(i=>i>=0);}
 export function generateLights(rng=Math.random){let board=Array(25).fill(0);for(let i=0;i<25;i++)if(rng()<.4)board=flip(board,i);if(!board.some(Boolean))board=flip(board,12);return board;}

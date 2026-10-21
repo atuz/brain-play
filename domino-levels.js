@@ -6,9 +6,9 @@ const n=(x,y=5)=>piece('normal',x,y), d=(x,y=5)=>piece('delay',x,y),
 const move=(x,y,toX,toY=y)=>({from:{x,y},to:{x:toX,y:toY}});
 const ladder=(x,from=1,to=5)=>({x,from,to});
 const definitions=[
-  {name:'第一推',hint:'走到最左边的普通牌，向右推倒。出口牌要最后倒下，然后走进门。',player:{x:1,y:5},exit:{x:7,y:5},pieces:[n(2),n(3),n(4),t(5)],push:{x:2,y:5,dir:1}},
+  {name:'第一推',hint:'走到最左边的普通牌，向右推倒。开门牌要最后倒下，然后走进门。',player:{x:1,y:5},exit:{x:7,y:5},pieces:[n(2),n(3),n(4),t(5)],push:{x:2,y:5,dir:1}},
   {name:'补上缺口',hint:'把最右边的普通牌搬到中间的空位，再从左边启动连锁。',pieces:[n(1),n(2),n(4),t(5),n(7)],plan:[move(7,5,3)],push:{x:1,y:5,dir:1}},
-  {name:'换个方向',hint:'把左侧落单的牌搬到出口牌右侧的空位，再从最右边向左推。',player:{x:8,y:5},exit:{x:0,y:5},pieces:[n(7),n(6),n(5),t(3),n(1)],plan:[move(1,5,4)],push:{x:7,y:5,dir:-1}},
+  {name:'换个方向',hint:'把左侧落单的牌搬到开门牌右侧的空位，再从最右边向左推。',player:{x:8,y:5},exit:{x:0,y:5},pieces:[n(7),n(6),n(5),t(3),n(1)],plan:[move(1,5,4)],push:{x:7,y:5,dir:-1}},
   {name:'等一会儿',hint:'把带沙漏的延时牌搬进缺口。它会停顿一下，再继续传递。',pieces:[n(1),n(2),n(4),t(5),d(7)],plan:[move(7,5,3)],push:{x:1,y:5,dir:1}},
   {name:'门前的牌',hint:'只有消失牌可以放在门口。把它搬到门前，接起两边的骨牌。',exit:{x:3,y:5},pieces:[n(1),n(2),t(4),v(6)],plan:[move(6,5,3)],push:{x:1,y:5,dir:1}},
   {name:'一块小桥',hint:'从梯子绕过去，把搭桥牌搬到断口左侧。它向右倒下后会铺出一格桥。',platforms:[[1,0,8],[5,0,2],[5,4,8]],ladders:[ladder(0),ladder(8)],pieces:[n(1),n(4),n(5),t(6),b(7)],plan:[move(7,5,2)],push:{x:1,y:5,dir:1}},

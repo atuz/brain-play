@@ -129,8 +129,12 @@ export function simulate(level, pieces, starterId, direction) {
   // A domino that drops onto the splitter is consumed at impact, before it fires.
   const last=trigger?.finish!==null&&others.every(p=>p.finish!==null&&p.finish<trigger.finish);
   const won=!crashed&&!overflow&&allDown&&last;
-  const reason=crashed?'crash':overflow?'overflow':!allDown?'remaining':!last?'early':'clear';
-  return {valid:true,won,reason,trace,pieces:stones,bridges};
+  const tied=allDown&&!last&&others.some(p=>p.finish===trigger?.finish)&&!others.some(p=>p.finish>trigger?.finish);
+  const reason=crashed?'crash':overflow?'overflow':!allDown?'remaining':!last?(tied?'tie':'early'):'clear';
+  const problemIds=reason==='crash'?stones.filter(p=>p.state==='crashed').map(p=>p.id)
+    :reason==='remaining'?stones.filter(p=>!['flat','vanished'].includes(p.state)).map(p=>p.id)
+    :['tie','early'].includes(reason)?stones.filter(p=>p===trigger||p.finish>=trigger.finish).map(p=>p.id):[];
+  return {valid:true,won,reason,problemIds,trace,pieces:stones,bridges};
 }
 
 export function validPosition(level, position) {

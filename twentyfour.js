@@ -1,11 +1,11 @@
-import {createMotion} from './motion.js?v=12';
-import { t } from './i18n.js?v=12';
-import { el, button, stat, statusNode, sound, finish } from './shared.js?v=12';
+import {createMotion} from './motion.js?v=13';
+import { t } from './i18n.js?v=13';
+import { el, button, stat, statusNode, sound, finish } from './shared.js?v=13';
 import {
   calculate, createRound, displayOp, formatFraction, generate24,
   mergeRound, plan24, resetRound, restoreRound, undoRound,
-} from './twentyfour-engine.js?v=12';
-export { parseExpression, solve24, generate24 } from './twentyfour-engine.js?v=12';
+} from './twentyfour-engine.js?v=13';
+export { parseExpression, solve24, generate24 } from './twentyfour-engine.js?v=13';
 
 export function mount(root, ctx) {
   let round = restoreRound(ctx.load(), ctx.rng);

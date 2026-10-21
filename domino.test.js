@@ -6,6 +6,7 @@ import {restore} from './domino.js';
 import {dominoEnglish} from './domino-i18n.js';
 import {translate} from './i18n.js';
 import {games} from './catalog.js';
+import {nextGuide,failureSummary} from './domino-guide.js';
 
 function walk(level,position,target) {
   const path=pathTo(level,position.player,target);
@@ -52,8 +53,8 @@ test('Delay changes which branch finishes last; simultaneous trigger is too earl
   const level={width:9,height:7,platforms:[[1,0,2],[5,0,8]],ladders:[],exit:{x:8,y:5}};
   const pieces=[{id:'a',type:'normal',x:2,y:1},{id:'s',type:'splitter',x:3,y:5},{id:'l',type:'normal',x:2,y:5},{id:'t',type:'trigger',x:4,y:5}];
   const simultaneous=simulate(level,pieces,'a',1);
-  assert.equal(simultaneous.reason,'early');
-  assert.equal(simulate(level,pieces.slice().reverse(),'a',1).reason,'early');
+  assert.equal(simultaneous.reason,'tie');
+  assert.equal(simulate(level,pieces.slice().reverse(),'a',1).reason,'tie');
   pieces[3].type='delay';pieces.push({id:'door',type:'trigger',x:5,y:5});
   assert.equal(simulate(level,pieces,'a',1).won,true);
 });
@@ -100,4 +101,52 @@ test('Every domino rule, level, hint and control has complete English and Tradit
     assert.ok(translate(text,'zh-TW').length);
   }
   assert.equal(translate('蚂蚁多米诺','zh-TW'),'螞蟻多米諾');
+});
+
+function followGuide(level,start){
+  let position=clone(start);
+  for(let i=0;i<600;i++){
+    const step=nextGuide(level,position);assert.notEqual(step.kind,'unavailable',`Level ${level.id} needs a guide`);
+    if(step.kind==='push'){
+      const piece=position.pieces.find(p=>at(p,position.player));
+      const result=simulate(level,position.pieces,piece.id,step.dir);
+      assert.equal(result.won,true,`Guided level ${level.id}: ${result.reason}`);
+      assert.ok(pathTo(level,position.player,level.exit,result.bridges));return position;
+    }
+    const action=step.kind.startsWith('walk')?{type:'walk',to:pathTo(level,position.player,step.kind==='walk-take'||step.kind==='walk-buffer'?step.source:step.target)?.[0]}
+      :{type:step.kind==='place'?'place':'take'};
+    assert.ok(action.type!=='walk'||action.to,'The guide must give a reachable next step');
+    position=edit(level,position,action);assert.ok(position,`Guided action must be legal: ${JSON.stringify(step)}`);
+  }
+  assert.fail(`Guide did not finish level ${level.id}`);
+}
+test('Screenshot regression: moved upper domino makes the trigger simultaneous; guidance repairs the current layout',()=>{
+  const level=levels[6];let position=initialPosition(level);
+  for(const transfer of [{from:{x:7,y:5},to:{x:3,y:5}},{from:{x:1,y:1},to:{x:1,y:5}}]){
+    position=walk(level,position,transfer.from);position=edit(level,position,{type:'take'});
+    position=walk(level,position,transfer.to);position=edit(level,position,{type:'place'});
+  }
+  position=walk(level,position,{x:2,y:1});
+  const result=simulate(level,position.pieces,'p1',1);
+  assert.equal(result.won,false);assert.equal(result.reason,'tie');
+  assert.deepEqual([...result.problemIds].sort(),['p0','p4']);
+  assert.ok(result.pieces.every(p=>['flat','vanished'].includes(p.state)),'Every visible domino has fallen, so a generic retry message is insufficient');
+  assert.match(failureSummary(result),/同时/);
+  const repaired=followGuide(level,position);
+  assert.ok(repaired.pieces.some(p=>p.type==='normal'&&p.x===1&&p.y===1));
+});
+test('Guidance solves every original puzzle and legal scrambled layouts, including carried pieces and swaps',()=>{
+  let seed=91823;const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
+  for(const level of levels){
+    followGuide(level,initialPosition(level));
+    for(let run=0;run<8;run++){
+      let position=initialPosition(level);
+      for(let turn=0;turn<80;turn++){
+        const options=[...['take','place'].map(type=>edit(level,position,{type})),
+          ...[{x:position.player.x-1,y:position.player.y},{x:position.player.x+1,y:position.player.y},{x:position.player.x,y:position.player.y-1},{x:position.player.x,y:position.player.y+1}].map(to=>edit(level,position,{type:'walk',to}))].filter(Boolean);
+        position=options[Math.floor(random()*options.length)]||position;
+      }
+      followGuide(level,position);
+    }
+  }
 });
