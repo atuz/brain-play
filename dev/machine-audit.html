@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>机关道具逐项复查 · 本地 QA</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f7f7ed;color:#355e4e;font:14px system-ui}main{max-width:960px;margin:auto;padding:16px}h1{font-size:20px;margin:0 0 12px}nav{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}button,select{font:inherit;min-height:40px;border:1px solid #b9cbb3;border-radius:8px;background:#fffef6;padding:7px 12px;color:inherit}button{cursor:pointer}section{display:grid;grid-template-columns:minmax(0,480px) 1fr;gap:16px}canvas{display:block;width:100%;border:1px solid #ccd5b8;border-radius:12px}aside{overflow:auto}#state{white-space:pre-wrap;font:12px/1.7 ui-monospace,monospace}#result{font-weight:bold;margin:8px 0}#result[data-pass=true]{color:#2c7850}#result[data-pass=false]{color:#b4523d}#all{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}#all button{font-size:12px;padding:5px 9px}small{color:#75836c}@media(max-width:600px){section{grid-template-columns:1fr}main{padding:10px}canvas{max-width:360px;margin:auto}#state{max-height:220px}h1{font-size:18px}}
+</style>
+<main><h1>道具逐项复查</h1><small>独立测试场景，不读取或写入游戏存档。沿用游戏实际物理和画面。</small>
+<nav><label>道具 <select id="cases" aria-label="复查道具"></select></label><button id="prev">上一项</button><button id="next">下一项</button><button id="reset">重置</button></nav>
+<nav><button id="play">播放</button><button id="step">推进 0.1 秒</button><button id="second">推进 1 秒</button><button id="verify">核验本项</button><label><input type="checkbox" id="slow">慢放</label></nav>
+<section><canvas id="canvas" width="960" height="1200" role="img" aria-label="道具动作复查场地"></canvas><aside><h2 id="title"></h2><p id="note"></p><p id="result" role="status"></p><p id="elapsed"></p><pre id="state"></pre></aside></section><div id="all" aria-label="逐项复查结果"></div></main>
+<script type="module">
+import {auditCases} from './machine-cases.js';
+import {createMachine} from '../machine-engine.js';
+import {drawMachine} from '../machine-art.js';
+import {parts,worldSize} from '../machine-parts.js';
+const $=s=>document.querySelector(s),select=$('#cases'),canvas=$('#canvas'),c=canvas.getContext('2d');
+$('h1').textContent=`${auditCases.length} 种道具逐项复查`;
+let sim,current,index=0,playing=false,last=0,accumulator=0,trail=new Map();
+for(const [i,item]of auditCases.entries()){const option=document.createElement('option');option.value=i;option.textContent=`${String(i+1).padStart(2,'0')} ${item.name}`;select.append(option);}
+const buttons=auditCases.map((item,i)=>{const button=document.createElement('button');button.textContent=`○ ${item.name}`;button.onclick=()=>load(i);$('#all').append(button);return button;});
+function load(i){sim?.dispose();index=(i+auditCases.length)%auditCases.length;current=auditCases[index];const data=current.make();sim=createMachine(data.level,data.draft);const size=worldSize(data.level);canvas.width=size.width*2;canvas.height=size.height*2;c.setTransform(2,0,0,2,0,0);select.value=index;playing=false;last=0;accumulator=0;trail.clear();$('#play').textContent='播放';$('#title').textContent=`${index+1} / ${auditCases.length} · ${current.name}`;$('#note').textContent=current.note;$('#result').textContent='等待核验';$('#result').removeAttribute('data-pass');paint();}
+function advance(n){for(let i=0;i<n;i++){sim.step();if(sim.steps%4===0)for(const e of sim.entities.values())if(e.body&&!e.body.isStatic){const pts=trail.get(e.id)||[];pts.push({x:e.x,y:e.y});if(pts.length>160)pts.shift();trail.set(e.id,pts);}}paint();}
+function paint(){drawMachine(c,{...worldSize(sim.level),pieces:[...sim.entities.values()],links:sim.connections,effects:sim.effects,goalStates:sim.goalStates,target:sim.level.target,scene:sim.level.scene,time:sim.time,won:sim.won,selected:current.focus,mode:'run',trail:[...trail.values()]});$('#elapsed').textContent=`物理时间 ${sim.time.toFixed(2)} 秒 · ${playing?'播放中':'已暂停'}`;$('#state').textContent=[...sim.entities.values()].map(e=>`${e.id} ${parts[e.type].name} (${e.x.toFixed(1)}, ${e.y.toFixed(1)})\n  速度 ${e.body.velocity.x.toFixed(2)}, ${e.body.velocity.y.toFixed(2)} · 转速 ${e.spin.toFixed(2)} · 转角 ${e.phase.toFixed(2)}\n  ${e.active?'启动 ':''}${e.spent?'已使用 ':''}${e.broken?'破碎 ':''}${e.jammed?'传动卡住 ':''}加热 ${(e.warm||0).toFixed(2)}`).join('\n')+'\n\n事件：\n'+sim.events.slice(-12).map(e=>`${e.time.toFixed(2)}s ${e.type} ${e.id||''}`).join('\n');}
+select.onchange=()=>load(Number(select.value));$('#prev').onclick=()=>load(index-1);$('#next').onclick=()=>load(index+1);$('#reset').onclick=()=>load(index);
+$('#play').onclick=()=>{playing=!playing;last=0;$('#play').textContent=playing?'暂停':'播放';paint();};
+$('#step').onclick=()=>{playing=false;$('#play').textContent='播放';advance(12);};$('#second').onclick=()=>{playing=false;$('#play').textContent='播放';advance(120);};
+$('#verify').onclick=()=>{load(index);advance((current.seconds||3)*120);const ok=!!current.check(sim);$('#result').textContent=ok?'通过：本项行为符合预期':'失败：需要检查';$('#result').dataset.pass=ok;buttons[index].textContent=`${ok?'✓':'×'} ${current.name}`;};
+function frame(now){if(playing){const elapsed=last?Math.min(64,now-last):0;accumulator+=elapsed*($('#slow').checked?.5:1);let n=0;while(accumulator>=1000/120&&n++<10){accumulator-=1000/120;advance(1);}if(sim.time>=30){playing=false;$('#play').textContent='播放';}}last=now;requestAnimationFrame(frame);}load(0);requestAnimationFrame(frame);
+</script></html>

@@ -1,0 +1,20 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>App 导航消息复查</title>
+<link rel="stylesheet" href="../style.css?v=26"><link rel="stylesheet" href="../machine.css?v=5">
+<style>#bridge-log{max-width:900px;margin:16px auto;padding:12px;background:#fff;border:1px solid #cbd9c1;border-radius:10px;font:12px/1.7 system-ui}#bridge-log h2{font-size:15px;margin:0}#bridge-events{white-space:pre-wrap;word-break:break-all;max-height:240px;overflow:auto}#bridge-log button{padding:6px 10px;min-height:36px;margin:4px}</style></head><body>
+<a class="skip" href="#main">跳到主要内容</a><header id="app-header" class="app-header wrap"></header><main id="main" class="wrap" tabindex="-1"></main><div id="toast" class="toast" role="status" aria-live="polite"></div>
+<section id="bridge-log"><h2>App 消息复查（仅本地）</h2><p>使用独立的内存存档。以下是实际游戏发出的消息；此页面不显示广告。</p><button id="clear-log">清空消息记录</button><label><input id="auto-resume" type="checkbox" checked>App 自动放行</label><button id="resume">App 放行</button><p id="bridge-counts" role="status"></p><pre id="bridge-events" aria-label="App 消息记录"></pre></section>
+<fieldset id="activity-controls" style="max-width:900px;margin:auto"><legend>App 暂停接口（仅本地）</legend><label><input id="app-active" type="checkbox" checked>App 在前台</label> <label><input id="ad-showing" type="checkbox">广告显示中</label><p id="activity-status" role="status"></p></fieldset>
+<script>
+(()=>{const messages=[];let lastNavigation;
+  Object.defineProperty(window,'__brainPlayHost',{value:{version:1,navigationGate:true,activity:{version:1,active:true,ad:false},app:{platform:'ios',version:'1.0',build:'test'},capabilities:{navigation:true,navigationGate:true,activity:true,save:true,close:true,result:true},config:{language:'zh-CN',sound:false,animations:true,theme:'light'}}});
+  function resume(){if(lastNavigation){window.dispatchEvent(new CustomEvent('brainPlayResume',{detail:{id:lastNavigation.id}}));messages.push({type:'resume'});render();}}
+  Object.defineProperty(window,'__brainPlayStorage',{value:{version:1,save:{version:1,games:{},settings:{animations:true,sound:false}}}});
+  function activity(){const state={version:1,active:document.querySelector('#app-active').checked,ad:document.querySelector('#ad-showing').checked};window.dispatchEvent(new CustomEvent('brainPlayActivity',{detail:state}));messages.push({type:'activity',...state});render();}
+  document.querySelector('#app-active').onchange=activity;document.querySelector('#ad-showing').onchange=activity;
+  new MutationObserver(()=>document.querySelector('#activity-status').textContent=document.documentElement.dataset.gamePaused==='true'?'游戏状态：暂停':'游戏状态：运行').observe(document.documentElement,{attributes:true,attributeFilter:['data-game-paused']});
+  window.webkit={messageHandlers:{brainPlay:{postMessage(message){messages.push(message);if(message.type==='navigation'&&message.navigation.screen==='game'){lastNavigation=message.navigation;if(document.querySelector('#auto-resume').checked)queueMicrotask(resume);}render();}}}};
+  function render(){document.querySelector('#bridge-counts').textContent=`导航 ${messages.filter(m=>m.type==='navigation').length} · 保存 ${messages.filter(m=>m.type==='save').length} · 关闭 ${messages.filter(m=>m.type==='close').length} · 就绪 ${messages.filter(m=>m.type==='ready').length}`;document.querySelector('#bridge-events').textContent=messages.map(m=>JSON.stringify(m.type==='navigation'?m:{type:m.type,...(m.save?{hasSave:true}:{} )})).join('\n');}
+  document.querySelector('#resume').onclick=resume;
+  document.querySelector('#clear-log').onclick=()=>{messages.length=0;render();};render();
+})();
+</script><script type="module" src="../app.js?v=32"></script></body></html>
