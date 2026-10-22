@@ -1,4 +1,5 @@
-// Twelve original puzzles. The recorded edit plans are checked by domino.test.js.
+import {advancedDefinitions} from './domino-levels-advanced.js?v=22';
+// Original, fixed puzzles. Recorded edit plans are checked by domino.test.js.
 const piece=(type,x,y=5)=>({type,x,y});
 const n=(x,y=5)=>piece('normal',x,y), d=(x,y=5)=>piece('delay',x,y),
   b=(x,y=5)=>piece('bridge',x,y), v=(x,y=5)=>piece('vanish',x,y),
@@ -18,8 +19,10 @@ const definitions=[
   {name:'两边的节奏',hint:'出口在左侧。把右端的延时牌换到左侧中间，让右边先倒完。空位可以临时放牌。',player:{x:0,y:1},platforms:[[1,0,2],[5,0,8]],ladders:[ladder(0)],pieces:[n(1,1),n(2,1),s(3),n(2),n(1),t(0),n(4),n(5),d(6)],plan:[move(1,5,7),move(6,5,1),move(7,5,6)],push:{x:1,y:1,dir:1}},
   {name:'分头行动',hint:'上层两张特殊牌都要搬下来：搭桥牌放在右侧断口旁，延时牌放在左侧出口前。',platforms:[[1,0,2],[1,4,8],[5,0,5],[5,7,8]],ladders:[ladder(0),ladder(4),ladder(8)],pieces:[n(1,1),n(2,1),s(3),n(2),t(0),n(4),n(7),b(5,1),d(7,1)],plan:[move(5,1,5,5),move(7,1,1,5)],push:{x:1,y:1,dir:1}},
   {name:'最后一棒',hint:'把搭桥牌搬到左侧断口右边，并把延时牌换到分叉牌左边。可以借上层空位交换骨牌。',player:{x:2,y:5},platforms:[[1,0,3],[1,5,8],[5,0,0],[5,2,8]],ladders:[ladder(2),ladder(8)],pieces:[n(2,1),n(3,1),s(4),n(3),t(0),n(5),n(6),d(7),b(6,1)],plan:[move(3,5,0,1),move(7,5,3),move(0,1,7,5),move(6,1,2,5)],push:{x:2,y:1,dir:1}},
+  ...advancedDefinitions,
 ];
+export const chapters=['入门','进阶','挑战','大师','终局'];
 export const levels=definitions.map((level,index)=>({
-  width:9,height:7,player:{x:0,y:5},exit:{x:8,y:5},platforms:[[5,0,8]],ladders:[],plan:[],...level,
+  width:9,height:7,chapter:0,player:{x:0,y:5},exit:{x:8,y:5},platforms:[[5,0,8]],ladders:[],plan:[],...level,
   id:index+1,pieces:level.pieces.map((p,i)=>({...p,id:`p${i}`})),
 }));

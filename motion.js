@@ -1,5 +1,6 @@
 // Short, cancellable motion shared by the small games. Game state is saved first.
-import { read, el, button } from './shared.js?v=13';
+import { read, el, button } from './shared.js?v=27';
+import {gameRuntime} from './game-runtime.js?v=26';
 export const motionEnabled = () => read('animations', true) && !matchMedia('(prefers-reduced-motion: reduce)').matches;
 export function createMotion() {
   let alive = true;
@@ -7,8 +8,9 @@ export function createMotion() {
   async function play(node, frames, duration = 180, extra = {}) {
     if (!alive || !motionEnabled() || !node?.animate) return;
     const animation = node.animate(frames, { duration, easing: 'cubic-bezier(.2,.75,.3,1)', fill: 'both', ...extra });
+    const release=gameRuntime.trackAnimation(animation);
     active.add(animation);
-    try { await animation.finished; } catch {} finally { active.delete(animation); animation.cancel(); }
+    try { await animation.finished; } catch {} finally { release();active.delete(animation); animation.cancel(); }
   }
   async function grid(board, moves, commit, duration = 180, concealed = []) {
     if (!alive) return;

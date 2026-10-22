@@ -1,11 +1,13 @@
-import {createMotion} from './motion.js?v=13';
-import { t } from './i18n.js?v=13';
-import { el, button, stat, statusNode, sound, finish } from './shared.js?v=13';
+import {startGame} from './game-transition.js?v=27';
+import {gameRuntime} from './game-runtime.js?v=26';
+import {createMotion} from './motion.js?v=27';
+import { t } from './i18n.js?v=16';
+import { el, button, stat, statusNode, sound, finish } from './shared.js?v=27';
 import {
   calculate, createRound, displayOp, formatFraction, generate24,
   mergeRound, plan24, resetRound, restoreRound, undoRound,
-} from './twentyfour-engine.js?v=13';
-export { parseExpression, solve24, generate24 } from './twentyfour-engine.js?v=13';
+} from './twentyfour-engine.js?v=16';
+export { parseExpression, solve24, generate24 } from './twentyfour-engine.js?v=16';
 
 export function mount(root, ctx) {
   let round = restoreRound(ctx.load(), ctx.rng);
@@ -57,9 +59,9 @@ export function mount(root, ctx) {
   }, 'plain');
   const reset = button('↺ 重来', () => {
     if (busy) return;
-    motion.confirmRestart(round.history.length>0&&!round.done,async()=>{
+    motion.confirmRestart(round.history.length>0&&!round.done,()=>startGame(ctx,'restart',async()=>{
       round=resetRound(round);clearSelection();render();await deal();
-    });
+    }));
   }, 'plain');
   const hint = button('✧ 提示一步', showHint, 'plain');
   const tools = el('div', { class: 'tf-tools' }, [undo, reset, hint]);
@@ -201,8 +203,9 @@ export function mount(root, ctx) {
   async function animate(node, frames, options) {
     if (reduceMotion.matches || ctx.read('animations', true) === false || !node.animate || !alive) return;
     const animation = node.animate(frames, options);
+    const release=gameRuntime.trackAnimation(animation);
     animations.add(animation);
-    try { await animation.finished; } catch {} finally { animations.delete(animation); if(options.fill!=='forwards')animation.cancel(); }
+    try { await animation.finished; } catch {} finally { release();animations.delete(animation); if(options.fill!=='forwards')animation.cancel(); }
   }
 
   async function deal() {
@@ -294,6 +297,7 @@ export function mount(root, ctx) {
     if (round.done) {
       if (creditCompletion) finish('twentyfour');
       else sound(true);
+      ctx.result?.('won',{moves:round.steps.length,assisted:round.assisted});
       status.set(round.assisted ? '借助提示完成了，下一局试试独立解出来。' : '漂亮！三次合并，正好 24。', 'success');
       celebrate();
       next.focus({ preventScroll: true });
@@ -329,11 +333,13 @@ export function mount(root, ctx) {
 
   async function startNewRound() {
     if (busy) return;
+    return startGame(ctx,'new-round',async()=>{
     round = createRound(generate24(ctx.rng).numbers);
     clearSelection();
     table.querySelector('.tf-confetti')?.remove();
     render();
     await deal();
+    });
   }
 
   function keyboard(event) {

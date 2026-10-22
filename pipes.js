@@ -1,5 +1,6 @@
-import {el,button,stat,statusNode,sound,finish} from './shared.js?v=13';
-import {createMotion} from './motion.js?v=13';
+import {startGame} from './game-transition.js?v=27';
+import {el,button,stat,statusNode,sound,finish} from './shared.js?v=27';
+import {createMotion} from './motion.js?v=27';
 export const dirs=[[-1,0,1,4,'n'],[0,1,2,8,'e'],[1,0,4,1,'s'],[0,-1,8,2,'w']];
 export const rotate=mask=>((mask<<1)&15)|((mask>>3)&1);
 export function generatePipes(rng=Math.random,size=5){const board=Array(size*size).fill(0),seen=new Set([0]);function visit(i){const neighbors=dirs.map(d=>({d,rank:rng()})).sort((a,b)=>a.rank-b.rank);for(const {d:[dr,dc,bit,back]}of neighbors){const r=Math.floor(i/size)+dr,c=i%size+dc,j=r*size+c;if(r<0||r>=size||c<0||c>=size||seen.has(j))continue;seen.add(j);board[i]|=bit;board[j]|=back;visit(j);}}visit(0);const solution=[...board];for(let i=0;i<board.length;i++)for(let k=Math.floor(rng()*4);k>0;k--)board[i]=rotate(board[i]);if(checkPipes(board,size).won)board[0]=rotate(board[0]);return {board,solution};}
@@ -10,7 +11,7 @@ export function mount(root,ctx){
   const board=el('div',{class:'board board-pipes','aria-label':'接水管棋盘'});
   const undo=button('撤销',()=>{if(busy)return;const old=state.history.pop();if(old){state.board=old;state.moves--;state.done=false;hinted=-1;render();}});
   const hint=button('提示',()=>{if(busy||state.done)return;hinted=state.board.findIndex((v,i)=>v!==state.solution[i]);render();status.set('转动闪亮的管道，试着接通它。');},'plain');
-  const restart=button('新一局',()=>{if(!busy)motion.confirmRestart(state.moves>0&&!state.done,()=>{state=fresh();hinted=-1;render();});},'plain');
+  const restart=button('新一局',()=>{if(!busy)motion.confirmRestart(state.moves>0&&!state.done,()=>startGame(ctx,'new-round',()=>{state=fresh();hinted=-1;render();}));},'plain');
   root.append(el('div',{class:'game-toolbar'},[el('div',{class:'stats'},[moves.node,count.node]),el('div',{class:'actions'},[undo,hint,restart])]),board,status.node);
   function fresh(){return {...generatePipes(ctx.rng),moves:0,history:[],done:false};}
   async function choose(i){
@@ -20,7 +21,7 @@ export function mount(root,ctx){
     const before=checkPipes(state.board).connected;
     state.history.push([...state.board]);if(state.history.length>150)state.history.shift();
     state.board[i]=rotate(mask);state.moves++;hinted=-1;
-    const result=checkPipes(state.board);if(result.won){state.done=true;finish('pipes');}ctx.save(state);sound();
+    const result=checkPipes(state.board);if(result.won){state.done=true;ctx.result?.('won',{moves:state.moves});finish('pipes');}ctx.save(state);sound();
     await motion.play(board.children[i].firstElementChild,[{transform:'rotate(0)'},{transform:'rotate(90deg)'}],160);
     if(!motion.alive)return;busy=false;render();
     let delay=0;for(const j of result.connected)if(!before.has(j)){motion.play(board.children[j],[{opacity:.4},{opacity:1}],180,{delay:Math.min(delay++*25,180)});}

@@ -1,6 +1,7 @@
-import {el,button,stat,statusNode,sound,finish} from './shared.js?v=13';
-import {createMotion} from './motion.js?v=13';
-import {t} from './i18n.js?v=13';
+import {startGame} from './game-transition.js?v=27';
+import {el,button,stat,statusNode,sound,finish} from './shared.js?v=27';
+import {createMotion} from './motion.js?v=27';
+import {t} from './i18n.js?v=16';
 // Original hand-drawn 5×5 puzzles. Clue uniqueness is verified in tests.
 export const patterns=[
 {name:'小小爱心',rows:['01010','11111','11111','01110','00100']},
@@ -22,6 +23,7 @@ export function strokeCells(start,end,size=5,axis=null){
   const target=axis==='row'?r*size+cc:rr*size+c,step=target===start?1:Math.sign(target-start)*(axis==='row'?1:size),out=[];
   for(let i=start;;i+=step){out.push(i);if(i===target)break;}return out;
 }
+export const pageInfo=ctx=>{const i=ctx.load()?.level;return {level:String(Number.isInteger(i)&&i>=0&&i<patterns.length?i+1:1)};};
 export function mount(root,ctx){
   let state=ctx.load()||fresh(),mode=1,stroke=null;
   const motion=createMotion(),filled=stat('已涂格'),status=statusNode(),board=el('div',{class:'nonogram','aria-label':'数织棋盘'});
@@ -31,15 +33,15 @@ export function mount(root,ctx){
     rows[r]=el('div',{class:'clue'});board.append(rows[r]);
     for(let c=0;c<5;c++){const i=r*5+c;cells[i]=el('button',{type:'button',class:'cell','data-index':i,onclick:e=>{if(e.detail===0)single(i,mode);},oncontextmenu:e=>{e.preventDefault();if(!stroke)single(i,-1);}});board.append(cells[i]);}
   }
-  const select=el('select',{class:'level-select','aria-label':'选择数织关卡',onchange:e=>{const level=Number(e.target.value);select.value=state.level;motion.confirmRestart(state.history.length>0&&!state.done,()=>{state=fresh(level);render();});}});
+  const select=el('select',{class:'level-select','aria-label':'选择数织关卡',onchange:e=>{const level=Number(e.target.value);select.value=state.level;motion.confirmRestart(state.history.length>0&&!state.done,()=>startGame(ctx,'select',()=>{state=fresh(level);render();},{level:String(level+1)}));}});
   patterns.forEach((_,i)=>select.append(el('option',{value:i,text:`第 ${i+1} 关`})));
   const undo=button('撤销',()=>{const old=state.history.pop();if(old){state.cells=old;state.done=false;render();}});
   const paint=button('■ 涂色',()=>{mode=1;render();}),cross=button('× 标空',()=>{mode=-1;render();});
-  const next=button('下一关',()=>{state=fresh((state.level+1)%patterns.length);render();});
-  root.append(el('div',{class:'game-toolbar'},[el('div',{class:'stats'},[filled.node]),el('div',{class:'actions'},[select,undo,button('重置',()=>motion.confirmRestart(state.history.length>0&&!state.done,()=>{state=fresh(state.level);render();}),'plain')])]),board,el('div',{class:'mode-switch'},[paint,cross]),status.node,next);
+  const next=button('下一关',()=>{const level=(state.level+1)%patterns.length;return startGame(ctx,'next',()=>{state=fresh(level);render();},{level:String(level+1)});});
+  root.append(el('div',{class:'game-toolbar'},[el('div',{class:'stats'},[filled.node]),el('div',{class:'actions'},[select,undo,button('重置',()=>motion.confirmRestart(state.history.length>0&&!state.done,()=>startGame(ctx,'restart',()=>{state=fresh(state.level);render();},{level:String(state.level+1)})),'plain')])]),board,el('div',{class:'mode-switch'},[paint,cross]),status.node,next);
   function fresh(level=ctx.daily?ctx.seed%patterns.length:0){return {level,cells:Array(25).fill(0),history:[],done:false};}
   function remember(){state.history.push([...state.cells]);if(state.history.length>80)state.history.shift();}
-  function complete(){if(!state.done&&patternBits(patterns[state.level]).every((v,i)=>v===Number(state.cells[i]===1))){state.done=true;finish('nonogram');motion.pop(board);}render();}
+  function complete(){if(!state.done&&patternBits(patterns[state.level]).every((v,i)=>v===Number(state.cells[i]===1))){state.done=true;ctx.result?.('won');finish('nonogram');motion.pop(board);}render();}
   function setCell(i,value){if(state.cells[i]===value)return;state.cells[i]=value;render();motion.pop(cells[i]);}
   function single(i,value){if(state.done)return;remember();setCell(i,state.cells[i]===value?0:value);sound();complete();}
   const down=e=>{

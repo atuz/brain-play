@@ -1,4 +1,4 @@
-import { normalizeLanguage } from './i18n.js?v=13';
+import { normalizeLanguage } from './i18n.js?v=16';
 export const normalizeCountry = value => /^[a-z]{2}$/i.test(String(value || '')) ? String(value).toUpperCase() : '';
 export function browserCountry(locales) {
   for (const locale of locales) {
@@ -10,10 +10,11 @@ export function browserCountry(locales) {
   return '';
 }
 // Link parameters supplied by a native app take priority over saved preferences.
-export function resolvePreferences(href, saved = {}, browserLanguages = ['en-US'], browserLocale = '') {
+export function resolvePreferences(href, saved = {}, browserLanguages = ['en-US'], browserLocale = '', defaults = {}) {
   const url = new URL(href);
   const language = normalizeLanguage(url.searchParams.get('lang'))
     || normalizeLanguage(saved.language)
+    || normalizeLanguage(defaults.language)
     || browserLanguages.map(normalizeLanguage).find(Boolean) || 'en';
   const country = normalizeCountry(url.searchParams.get('country'))
     || browserCountry([...browserLanguages, browserLocale]);

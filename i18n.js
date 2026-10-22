@@ -1,4 +1,5 @@
-import {dominoEnglish,dominoTraditional} from './domino-i18n.js?v=13';
+import {dominoEnglish,dominoTraditional} from './domino-i18n.js?v=22';
+import {machineEnglish,machineTraditional} from './machine-i18n.js';
 export const languages = [
   { code: 'zh-CN', name: '简体中文' },
   { code: 'zh-TW', name: '繁體中文' },
@@ -16,6 +17,7 @@ export function setLanguage(code) { currentLanguage = normalizeLanguage(code) ||
 
 const english = {
   ...dominoEnglish,
+  ...machineEnglish,
   "按 1、2、3、5、8、13… 数列，只能合并相邻两数，例如 2＋3＝5。1＋1＝2；其他相同数不能合并。每个数字每次滑动仅合并一次。":"Use the sequence 1, 2, 3, 5, 8, 13… Only consecutive terms merge, such as 2 + 3 = 5. Also, 1 + 1 = 2; other equal numbers cannot merge. Each tile merges at most once per swipe.",
   "怎么玩":"How to play",
   "规则与限制":"Rules",
@@ -66,6 +68,7 @@ const english = {
   "相邻的斐波那契数可以合并，例如 2＋3＝5、3＋5＝8。1＋1＝2；其他相同数字不能合并。":"Consecutive Fibonacci numbers merge, such as 2 + 3 = 5 and 3 + 5 = 8. 1 + 1 = 2; other equal numbers cannot merge.",
   "两个相同数字相碰会合成它们的和，例如 2＋2＝4。每个数字在一次滑动中只能合并一次。":"Matching numbers combine into their sum, such as 2 + 2 = 4. Each tile can merge only once per swipe.",
 
+  '返回时自动保存到手机，下次继续。':'Automatically saved to your phone when you return. Continue next time.',
   '目标排列':'Goal layout','进度只保存在当前浏览器。':'Progress is saved in this browser only.',
   '排好 1—15，空格留在右下角。':'Order 1–15. Leave the gap at the bottom right.',
   '箭头和滑动方向表示数字移动的方向。':'Arrows and swipes move the numbered tiles in that direction.',
@@ -183,6 +186,7 @@ const traditionalPairs = [
 ];
 const traditionalCharacters = Object.fromEntries(`设設 语語 国國 区區 码碼 动動 戏戲 数數 点點 连連 灭滅 华華 龙龍 织織 猜猜 简簡 体體 选選 运運 算算 张張 牌牌 这這 个個 为為 来來 发發 合合 并併 过過 关關 页頁 进進 度度 当當 前前 浏瀏 览覽 器器 自自 动動 识識 别別 写寫 处處 时時 间間 线線 传傳 递遞 阅閱 读讀 转轉 换換 复復 开開 够夠 获獲 得得 剩剩 余餘 对對 消消 还還 值值 样樣 录錄 验驗 护護 让讓 从從 顺順 负負 结結 果果 块塊 邻鄰 橙橙 蓝藍 绿綠 黄黃 树樹 热熱 杯杯 帆帆 花花 朵朵 箭箭 头頭 图圖 案案 爱愛 心心 复復 标標 记記 涂塗 长長 两兩 组組 计計 显顯 获獲 单單 级級 达達 到到 战戰 继繼 续續 边邊 缘緣 移移 换換 脑腦 脑腦 场場 声聲 音音 证證 误誤 试試 无無 解解 键鍵 盘盤 后後 台臺 确確 实實 准準 请請 检檢 查查 括括 号號 没沒 有有 给給 把把 闭閉 仅僅 式式 练練 习習 启啟 画畫 户戶 断斷 输輸 入入 待待 击擊 应應 注註 帐帳 号號 奖獎 励勵 层層 独獨 立立 与與 会會 侧側 储儲 内內 减減 参參 围圍 帮幫 弯彎 归歸 径徑 择擇 晓曉 暂暫 机機 条條 灯燈 游遊 种種 经經 绕繞 着著 载載 里裡 针針 销銷 闪閃 问問 题題 双雙 莲蓮 苏蘇 断斷 错錯 满滿 尝嘗 颗顆 总總 终終 局局 获獲 关關 胜勝 顶頂 笔筆 实實 测測 删刪 将將 赢贏 么麼 规規 则則 隐隱 横橫 竖豎 紧緊 盏盞 尽盡 红紅 许許 须須 诉訴 们們 现現 于於 拢攏 变變 响響 钮鈕 据據 几幾 馈饋` .split(' ').filter(Boolean).map(pair => [pair[0], pair[1]]));
 function traditional(text) {
+  if(machineTraditional[text])return machineTraditional[text];
   if(dominoTraditional[text])return dominoTraditional[text];
   let result = text;
   for (const [a, b] of traditionalPairs) result = result.replaceAll(a, b);

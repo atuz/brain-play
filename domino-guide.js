@@ -1,8 +1,8 @@
-import {at,clone,hasFloor,pathTo} from './domino-engine.js?v=13';
+import {at,clone,hasFloor,neighbors} from './domino-engine.js?v=16';
 
 export function failureSummary(result){
-  return ({tie:'开门牌和标出的骨牌同时倒下；开门牌必须更晚。',
-    early:'开门牌先倒了，标出的骨牌还在后面。',
+  return ({tie:'开门牌必须最后一个倒',
+    early:'开门牌必须最后一个倒',
     remaining:'还有骨牌没倒，已在棋盘上标出。',
     crash:'标出的骨牌撞坏了，落下的牌需要分叉牌接住。',
   })[result?.reason]||'连锁没有完成，再调整一下。';
@@ -20,9 +20,11 @@ export function referenceLayout(level){
 }
 export function nextGuide(level,position){
   const goal=referenceLayout(level),pieces=position.pieces,key=p=>`${p.x},${p.y}`;
+  const connected=new Set([key(position.player)]),queue=[position.player];
+  for(let i=0;i<queue.length;i++)for(const p of neighbors(level,queue[i]))if(!connected.has(key(p))){connected.add(key(p));queue.push(p);}
   const occupied=p=>pieces.some(q=>at(p,q));
   const correct=p=>goal.some(q=>q.type===p.type&&at(p,q));
-  const reachable=p=>pathTo(level,position.player,p)!==null;
+  const reachable=p=>connected.has(key(p));
   const floor=[];
   for(let y=0;y<level.height;y++)for(let x=0;x<level.width;x++)if(hasFloor(level,x,y))floor.push({x,y});
   const buffer=()=>floor.find(p=>!occupied(p)&&!at(p,level.exit)&&!goal.some(q=>at(p,q))&&reachable(p));

@@ -1,6 +1,7 @@
-import {el,button,stat,statusNode,shuffle,finish} from './shared.js?v=13';
-import {createMotion} from './motion.js?v=13';
-import {t} from './i18n.js?v=13';
+import {startGame} from './game-transition.js?v=27';
+import {el,button,stat,statusNode,shuffle,finish} from './shared.js?v=27';
+import {createMotion} from './motion.js?v=27';
+import {t} from './i18n.js?v=16';
 export function compareGuess(secret,guess){let a=0,b=0;for(let i=0;i<4;i++)if(secret[i]===guess[i])a++;else if(secret.includes(guess[i]))b++;return {a,b};}
 export function validGuess(guess){return /^\d{4}$/.test(guess)&&new Set(guess).size===4;}
 export function mount(root,ctx){
@@ -16,7 +17,7 @@ export function mount(root,ctx){
   const again=button('再来一局 →',restart);again.className='btn guess-next';
   root.append(el('div',{class:'game-toolbar'},[el('div',{class:'stats'},[attempts.node,wins.node]),button('新一局',()=>motion.confirmRestart(state.guesses.length>0&&!state.done,restart),'plain')]),entry,keypad,status.node,again,el('p',{class:'guess-legend',text:'A：数字和位置都对　B：数字对，位置不对'}),list);
   function fresh(){return {secret:shuffle('0123456789'.split(''),ctx.rng).slice(0,4).join(''),guesses:[],draft:Array(4).fill(''),done:false};}
-  function restart(){state=fresh();draft=Array(4).fill('');cursor=0;render();}
+  function restart(){return startGame(ctx,'new-round',()=>{state=fresh();draft=Array(4).fill('');cursor=0;render();});}
   function save(){state.draft=[...draft];ctx.save(state);}
   function type(digit){
     if(state.done)return;
@@ -30,7 +31,7 @@ export function mount(root,ctx){
     if(!validGuess(value)){status.set('请输入四个不重复的数字，可以以 0 开头。','error');motion.shake(entry);return;}
     if(state.guesses.includes(value)){status.set('这一组已经猜过了，试试别的组合。');motion.shake(entry);return;}
     state.guesses.push(value);
-    if(value===state.secret){state.done=true;const count=ctx.read('solved:guess',0)+1;ctx.write('solved:guess',count);wins.set(count);finish('guess');}
+    if(value===state.secret){state.done=true;const count=ctx.read('solved:guess',0)+1;ctx.write('solved:guess',count);wins.set(count);ctx.result?.('won',{attempts:state.guesses.length});finish('guess');}
     draft=Array(4).fill('');cursor=0;render();
     const row=list.firstElementChild;motion.play(row,[{opacity:0,transform:'translateY(-8px)'},{opacity:1,transform:'translateY(0)'}],220);
     for(const [i,node]of [...row.querySelectorAll('.guess-digits span,.guess-result')].entries())motion.play(node,[{opacity:0,transform:'rotateX(-75deg)'},{opacity:1,transform:'rotateX(0)'}],180,{delay:i*45});

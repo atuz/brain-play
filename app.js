@@ -1,20 +1,32 @@
-import { el, read, write, dateSeed, seeded, toast } from './shared.js?v=13';
-import { games, preview } from './catalog.js?v=13';
-import { languages, setLanguage, getLanguage, t } from './i18n.js?v=13';
-import { normalizeCountry, resolvePreferences, updatePreferenceURL } from './preferences.js?v=13';
+import { el, read, write, dateSeed, seeded, toast } from './shared.js?v=27';
+import { games, preview } from './catalog.js?v=23';
+import { languages, setLanguage, getLanguage, t } from './i18n.js?v=16';
+import { resolvePreferences, updatePreferenceURL } from './preferences.js?v=27';
 
-import { connectAppHost } from './app-host.js?v=13';
+import { connectAppHost } from './app-host.js?v=27';
+import { storage, gameCodes } from './storage.js?v=27';
+import {gameRuntime,bindGameLifecycle} from './game-runtime.js?v=26';
+import {createRoundSession} from './game-round.js?v=27';
 
 const appHost = connectAppHost(location.href, window);
 const main = document.querySelector('#main');
 const header = document.querySelector('#app-header');
-const preferences = resolvePreferences(location.href, read('preferences', {}), navigator.languages || [navigator.language], Intl.DateTimeFormat().resolvedOptions().locale);
-let country = preferences.country;
+const waiting=el('div',{class:'app-game-wait',role:'status',hidden:true,text:'…','aria-label':'准备中'});
+main.before(waiting);
+function setWaiting(value){gameRuntime.setPaused('navigation',value);main.setAttribute('aria-busy',String(value));waiting.hidden=!value;}
+gameRuntime.subscribe(paused=>{main.inert=paused;});
+bindGameLifecycle(window,document,gameRuntime,appHost.embedded&&appHost.configuration.capabilities.activity!==false);
+document.addEventListener('keydown',event=>{if(gameRuntime.paused&&event.key!=='Tab'&&!header.contains(event.target)){event.preventDefault();event.stopImmediatePropagation();}},true);
+const preferences = resolvePreferences(location.href, read('preferences', {}), navigator.languages || [navigator.language], Intl.DateTimeFormat().resolvedOptions().locale,appHost.configuration.config);
+const country = preferences.country;
 setLanguage(preferences.language);
 history.replaceState(null, '', preferences.url);
 let cleanup, currentGame, activeModule, routeVersion = 0;
+let initialNavigation=true,lastLevelInfo=null;
+const initialNavigationReason=performance.getEntriesByType('navigation')[0]?.type==='reload'?'reload':'enter';
 
 function applyDocumentPreferences() {
+  document.documentElement.dataset.theme=appHost.configuration.config.theme||'light';
   document.documentElement.lang = getLanguage();
   document.documentElement.dataset.motion = read('animations', true) ? 'on' : 'off';
   document.querySelector('.skip').textContent = t('跳到主要内容');
@@ -23,8 +35,11 @@ applyDocumentPreferences();
 document.querySelector('.skip').addEventListener('click', event => { event.preventDefault(); main.focus(); main.scrollIntoView(); });
 
 function returnToApp() {
-  if (!appHost.close()) toast('请使用 App 顶部的返回按钮。');
+  if (!appHost.close(storage.native ? storage.snapshot() : undefined)) toast('请使用 App 顶部的返回按钮。');
 }
+// Also used by the native fallback back button. No timer, background hook or
+// per-move message is registered: saves are transferred only on return.
+if (storage.native) window.brainPlayExportSave = () => storage.snapshot();
 
 function headerView(game) {
   header.replaceChildren();
@@ -108,27 +123,17 @@ function showSettings() {
   const language = el('select', { id: 'setting-language', 'aria-label': '语言' });
   languages.forEach(item => language.append(el('option', { value: item.code, text: item.name })));
   language.value = getLanguage();
-  const code = el('input', { id: 'setting-country', type: 'text', maxlength: '2', inputmode: 'text', autocapitalize: 'characters', autocomplete: 'off', placeholder: 'CA', 'aria-label': '国家／地区代码' });
-  code.value = country;
-  const auto = el('button', { type: 'button', class: 'btn plain small', text: '自动', onclick: () => {
-    code.value = resolvePreferences(location.origin + location.pathname, {}, navigator.languages || [navigator.language], Intl.DateTimeFormat().resolvedOptions().locale).country;
-  } });
   const audio = el('input', { type: 'checkbox', id: 'setting-sound', checked: read('sound', false) });
   const motion = el('input', { type: 'checkbox', id: 'setting-motion', checked: read('animations', true) });
   form.append(
     el('label', { class: 'settings-label', for: 'setting-language', text: '语言' }), language,
-    el('label', { class: 'settings-label', for: 'setting-country', text: '国家／地区代码' }),
-    el('div', { class: 'country-field' }, [code, auto]),
     el('label', { class: 'settings-toggle', for: 'setting-sound' }, [el('span', { text: '音效' }), audio]),
     el('label', { class: 'settings-toggle', for: 'setting-motion' }, [el('span', { text: '动画' }), motion]),
-    el('p', { class: 'settings-note', text: '进度只保存在当前浏览器。' }),
+    el('p', { class: 'settings-note', text: storage.native ? '返回时自动保存到手机，下次继续。' : '进度只保存在当前浏览器。' }),
     el('button', { type: 'submit', class: 'btn settings-done', text: '完成' }),
   );
   form.addEventListener('submit', event => {
     event.preventDefault();
-    if (code.value.trim() && !normalizeCountry(code.value.trim())) { code.setCustomValidity(t('国家代码需要两位英文字母，例如 CA。')); code.reportValidity(); return; }
-    code.setCustomValidity('');
-    country = normalizeCountry(code.value.trim());
     setLanguage(language.value);
     write('preferences', { language: getLanguage(), country });
     write('sound', audio.checked);
@@ -138,29 +143,37 @@ function showSettings() {
     modal.close();
     void route(false);
   });
-  code.addEventListener('input', () => code.setCustomValidity(''));
   modal.append(form);
   modal.showModal();
 }
 
 const mounts = {
-  domino: () => import('./domino.js?v=13'),
-  '2048': () => import('./2048.js?v=13'), twentyfour: () => import('./twentyfour.js?v=13'),
-  lights: () => import('./lights.js?v=13'), fifteen: () => import('./fifteen.js?v=13'),
-  pipes: () => import('./pipes.js?v=13'), nonogram: () => import('./nonogram.js?v=13'),
-  link: () => import('./link.js?v=13'), stars: () => import('./stars.js?v=13'), guess: () => import('./guess.js?v=13'),
+  machine: () => import('./machine.js?v=32'),
+  domino: () => import('./domino.js?v=27'),
+  '2048': () => import('./2048.js?v=27'), twentyfour: () => import('./twentyfour.js?v=27'),
+  lights: () => import('./lights.js?v=27'), fifteen: () => import('./fifteen.js?v=27'),
+  pipes: () => import('./pipes.js?v=27'), nonogram: () => import('./nonogram.js?v=27'),
+  link: () => import('./link.js?v=27'), stars: () => import('./stars.js?v=27'), guess: () => import('./guess.js?v=27'),
 };
 
 async function route(scroll = true) {
   const version = ++routeVersion;
+  appHost.cancel();setWaiting(false);
+  const previousGame = currentGame;
   cleanup?.();
   cleanup = null;
   activeModule = null;
   const raw = location.hash.slice(1) || '/';
   const [path, query = ''] = raw.split('?');
   const id = path.split('/')[2];
+  if (storage.native && previousGame && previousGame.id !== id) appHost.checkpoint(storage.snapshot());
   currentGame = games.find(game => game.id === id);
-  if (!currentGame) { home(); if (scroll) window.scrollTo(0, 0); return; }
+  if (!currentGame) {
+    home();
+    if(initialNavigation||previousGame)appHost.navigate({screen:'home',reason:initialNavigation?initialNavigationReason:'back'});
+    initialNavigation=false;
+    if (scroll) window.scrollTo(0, 0); return;
+  }
   headerView(currentGame);
   document.title = `${t(currentGame.name)} · Brain Play`;
   const daily = new URLSearchParams(query).get('daily') === '1';
@@ -176,16 +189,57 @@ async function route(scroll = true) {
     const name = t(module.title?.({ read }) || currentGame.name);
     panel.setAttribute('aria-label', name);
     document.title = `${name} · Brain Play`;
-    cleanup = module.mount(panel, {
+    const levelInfo=()=>module.pageInfo?.({read,load:()=>read(saveKey)})||{level:'round'};
+    const page=(reason,info={})=>({screen:'game',game:gameCodes[id],daily,...(daily?{day:String(seed)}:{}),...levelInfo(),...info,reason});
+    const stateKey=module.roundKey?.({read})||saveKey;
+    const initialState=read(stateKey)??(id==='2048'?read(saveKey):null);
+    const session=createRoundSession({saved:initialState?.__round,
+      legacyFinished:!!(initialState?.done||initialState?.claimed||['failed','won'].includes(initialState?.phase)),
+      now:gameRuntime.now,makeID:()=>globalThis.crypto?.randomUUID?.()||`r${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`,
+      describe:()=>({game:gameCodes[id],...levelInfo(),daily,...(daily?{day:String(seed)}:{})}),
+      send:result=>appHost.result(result)});
+    const flushRound=()=>{const state=read(stateKey);if(state&&typeof state==='object')write(stateKey,session.stamp(state));};
+    let transitioning=false;
+    const transition=async(reason,info,action)=>{
+      if(version!==routeVersion||transitioning)return;
+      transitioning=true;setWaiting(true);
+      try{
+        const permitted=await appHost.begin(page(reason,info));
+        if(permitted&&version===routeVersion){
+          // Release the navigation pause before awaiting a new deal/animation.
+          // App/ad/visibility pauses remain independently in force.
+          session.reset();setWaiting(false);await action();lastLevelInfo=levelInfo();
+        }
+      }finally{transitioning=false;if(version===routeVersion)setWaiting(false);}
+    };
+    const nextInfo=levelInfo();
+    let entryPermit=null;
+    if(scroll||initialNavigation||JSON.stringify(lastLevelInfo)!==JSON.stringify(nextInfo)){
+      setWaiting(true);appHost.ready();
+      entryPermit=appHost.begin(page(initialNavigation?initialNavigationReason:scroll?'enter':'settings'));
+    }
+    if(version!==routeVersion)return;
+    const dispose = module.mount(panel, {
       daily, seed, rng: daily ? seeded(seed + games.indexOf(currentGame)) : Math.random,
-      load: () => read(saveKey), save: state => write(saveKey, state), read, write,
+      load: () => read(saveKey), save: state => write(saveKey,session.stamp(state)), read,
+      write:(key,value)=>write(key,key===stateKey?session.stamp(value):value),
+      result:(outcome,metrics)=>{if(version===routeVersion&&session.finish(outcome,metrics))flushRound();},
+      roundPause:value=>session.pause(value),
+      transition,
     });
+    cleanup=()=>{dispose?.();flushRound();};
     const summary=module.summary?.({read})||currentGame.summary;
     const ruleStrip=el('button',{type:'button',class:'rule-strip','aria-label':'玩法与目标',onclick:()=>showHelp(currentGame)},[
       el('span',{class:'rule-summary',text:summary}),el('span',{class:'rule-more',text:'玩法 ›','aria-hidden':'true'}),
     ]);
     panel.querySelector('.game-toolbar').after(ruleStrip);
+    lastLevelInfo=levelInfo();
+    initialNavigation=false;
+    if(entryPermit){const permitted=await entryPermit;if(!permitted||version!==routeVersion)return;}
+    setWaiting(false);
   } catch (error) {
+    if(version!==routeVersion)return;
+    setWaiting(false);
     console.error(error);
     panel.replaceChildren(el('p', { class: 'status error', text: '游戏加载遇到了问题，请刷新页面后重试。' }));
   }

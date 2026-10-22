@@ -1,7 +1,8 @@
-import { el, button, stat, statusNode, controls, keyboardAndSwipe, sound, finish } from './shared.js?v=13';
-import { normalizeMergeSettings, mergeTarget, mergeSlot, tileRank, slideBoard, hasMoves, spawn, createMergeState, restoreMergeState } from './merge-engine.js?v=13';
-import {createMotion,floatScore} from './motion.js?v=13';
-export { slideLine, slideBoard, hasMoves, spawn } from './merge-engine.js?v=13';
+import {startGame} from './game-transition.js?v=27';
+import { el, button, stat, statusNode, controls, keyboardAndSwipe, sound, finish } from './shared.js?v=27';
+import { normalizeMergeSettings, mergeTarget, mergeSlot, tileRank, slideBoard, hasMoves, spawn, createMergeState, restoreMergeState } from './merge-engine.js?v=16';
+import {createMotion,floatScore} from './motion.js?v=27';
+export { slideLine, slideBoard, hasMoves, spawn } from './merge-engine.js?v=16';
 
 export function settings(ctx) {
   return {
@@ -14,6 +15,8 @@ export function settings(ctx) {
     save: value => ctx.write('options:2048', normalizeMergeSettings(value)),
   };
 }
+export const pageInfo = ctx => {const {size,mode}=normalizeMergeSettings(ctx.read('options:2048'));return {level:'round',variant:`${mode}:${size}`};};
+export const roundKey=ctx=>`game:${mergeSlot(normalizeMergeSettings(ctx.read('options:2048')))}`;
 export const title = ctx => normalizeMergeSettings(ctx.read('options:2048')).mode === 'fibonacci' ? '2584' : '2048';
 export function help(ctx) {
   const { size, mode } = normalizeMergeSettings(ctx.read('options:2048'));
@@ -52,7 +55,7 @@ export function mount(root, ctx) {
     state = { ...state, ...old };
     render();
   });
-  const reset = () => { if(!busy)motion.confirmRestart(state.history.length>0,()=>{state=createMergeState(size,mode,ctx.rng);render();}); };
+  const reset = () => { if(!busy)motion.confirmRestart(state.history.length>0,()=>startGame(ctx,'new-round',()=>{state=createMergeState(size,mode,ctx.rng);render();})); };
   const restart=button('新一局',reset,'plain');
   root.append(
     el('div', { class: 'game-toolbar' }, [el('div', { class: 'stats' }, [score.node, best.node]), el('div', { class: 'actions' }, [undo, restart])]),
@@ -72,8 +75,10 @@ export function mount(root, ctx) {
     state.score += next.score;
     if (!state.won && state.board.some(value => value >= target)) {
       state.won = true;
+      ctx.result?.('won',{score:state.score});
       if (!state.claimed) { state.claimed = true; finish(slot); }
     }
+    if(!hasMoves(state.board,size,mode))ctx.result?.(state.won?'won':'lost',{score:state.score});
     sound();busy=true;undo.disabled=true;restart.disabled=true;
     await motion.grid(board,next.movements,render,150,[spawned]);
     if(!motion.alive)return;

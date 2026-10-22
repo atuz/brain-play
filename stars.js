@@ -1,5 +1,6 @@
-import {el,button,stat,statusNode,sound,finish} from './shared.js?v=13';
-import {createMotion,floatScore} from './motion.js?v=13';
+import {startGame} from './game-transition.js?v=27';
+import {el,button,stat,statusNode,sound,finish} from './shared.js?v=27';
+import {createMotion,floatScore} from './motion.js?v=27';
 export function groupAt(board,index,size=8){const color=board[index];if(!color)return [];const seen=new Set([index]),queue=[index];while(queue.length){const i=queue.pop(),r=Math.floor(i/size),c=i%size;for(const [dr,dc]of [[1,0],[-1,0],[0,1],[0,-1]]){const rr=r+dr,cc=c+dc,j=rr*size+cc;if(rr>=0&&rr<size&&cc>=0&&cc<size&&!seen.has(j)&&board[j]===color){seen.add(j);queue.push(j);}}}return [...seen];}
 export function collapseTrace(board,size=8){
   const out=Array(board.length).fill(0),movements=[];let column=0;
@@ -17,7 +18,7 @@ export function mount(root,ctx){
   const motion=createMotion(),score=stat('得分'),best=stat('本机最高',ctx.read('best:stars',0)),status=statusNode();
   const board=el('div',{class:'board board-stars','aria-label':'消灭星星棋盘'});
   const undo=button('撤销',()=>{if(busy)return;const old=state.history.pop();if(old){state.board=old.board;state.score=old.score;state.done=false;selected=[];render();}});
-  const restart=button('新一局',()=>{if(!busy)motion.confirmRestart(state.history.length>0&&!state.done,()=>{state=fresh();selected=[];render();});},'plain');
+  const restart=button('新一局',()=>{if(!busy)motion.confirmRestart(state.history.length>0&&!state.done,()=>startGame(ctx,'new-round',()=>{state=fresh();selected=[];render();}));},'plain');
   root.append(el('div',{class:'game-toolbar'},[el('div',{class:'stats'},[score.node,best.node]),el('div',{class:'actions'},[undo,restart])]),board,status.node);
   function fresh(){const b=Array.from({length:64},()=>1+Math.floor(ctx.rng()*5));b[1]=b[0];return {board:b,score:0,done:false,history:[]};}
   async function choose(i){
@@ -30,7 +31,7 @@ export function mount(root,ctx){
     const remaining=[...state.board];for(const j of group)remaining[j]=0;
     const fallen=collapseTrace(remaining),gained=group.length*group.length*5;
     state.board=fallen.board;state.score+=gained;selected=[];
-    if(!hasGroups(state.board)){state.done=true;const left=state.board.filter(Boolean).length;state.score+=Math.max(0,2000-left*left*20);finish('stars');}
+    if(!hasGroups(state.board)){state.done=true;const left=state.board.filter(Boolean).length;state.score+=Math.max(0,2000-left*left*20);ctx.result?.('finished',{score:state.score});finish('stars');}
     ctx.save(state);sound();
     await Promise.all(group.map(j=>motion.play(board.children[j],[{transform:'scale(1)',opacity:1},{transform:'scale(1.25)',opacity:.8,offset:.3},{transform:'scale(0)',opacity:0}],180)));
     if(!motion.alive)return;

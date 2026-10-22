@@ -6,7 +6,7 @@ import {restore} from './domino.js';
 import {dominoEnglish} from './domino-i18n.js';
 import {translate} from './i18n.js';
 import {games} from './catalog.js';
-import {nextGuide,failureSummary} from './domino-guide.js';
+import {nextGuide,failureSummary,referenceLayout} from './domino-guide.js';
 
 function walk(level,position,target) {
   const path=pathTo(level,position.player,target);
@@ -38,6 +38,23 @@ test('Only the opening tutorial is already arranged; later levels need edits',()
   for(const level of levels.slice(1)) {
     const starter=level.pieces.find(p=>at(p,level.push));
     if(starter) assert.equal(simulate(level,level.pieces,starter.id,level.push.dir).won,false,`Level ${level.id}`);
+  }
+});
+test('Advanced chapters grow in area, relay depth and recorded rearrangements, with a real timing constraint',()=>{
+  for(let chapter=1;chapter<=4;chapter++){
+    const group=levels.filter(level=>level.chapter===chapter);
+    assert.equal(group.length,6);
+    for(const level of group){
+      assert.equal(level.width,9+chapter*4);assert.equal(level.height,level.width);
+      assert.ok(level.plan.length>=chapter*3+1);
+      const arranged=referenceLayout(level),starter=arranged.find(p=>at(p,level.push));
+      assert.ok(arranged.filter(p=>p.type==='splitter').length>=chapter+1);
+      assert.ok(arranged.some(p=>p.type==='bridge'));
+      const withoutDelays=arranged.map(p=>p.type==='delay'?{...p,type:'normal'}:p);
+      const timingFailure=simulate(level,withoutDelays,starter.id,level.push.dir);
+      assert.ok(['early','tie'].includes(timingFailure.reason),`Level ${level.id} should need a delayed trigger branch`);
+      assert.ok(timingFailure.pieces.every(p=>['flat','vanished'].includes(p.state)));
+    }
   }
 });
 test('Trigger cannot be carried, illegal placement cannot overlap or block a door',()=>{
@@ -105,7 +122,7 @@ test('Every domino rule, level, hint and control has complete English and Tradit
 
 function followGuide(level,start){
   let position=clone(start);
-  for(let i=0;i<600;i++){
+  for(let i=0;i<Math.max(600,level.width*level.height*4);i++){
     const step=nextGuide(level,position);assert.notEqual(step.kind,'unavailable',`Level ${level.id} needs a guide`);
     if(step.kind==='push'){
       const piece=position.pieces.find(p=>at(p,position.player));
@@ -131,7 +148,7 @@ test('Screenshot regression: moved upper domino makes the trigger simultaneous; 
   assert.equal(result.won,false);assert.equal(result.reason,'tie');
   assert.deepEqual([...result.problemIds].sort(),['p0','p4']);
   assert.ok(result.pieces.every(p=>['flat','vanished'].includes(p.state)),'Every visible domino has fallen, so a generic retry message is insufficient');
-  assert.match(failureSummary(result),/同时/);
+  assert.equal(failureSummary(result),'开门牌必须最后一个倒');
   const repaired=followGuide(level,position);
   assert.ok(repaired.pieces.some(p=>p.type==='normal'&&p.x===1&&p.y===1));
 });

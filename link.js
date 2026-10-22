@@ -1,5 +1,6 @@
-import {el,button,stat,statusNode,shuffle,sound,finish} from './shared.js?v=13';
-import {createMotion} from './motion.js?v=13';
+import {startGame} from './game-transition.js?v=27';
+import {el,button,stat,statusNode,shuffle,sound,finish} from './shared.js?v=27';
+import {createMotion} from './motion.js?v=27';
 export const symbols=['🍋','🍒','🍇','🍊','🥝','🍓','🍐','🍉','🫐'];
 export function findPath(board,a,b,rows=6,cols=6){if(a===b||!board[a]||board[a]!==board[b])return null;const sr=Math.floor(a/cols)+1,sc=a%cols+1,tr=Math.floor(b/cols)+1,tc=b%cols+1;const queue=[{r:sr,c:sc,d:-1,t:0,path:[[sr,sc]]}],seen=new Map();const directions=[[-1,0],[0,1],[1,0],[0,-1]];for(let h=0;h<queue.length;h++){const cur=queue[h];for(let d=0;d<4;d++){const turns=cur.t+(cur.d!==-1&&cur.d!==d?1:0);if(turns>2)continue;const r=cur.r+directions[d][0],c=cur.c+directions[d][1];if(r<0||r>rows+1||c<0||c>cols+1)continue;if(r===tr&&c===tc)return [...cur.path,[r,c]];if(r>=1&&r<=rows&&c>=1&&c<=cols&&board[(r-1)*cols+c-1])continue;const key=`${r},${c},${d}`;if((seen.get(key)??3)<=turns)continue;seen.set(key,turns);queue.push({r,c,d,t:turns,path:[...cur.path,[r,c]]});}}return null;}
 export function findPair(board,rows=6,cols=6){for(let i=0;i<board.length;i++)if(board[i])for(let j=i+1;j<board.length;j++)if(board[i]===board[j]&&findPath(board,i,j,rows,cols))return [i,j];return null;}
@@ -14,7 +15,7 @@ export function mount(root,ctx) {
   const board=el('div',{class:'board board-link','aria-label':'连连看棋盘'}),stage=el('div',{class:'link-stage'},board);
   const undo=button('撤销',()=>{if(busy)return;const old=state.history.pop();if(old){state.board=old;state.matches--;state.done=false;selected=-1;hinted=[];render();}});
   const hint=button('提示',()=>{if(busy||state.done)return;hinted=findPair(state.board)||[];selected=-1;render();status.set('点选闪亮的两个水果。');},'plain');
-  const restart=button('新一局',()=>{if(!busy)motion.confirmRestart(state.matches>0&&!state.done,()=>{state=fresh();selected=-1;hinted=[];render();});},'plain');
+  const restart=button('新一局',()=>{if(!busy)motion.confirmRestart(state.matches>0&&!state.done,()=>startGame(ctx,'new-round',()=>{state=fresh();selected=-1;hinted=[];render();}));},'plain');
   root.append(el('div',{class:'game-toolbar'},[el('div',{class:'stats'},[remain.node,moves.node]),el('div',{class:'actions'},[undo,hint,restart])]),stage,status.node);
   function fresh(){const values=Array.from({length:18},(_,i)=>[i%9+1,i%9+1]).flat();return {board:reshuffle(values,ctx.rng),matches:0,history:[],done:false};}
   function drawPath(path){
@@ -35,7 +36,7 @@ export function mount(root,ctx) {
     board.children[i].classList.add('selected');
     state.history.push([...state.board]);state.board[i]=state.board[first]=0;state.matches++;selected=-1;hinted=[];
     let reshuffled=false;
-    if(!state.board.some(Boolean)){state.done=true;finish('link');}
+    if(!state.board.some(Boolean)){state.done=true;ctx.result?.('won',{moves:state.matches});finish('link');}
     else if(!findPair(state.board)){state.board=reshuffle(state.board,ctx.rng);reshuffled=true;}
     ctx.save(state);sound();
     const {svg,line}=drawPath(path),length=line.getTotalLength();

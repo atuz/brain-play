@@ -1,15 +1,16 @@
+import {webClient} from './host-config.js?v=27';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {seeded} from './shared.js?v=13';
-import {slideLine,slideBoard,hasMoves} from './2048.js?v=13';
-import {parseExpression,solve24,generate24} from './twentyfour.js?v=13';
-import {flip,solveLights,generateLights} from './lights.js?v=13';
-import {shufflePuzzle,solvedBoard,isSolved} from './fifteen.js?v=13';
-import {rotate,generatePipes,checkPipes} from './pipes.js?v=13';
-import {findPath,findPair,reshuffle} from './link.js?v=13';
-import {groupAt,collapse,hasGroups} from './stars.js?v=13';
-import {runs,clues,patterns,patternBits} from './nonogram.js?v=13';
-import {compareGuess,validGuess} from './guess.js?v=13';
+import {seeded} from './shared.js?v=27';
+import {slideLine,slideBoard,hasMoves} from './2048.js?v=16';
+import {parseExpression,solve24,generate24} from './twentyfour.js?v=16';
+import {flip,solveLights,generateLights} from './lights.js?v=16';
+import {shufflePuzzle,solvedBoard,isSolved} from './fifteen.js?v=16';
+import {rotate,generatePipes,checkPipes} from './pipes.js?v=16';
+import {findPath,findPair,reshuffle} from './link.js?v=16';
+import {groupAt,collapse,hasGroups} from './stars.js?v=16';
+import {runs,clues,patterns,patternBits} from './nonogram.js?v=16';
+import {compareGuess,validGuess} from './guess.js?v=16';
 
 test('2048 merges each tile only once per move',()=>{
   assert.deepEqual(slideLine([2,2,2,2]),{line:[4,4,0,0],score:8});
@@ -70,9 +71,9 @@ test('guess feedback handles leading zeros and disallows repeated digits',()=>{
 });
 
 
-import {calculate,createRound,formatFraction,mergeRound,plan24,resetRound,restoreRound,undoRound} from './twentyfour-engine.js?v=13';
-import {browserCountry,resolvePreferences,updatePreferenceURL} from './preferences.js?v=13';
-import {translate} from './i18n.js?v=13';
+import {calculate,createRound,formatFraction,mergeRound,plan24,resetRound,restoreRound,undoRound} from './twentyfour-engine.js?v=16';
+import {browserCountry,resolvePreferences,updatePreferenceURL} from './preferences.js?v=27';
+import {translate} from './i18n.js?v=16';
 
 test('24 card merges preserve exact fractions and use all four original cards',()=>{
   let r=createRound([3,3,8,8]);
@@ -150,7 +151,7 @@ test('UI translations include dynamic game feedback and accessible labels',()=>{
 });
 
 
-import {mergeTarget,mergeValue,createMergeState,restoreMergeState,normalizeMergeSettings,mergeSlot,spawn} from './merge-engine.js?v=13';
+import {mergeTarget,mergeValue,createMergeState,restoreMergeState,normalizeMergeSettings,mergeSlot,spawn} from './merge-engine.js?v=16';
 
 test('Fibonacci merges consecutive values in either order; only 1 can merge with itself',()=>{
   for(const [a,b,value] of [[1,1,2],[1,2,3],[2,3,5],[3,5,8],[5,8,13],[987,1597,2584]]){
@@ -202,13 +203,13 @@ test('mode and board settings normalize safely and identify six independent save
 });
 
 
-import {connectAppHost} from './app-host.js?v=13';
+import {connectAppHost} from './app-host.js?v=16';
 test('native App navigation detects the WK bridge, preserves its receiver and dispatches close',()=>{
   const messages=[];
   const handler={postMessage(message){assert.equal(this,handler);messages.push(message);}};
   const connection=connectAppHost('https://atuz.github.io/brain-play/?country=CA#/',{webkit:{messageHandlers:{brainPlay:handler}}});
   assert.equal(connection.embedded,true);assert.equal(connection.ready(),true);assert.equal(connection.close(),true);
-  assert.deepEqual(messages,[{type:'ready',source:'brain-play',version:1},{type:'close',source:'brain-play',version:1}]);
+  assert.deepEqual(messages,[{type:'ready',source:'brain-play',version:1,client:webClient},{type:'close',source:'brain-play',version:1}]);
 });
 test('ordinary browsers never request an App pop; App hints without a working bridge fail safely',()=>{
   const browser=connectAppHost('https://example.com/#/game/2048');
@@ -226,9 +227,9 @@ test('App mode survives language changes and game routing',()=>{
   assert.equal(connectAppHost(url.href).embedded,true);
 });
 
-import {tileInDirection,adjacent} from './fifteen.js?v=13';
-import {collapseTrace} from './stars.js?v=13';
-import {strokeCells} from './nonogram.js?v=13';
+import {tileInDirection,adjacent} from './fifteen.js?v=16';
+import {collapseTrace} from './stars.js?v=16';
+import {strokeCells} from './nonogram.js?v=16';
 
 test('sliding puzzle arrows move numbered tiles in the requested direction, including all edges',()=>{
   for(let zero=0;zero<16;zero++){

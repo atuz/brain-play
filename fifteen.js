@@ -1,5 +1,6 @@
-import {el,button,stat,statusNode,controls,keyboardAndSwipe,sound,finish} from './shared.js?v=13';
-import {createMotion} from './motion.js?v=13';
+import {startGame} from './game-transition.js?v=27';
+import {el,button,stat,statusNode,controls,keyboardAndSwipe,sound,finish} from './shared.js?v=27';
+import {createMotion} from './motion.js?v=27';
 export const solvedBoard=()=>Array.from({length:16},(_,i)=>(i+1)%16);
 export function isSolved(board){return board.every((v,i)=>v===(i+1)%16);}
 export function adjacent(board,index){const z=board.indexOf(0);return Math.abs(Math.floor(z/4)-Math.floor(index/4))+Math.abs(z%4-index%4)===1;}
@@ -22,7 +23,7 @@ export function mount(root,ctx) {
     el('div',{class:'goal-grid','aria-label':'按从左到右、从上到下的顺序，排好 1—15。'},solvedBoard().map(v=>el('span',{class:v?'':'empty',text:v||''}))),
   ]);
   const undo=button('撤销',()=>{if(busy)return;const old=state.history.pop();if(old){const before=[...state.board];state.board=old;state.moves--;state.done=false;transition(before);}});
-  const restart=button('新一局',()=>{if(!busy)motion.confirmRestart(state.moves>0&&!state.done,()=>{state=fresh();render();});},'plain');
+  const restart=button('新一局',()=>{if(!busy)motion.confirmRestart(state.moves>0&&!state.done,()=>startGame(ctx,'new-round',()=>{state=fresh();render();}));},'plain');
   root.append(el('div',{class:'game-toolbar'},[el('div',{class:'stats'},[moves.node,placed.node]),el('div',{class:'actions'},[undo,restart])]),goal,board,pad,status.node);
   function fresh(){return {board:shufflePuzzle(ctx.rng),moves:0,history:[],done:false};}
   async function transition(before) {
@@ -39,7 +40,7 @@ export function mount(root,ctx) {
     if(!adjacent(state.board,i)){motion.shake(board.children[i]);return;}
     const before=[...state.board];state.history.push(before);if(state.history.length>200)state.history.shift();
     const z=state.board.indexOf(0);[state.board[z],state.board[i]]=[state.board[i],state.board[z]];state.moves++;
-    if(isSolved(state.board)){state.done=true;finish('fifteen');}
+    if(isSolved(state.board)){state.done=true;ctx.result?.('won',{moves:state.moves});finish('fifteen');}
     sound();transition(before);
   }
   function directionMove(dir){if(state.done){queued=[];return;}if(busy){if(queued.length<3)queued.push(dir);return;}const i=tileInDirection(state.board,dir);if(i>=0)move(i);else{const next=queued.shift();if(next)directionMove(next);}}
