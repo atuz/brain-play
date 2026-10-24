@@ -1,5 +1,6 @@
 import { el, read, write, dateSeed, seeded, toast } from './shared.js?v=48';
 import { games, preview } from './catalog.js?v=48';
+import { isGameReleased } from './release-games.js?v=49';
 import { languages, setLanguage, getLanguage, t } from './i18n.js?v=48';
 import { resolvePreferences, updatePreferenceURL } from './preferences.js?v=48';
 
@@ -67,6 +68,7 @@ function home() {
   document.title = `${t('小小动脑场')} · Brain Play`;
   const grid = el('section', { class: 'home-games', 'aria-label': '游戏' });
   for (const game of games) {
+    if (!isGameReleased(game.id)) continue;
     const card = el('a', { class: 'home-game', href: `#/game/${game.id}`, 'aria-label': `${t('开始玩')} ${t(game.name)}` });
     const art = el('span', { class: 'home-game-art', style: `--tint:${game.tint}` });
     art.innerHTML = preview(game.id);
@@ -179,8 +181,9 @@ async function route(scroll = true) {
   const [path, query = ''] = raw.split('?');
   const id = path.split('/')[2];
   if (storage.native && previousGame && previousGame.id !== id) appHost.checkpoint(storage.snapshot());
-  currentGame = games.find(game => game.id === id);
+  currentGame = games.find(game => game.id === id && isGameReleased(game.id));
   if (!currentGame) {
+    if (games.some(game => game.id === id)) history.replaceState(null, '', '#/');
     home();
     if(initialNavigation||previousGame)appHost.navigate({screen:'home',reason:initialNavigation?initialNavigationReason:'back'});
     initialNavigation=false;
