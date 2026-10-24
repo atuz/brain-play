@@ -1,4 +1,4 @@
-export const webClient=Object.freeze({build:'27',protocol:1,capabilities:['navigation','navigationGate','activity','save','close','result']});
+export const webClient=Object.freeze({build:'46',protocol:1,capabilities:['navigation','navigationGate','activity','save','close','result']});
 const object=v=>v&&typeof v==='object'&&!Array.isArray(v);
 const names=new Set(webClient.capabilities);
 export function readHostConfiguration(href,host={}){

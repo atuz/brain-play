@@ -1,7 +1,7 @@
-import {startGame} from './game-transition.js?v=27';
-import {el,button,stat,statusNode,sound,finish} from './shared.js?v=27';
-import {createMotion} from './motion.js?v=27';
-import {t} from './i18n.js?v=16';
+import {startGame} from './game-transition.js?v=46';
+import {el,button,stat,statusNode,sound,finish} from './shared.js?v=46';
+import {createMotion} from './motion.js?v=46';
+import {t} from './i18n.js?v=46';
 // Original hand-drawn 5×5 puzzles. Clue uniqueness is verified in tests.
 export const patterns=[
 {name:'小小爱心',rows:['01010','11111','11111','01110','00100']},

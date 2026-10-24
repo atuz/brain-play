@@ -1,9 +1,9 @@
-import {readHostConfiguration} from './host-config.js?v=27';
+import {readHostConfiguration} from './host-config.js?v=46';
 // Stable save identifiers. Never reuse an identifier for a different game.
 export const gameCodes = Object.freeze({
   '2048': 'g001', twentyfour: 'g002', link: 'g003', stars: 'g004',
   lights: 'g005', fifteen: 'g006', pipes: 'g007', nonogram: 'g008',
-  guess: 'g009', domino: 'g010', machine: 'g011',
+  guess: 'g009', domino: 'g010', machine: 'g011', laser:'g012', atom:'g013', zeek:'g014', lemmings:'g015',
 });
 const prefix = 'brain-play:v1:';
 const settings = ['preferences', 'sound', 'animations'];

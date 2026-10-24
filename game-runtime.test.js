@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createGameRuntime,bindGameLifecycle} from './game-runtime.js';
+import {createGameRuntime,bindGameLifecycle,bindGameDialogs} from './game-runtime.js';
 import {createGameAudio} from './game-audio.js';
 
 function fixture(){
@@ -56,6 +56,17 @@ test('ordinary browsers use visibility alone and ignore App messages',()=>{
   const {runtime:r}=fixture(),{host,doc,notify}=surface();bindGameLifecycle(host,doc,r,false);
   notify({version:1,active:false,ad:true});assert.equal(r.paused,false);
   doc.hidden=true;doc.dispatchEvent(new Event('visibilitychange'));assert.equal(r.paused,true);
+});
+test('help/settings/level dialogs freeze the clock until every modal and ad has closed',async()=>{
+  const {runtime:r,tick}=fixture();let open=0,notify,disconnected=false;
+  const host={MutationObserver:class{constructor(callback){notify=callback;}observe(target,options){assert.deepEqual(options.attributeFilter,['open']);}disconnect(){disconnected=true;}}};
+  const doc={body:{},querySelector:selector=>{assert.equal(selector,'dialog[open]');return open?{}:null;}};
+  const dispose=bindGameDialogs(host,doc,r),timer=r.delay(120);let done=false;timer.finished.then(()=>done=true);
+  tick(30);open=1;notify();tick(5000);assert.equal(r.now(),30);assert.equal(done,false);
+  open=2;notify();open=1;notify();assert.equal(r.paused,true);
+  r.setPaused('ad',true);open=0;notify();assert.equal(r.paused,true);
+  tick(5000);r.setPaused('ad',false);tick(89);await Promise.resolve();assert.equal(done,false);tick(1);assert.equal(await timer.finished,true);
+  open=1;notify();dispose();assert.equal(disconnected,true);assert.equal(r.paused,false);
 });
 test('an interruption stops active sound, suppresses new notes and never replays old notes',()=>{
   const {runtime:r}=fixture(),notes=[];let suspends=0,resumes=0;

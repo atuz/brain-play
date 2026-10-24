@@ -1,13 +1,13 @@
-import {startGame} from './game-transition.js?v=27';
-import {gameRuntime} from './game-runtime.js?v=26';
-import {createMotion} from './motion.js?v=27';
-import { t } from './i18n.js?v=16';
-import { el, button, stat, statusNode, sound, finish } from './shared.js?v=27';
+import {startGame} from './game-transition.js?v=46';
+import {gameRuntime} from './game-runtime.js?v=46';
+import {createMotion} from './motion.js?v=46';
+import { t } from './i18n.js?v=46';
+import { el, button, stat, statusNode, sound, finish } from './shared.js?v=46';
 import {
   calculate, createRound, displayOp, formatFraction, generate24,
   mergeRound, plan24, resetRound, restoreRound, undoRound,
-} from './twentyfour-engine.js?v=16';
-export { parseExpression, solve24, generate24 } from './twentyfour-engine.js?v=16';
+} from './twentyfour-engine.js?v=46';
+export { parseExpression, solve24, generate24 } from './twentyfour-engine.js?v=46';
 
 export function mount(root, ctx) {
   let round = restoreRound(ctx.load(), ctx.rng);

@@ -102,6 +102,7 @@ const messages={
   "走到最左边的普通牌，向右推倒。开门牌要最后倒下，然后走进门。":["Stand on the leftmost regular domino and push right. Let the door trigger fall last, then enter the door.","走到最左邊的普通牌，向右推倒。開門牌要最後倒下，然後走進門。"],
   "把最右边的普通牌搬到中间的空位，再从左边启动连锁。":["Move the rightmost regular domino into the gap. Start the chain from the left.","把最右邊的普通牌搬到中間的空位，再從左邊啟動連鎖。"],
   "把左侧落单的牌搬到开门牌右侧的空位，再从最右边向左推。":["Move the lone domino on the left into the gap to the right of the door trigger. Push left from the far right.","把左側落單的牌搬到開門牌右側的空位，再從最右邊向左推。"],
+  "把延时牌放进开门牌左边的缺口。让左边先倒完，开门牌必须最后一个倒。":["Put the delay domino in the gap before the trigger. The left branch must finish first; the trigger must fall last.","把延時牌放進開門牌左邊的缺口。讓左邊先倒完，開門牌必須最後一個倒。"],
   "把带沙漏的延时牌搬进缺口。它会停顿一下，再继续传递。":["Move the hourglass delay domino into the gap. It pauses before continuing the chain.","把帶沙漏的延時牌搬進缺口。它會停頓一下，再繼續傳遞。"],
   "只有消失牌可以放在门口。把它搬到门前，接起两边的骨牌。":["Only a vanishing domino can stand in a doorway. Put it there to connect the chain.","只有消失牌可以放在門口。把它搬到門前，接起兩邊的骨牌。"],
   "从梯子绕过去，把搭桥牌搬到断口左侧。它向右倒下后会铺出一格桥。":["Use the ladders to go around. Carry the bridge domino to the left of the gap. It makes a one-tile bridge when it falls right.","從梯子繞過去，把搭橋牌搬到斷口左側。它向右倒下後會鋪出一格橋。"],

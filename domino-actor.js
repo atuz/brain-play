@@ -1,6 +1,6 @@
-import {motionEnabled} from './motion.js?v=27';
-import {gameRuntime} from './game-runtime.js?v=26';
-import {dominoMaterial} from './domino-material.js?v=20';
+import {motionEnabled} from './motion.js?v=46';
+import {gameRuntime} from './game-runtime.js?v=46';
+import {dominoMaterial} from './domino-material.js?v=46';
 
 // Original vector character: four walking legs and two working arms.
 export const antArtwork=`<div class="dc-ant-facing"><svg class="dc-ant-art" viewBox="0 0 80 100" aria-hidden="true">

@@ -1,14 +1,14 @@
-import {startGame} from './game-transition.js?v=27';
-import {gameRuntime} from './game-runtime.js?v=26';
-import {el,sound,finish} from './shared.js?v=27';
-import {t} from './i18n.js?v=16';
-import {parts,copy,dimensions,compatible,worldSize,WIDTH,HEIGHT,STEP} from './machine-parts.js';
-import {machineLevels,machineChapters,sandbox} from './machine-levels.js?v=3';
-import {createMachine,canPlace,validateDraft} from './machine-engine.js?v=3';
-import {drawMachine,drawIcon} from './machine-art.js?v=4';
-import {edgePan,overviewScale,worldPoint} from './machine-camera.js';
-import {connectionPaths,connectionPathData,returnToTray} from './machine-links.js';
-import {hitPart} from './machine-hit.js';
+import {startGame} from './game-transition.js?v=46';
+import {gameRuntime} from './game-runtime.js?v=46';
+import {el,sound,finish} from './shared.js?v=46';
+import {t} from './i18n.js?v=46';
+import {parts,copy,dimensions,compatible,worldSize,WIDTH,HEIGHT,STEP} from './machine-parts.js?v=46';
+import {machineLevels,machineChapters,sandbox} from './machine-levels.js?v=46';
+import {createMachine,canPlace,validateDraft} from './machine-engine.js?v=46';
+import {drawMachine,drawIcon} from './machine-art.js?v=46';
+import {edgePan,overviewScale,worldPoint} from './machine-camera.js?v=46';
+import {connectionPaths,connectionPathData,returnToTray,hitConnection} from './machine-links.js?v=46';
+import {hitPart} from './machine-hit.js?v=46';
 
 const empty=()=>({pieces:[],links:[]});
 const defaults=type=>({angle:type==='ramp'?30:0,flip:false});
@@ -18,7 +18,19 @@ export function restoreMachine(saved){
   if(Number.isInteger(saved.level)&&machineLevels[saved.level])fresh.level=saved.level;
   fresh.free=saved.free===true;
   fresh.completed=Array.isArray(saved.completed)?[...new Set(saved.completed.filter(n=>Number.isInteger(n)&&machineLevels[n]))]:[];
-  for(const level of machineLevels)if(validateDraft(level,saved.drafts?.[level.id]))fresh.drafts[level.id]=copy(saved.drafts[level.id]);
+  for(const level of machineLevels){
+    let draft=saved.drafts?.[level.id];
+    // These introductory components are now pre-installed. Keep old fan/rope/belt
+    // arrangements and retarget their links rather than discarding the draft.
+    const fixedType=level.id==='drive'?'motor':level.id==='sunlight'?'solar':null;
+    if(fixedType&&Array.isArray(draft?.pieces)&&Array.isArray(draft?.links)){
+      draft=copy(draft);const fixed=level.fixed.find(p=>p.type===fixedType);
+      const moved=draft.pieces.filter(p=>p.type===fixedType);
+      for(const piece of moved)for(const link of draft.links){if(link.a===piece.id)link.a=fixed.id;if(link.b===piece.id)link.b=fixed.id;}
+      draft.pieces=draft.pieces.filter(p=>p.type!==fixedType);
+    }
+    if(validateDraft(level,draft))fresh.drafts[level.id]=copy(draft);
+  }
   if(validateDraft(sandbox,saved.freeDraft,{free:true}))fresh.freeDraft=copy(saved.freeDraft);
   const views={};
   for(const l of [...machineLevels,sandbox]){const v=saved.views?.[l.id],size=worldSize(l);
@@ -78,10 +90,10 @@ export function mount(root,ctx){
   const inside=p=>{const size=worldSize(level);return p.x>=0&&p.x<=size.width&&p.y>=0&&p.y<=size.height;};
   const fits=p=>canPlace(p,all(),level.target,worldSize(level));
   const snap=p=>({x:Math.round(p.x/10)*10,y:Math.round(p.y/10)*10});
-  function hit(p,event){
+  function hit(p,event,preferConnection=false){
     const direct=event?.target.closest?.('[data-part-id]')?.dataset.partId;
     const placeable=activeTool&&!parts[activeTool].link&&fits({type:activeTool,...snap(p),...defaults(activeTool)});
-    return hitPart(p,all(),direct,{placeable});
+    return hitPart(p,all(),direct,{placeable,preferConnection});
   }
   function chooseTool(type){if(mode!=='edit'||count(type)<=0)return;activeTool=activeTool===type?null:type;selected=null;linkStart=null;linkVia=[];ghost=null;
     note(activeTool?parts[type].tip:'从道具箱选道具，放到场地中。');refresh();}
@@ -110,9 +122,11 @@ export function mount(root,ctx){
   }
   function down(event){
     if(event.button>0||!event.isPrimary||event.target.closest('button:not(.mw-part-hit)'))return;
-    event.preventDefault();clientPointer={clientX:event.clientX,clientY:event.clientY};pointer=point(event);const e=mode==='edit'?hit(pointer,event):null;
+    event.preventDefault();clientPointer={clientX:event.clientX,clientY:event.clientY};pointer=point(event);
+    const nearbyLink=mode==='edit'&&(!activeTool||parts[activeTool].link)?hitConnection(pointer,allLinks(),all(),8/Math.max(.01,scale)):null;
+    const e=mode==='edit'?hit(pointer,event,!!nearbyLink):null;
     if(activeTool&&parts[activeTool].link&&e){connect(e);return;}
-    const linkId=event.target.closest?.('[data-link-id]')?.dataset.linkId,link=mode==='edit'&&!e&&allLinks().find(l=>l.id===linkId);
+    const linkId=event.target.closest?.('[data-link-id]')?.dataset.linkId,link=mode==='edit'&&!e&&(nearbyLink||allLinks().find(l=>l.id===linkId));
     // Connections do not occupy space: a selected physical tool may be placed
     // across one (notably scissors on a rope). With no tool armed, tap to select.
     if(link&&(!activeTool||parts[activeTool].link)){selectPart(link);refresh();return;}

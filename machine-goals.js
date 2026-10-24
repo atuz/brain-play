@@ -1,4 +1,4 @@
-import {parts} from './machine-parts.js';
+import {parts} from './machine-parts.js?v=46';
 export const goalsOf=target=>!target?[]:target.type==='all'?target.goals.flatMap(goalsOf):[target];
 export const goalDuration=goal=>goal.type==='cup'?.45:['zone','activate','extinguish'].includes(goal.type)?.2:0;
 export function goalSatisfied(goal,entities,events=[]){

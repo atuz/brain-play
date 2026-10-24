@@ -45,6 +45,16 @@ export function createGameRuntime({now=()=>performance.now(),schedule=(fn,ms)=>s
 
 export const gameRuntime=createGameRuntime();
 
+// Help, settings and game-owned dialogs all interrupt the same active clock.
+// Observe open dialogs so closing one cannot resume beneath another dialog/ad.
+export function bindGameDialogs(host,doc,runtime=gameRuntime){
+  const sync=()=>runtime.setPaused('dialog',!!doc.querySelector?.('dialog[open]'));
+  const observer=host.MutationObserver&&doc.body?new host.MutationObserver(sync):null;
+  observer?.observe(doc.body,{subtree:true,childList:true,attributes:true,attributeFilter:['open']});
+  sync();
+  return()=>{observer?.disconnect();runtime.setPaused('dialog',false);};
+}
+
 export function bindGameLifecycle(host,doc,runtime=gameRuntime,embedded=false){
   const native=event=>{
     const state=event.detail;
@@ -67,6 +77,7 @@ export function bindGameLifecycle(host,doc,runtime=gameRuntime,embedded=false){
   });
   doc.addEventListener('visibilitychange',visibility);
   host.addEventListener('brainPlayActivity',native);
+  const unbindDialogs=bindGameDialogs(host,doc,runtime);
   visibility();native({detail:host.__brainPlayHost?.activity});
-  return()=>{unsubscribe();observer?.disconnect();doc.removeEventListener('visibilitychange',visibility);host.removeEventListener('brainPlayActivity',native);};
+  return()=>{unbindDialogs();unsubscribe();observer?.disconnect();doc.removeEventListener('visibilitychange',visibility);host.removeEventListener('brainPlayActivity',native);};
 }

@@ -1,4 +1,4 @@
-import {dimensions,direction,STEP} from './machine-parts.js';
+import {dimensions,direction,STEP} from './machine-parts.js?v=46';
 const dt=STEP/1000;
 export const combustible=e=>['candle','rocket','cannon','dynamite'].includes(e.type);
 export const fusePoint=e=>{

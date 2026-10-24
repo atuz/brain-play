@@ -76,9 +76,9 @@ test('Delay changes which branch finishes last; simultaneous trigger is too earl
   assert.equal(simulate(level,pieces,'a',1).won,true);
 });
 test('Splitter needs a falling domino; landing on an ordinary domino crashes',()=>{
-  const level=levels[6];const splitter=level.pieces.find(p=>p.type==='splitter');
+  const level=levels[3];const splitter=level.pieces.find(p=>p.type==='splitter');
   assert.equal(simulate(level,level.pieces,splitter.id,1).valid,false);
-  const wrong=clone(level.pieces);wrong.find(p=>p.type==='normal'&&p.y===5).x=3;
+  const wrong=clone(level.pieces);wrong.find(p=>p.type==='normal'&&p.y===5).x=2;
   assert.equal(simulate(level,wrong,'p0',1).reason,'crash');
 });
 test('Bridges create a route across an actual platform gap in either direction',()=>{
@@ -138,19 +138,19 @@ function followGuide(level,start){
   assert.fail(`Guide did not finish level ${level.id}`);
 }
 test('Screenshot regression: moved upper domino makes the trigger simultaneous; guidance repairs the current layout',()=>{
-  const level=levels[6];let position=initialPosition(level);
-  for(const transfer of [{from:{x:7,y:5},to:{x:3,y:5}},{from:{x:1,y:1},to:{x:1,y:5}}]){
+  const level=levels[3];let position=initialPosition(level);
+  for(const transfer of [{from:{x:7,y:5},to:{x:2,y:5}},{from:{x:0,y:1},to:{x:0,y:5}}]){
     position=walk(level,position,transfer.from);position=edit(level,position,{type:'take'});
     position=walk(level,position,transfer.to);position=edit(level,position,{type:'place'});
   }
-  position=walk(level,position,{x:2,y:1});
+  position=walk(level,position,{x:1,y:1});
   const result=simulate(level,position.pieces,'p1',1);
   assert.equal(result.won,false);assert.equal(result.reason,'tie');
   assert.deepEqual([...result.problemIds].sort(),['p0','p4']);
   assert.ok(result.pieces.every(p=>['flat','vanished'].includes(p.state)),'Every visible domino has fallen, so a generic retry message is insufficient');
   assert.equal(failureSummary(result),'开门牌必须最后一个倒');
   const repaired=followGuide(level,position);
-  assert.ok(repaired.pieces.some(p=>p.type==='normal'&&p.x===1&&p.y===1));
+  assert.ok(repaired.pieces.some(p=>p.type==='normal'&&p.x===0&&p.y===1));
 });
 test('Guidance solves every original puzzle and legal scrambled layouts, including carried pieces and swaps',()=>{
   let seed=91823;const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};

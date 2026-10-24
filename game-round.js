@@ -1,4 +1,4 @@
-import {gameCodes} from './storage.js?v=27';
+import {gameCodes} from './storage.js?v=46';
 const token=v=>typeof v==='string'&&/^[a-zA-Z0-9:_-]{1,80}$/.test(v);
 const integer=(v,max)=>Number.isSafeInteger(v)&&v>=0&&v<=max;
 export function validResult(value){

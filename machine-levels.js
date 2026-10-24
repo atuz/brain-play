@@ -15,15 +15,15 @@ export const machineLevels = [
     target:{type:'ring',x:385,y:280,w:80,h:80},
     solution:{pieces:[p('s1','fan',180,330)],links:[]}},
   {id:'drive',name:'接上传动',scene:'rooftop',goal:'用电动机带动传送带，把球送进杯子。',
-    hint:'电动机靠近电源，再用皮带依次点电动机和传送带。',tools:{motor:1,belt:1},
-    fixed:[p('b','ball',190,315),p('hit','ball',80,90),p('s','switch',80,250),p('c','conveyor',220,360)],
+    hint:'电动机已经装好。选皮带，依次点电动机和传送带。',tools:{belt:1},
+    fixed:[p('b','ball',190,315),p('hit','ball',80,90),p('s','switch',80,250),p('c','conveyor',220,360),p('s1','motor',150,250)],
     target:cup(365,480),
-    solution:{pieces:[p('s1','motor',150,250)],links:[{id:'l1',type:'belt',a:'s1',b:'c'}]}},
+    solution:{pieces:[],links:[{id:'l1',type:'belt',a:'s1',b:'c'}]}},
   {id:'sunlight',name:'把光变成风',scene:'rooftop',goal:'点亮拉绳灯，让太阳能风扇吹动气球穿过圆环。',
-    hint:'灯由吊桶拉亮。太阳能板贴近灯，风扇靠近太阳能板。',tools:{solar:1,fan:1,rope:1},
-    fixed:[p('l','light',100,220),p('k','bucket',80,420),p('a','balloon',300,470)],
+    hint:'太阳能板已经装好。用绳索连接灯和吊桶，再把风扇放在太阳能板右边。',tools:{fan:1,rope:1},
+    fixed:[p('l','light',100,220),p('k','bucket',80,420),p('a','balloon',300,470),p('s1','solar',165,240)],
     target:{type:'ring',x:400,y:280,w:76,h:76},
-    solution:{pieces:[p('s1','solar',165,240),p('s2','fan',235,300)],links:[{id:'l1',type:'rope',a:'l',b:'k'}]}},
+    solution:{pieces:[p('s2','fan',235,300)],links:[{id:'l1',type:'rope',a:'l',b:'k'}]}},
   {id:'glass',name:'一发命中',scene:'rooftop',goal:'用拉绳发射弹丸，打碎鱼缸。',
     hint:'发射器对准鱼缸，再把扳机和下方吊桶用绳索连接。',tools:{pistol:1,rope:1},
     fixed:[p('f','fishbowl',360,240),p('k','bucket',90,410)],target:{type:'break',id:'f',x:360,y:240},
@@ -39,5 +39,5 @@ export const machineChapters=[
   {id:'mechanisms',name:'机械实验室'}, {id:'demolition',name:'重型机库'},
 ];
 export const sandbox = {id:'sandbox',name:'自由实验',scene:'harbor',width:1440,height:900,goal:'自由搭建，看看会发生什么。',tools:{},fixed:[],target:null};
-import {formalLevels} from './machine-levels-formal.js';
-import {expansionLevels} from './machine-levels-expansion.js';
+import {formalLevels} from './machine-levels-formal.js?v=46';
+import {expansionLevels} from './machine-levels-expansion.js?v=46';

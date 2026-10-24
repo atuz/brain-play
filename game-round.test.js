@@ -32,7 +32,7 @@ test('legacy completed saves do not replay results, invalid metadata starts a fr
 });
 test('all coded games accept supported result fields and reject state dumps and corrupt metrics',()=>{
  const base={id:'round_test_1',...page,outcome:'won',activeMs:100};
- for(let i=1;i<=11;i++)assert.equal(validResult({...base,game:`g${String(i).padStart(3,'0')}`,assisted:false,score:0,moves:4}),true);
+ for(let i=1;i<=15;i++)assert.equal(validResult({...base,game:`g${String(i).padStart(3,'0')}`,assisted:false,score:0,moves:4}),true);
  for(const change of [{id:'x'},{game:'g099'},{score:true},{moves:NaN},{attempts:-1},{activeMs:Infinity},{level:{}},{save:{}},{outcome:'abandoned'},{assisted:1}])assert.equal(validResult({...base,...change}),false);
 });
 test('initial configuration validates capabilities and preserves URL / saved preferences above App defaults',()=>{

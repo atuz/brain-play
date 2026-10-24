@@ -1,9 +1,9 @@
-import './vendor/matter-0.20.0.js';
-import {parts,dimensions,direction,anchor,compatible,worldSize,WIDTH,HEIGHT,STEP,copy} from './machine-parts.js';
-import {createDrive} from './machine-drive.js';
-import {goalsOf,goalDuration,goalSatisfied} from './machine-goals.js';
-import {ropePoints,ropeLength,solveRoutedRope} from './machine-rope.js';
-import {createMechanisms,combustible,fusePoint,illuminates} from './machine-mechanisms.js';
+import './vendor/matter-0.20.0.js?v=46';
+import {parts,dimensions,direction,anchor,compatible,worldSize,WIDTH,HEIGHT,STEP,copy} from './machine-parts.js?v=46';
+import {createDrive} from './machine-drive.js?v=46';
+import {goalsOf,goalDuration,goalSatisfied} from './machine-goals.js?v=46';
+import {ropePoints,ropeLength,solveRoutedRope} from './machine-rope.js?v=46';
+import {createMechanisms,combustible,fusePoint,illuminates} from './machine-mechanisms.js?v=46';
 const {Engine,Body,Bodies,Composite,Constraint,Query,Events}=globalThis.Matter;
 const radians=a=>(a||0)*Math.PI/180;
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);

@@ -1,7 +1,8 @@
-import {startGame} from './game-transition.js?v=27';
-import {el,button,stat,statusNode,shuffle,finish} from './shared.js?v=27';
-import {createMotion} from './motion.js?v=27';
-import {t} from './i18n.js?v=16';
+import {startGame} from './game-transition.js?v=46';
+import {el,button,stat,statusNode,shuffle,finish} from './shared.js?v=46';
+import {createMotion} from './motion.js?v=46';
+import {gameRuntime} from './game-runtime.js?v=46';
+import {t} from './i18n.js?v=46';
 export function compareGuess(secret,guess){let a=0,b=0;for(let i=0;i<4;i++)if(secret[i]===guess[i])a++;else if(secret.includes(guess[i]))b++;return {a,b};}
 export function validGuess(guess){return /^\d{4}$/.test(guess)&&new Set(guess).size===4;}
 export function mount(root,ctx){
@@ -47,7 +48,7 @@ export function mount(root,ctx){
     status.set(state.done?`猜中了 ${state.secret}！你用了 ${state.guesses.length} 次。`:'',state.done?'success':'');save();
   }
   const key=e=>{
-    if(document.querySelector('dialog[open]')||e.target.closest('input,textarea,select')||e.ctrlKey||e.metaKey||e.altKey)return;
+    if(gameRuntime.paused||document.querySelector('dialog[open]')||e.target.closest('input,textarea,select')||e.ctrlKey||e.metaKey||e.altKey)return;
     if(/^\d$/.test(e.key)){e.preventDefault();type(e.key);}else if(e.key==='Backspace'){e.preventDefault();backspace();}else if(e.key==='Enter'&&(e.target===document.body||e.target.closest('.guess-keypad'))){e.preventDefault();guess();}
   };
   window.addEventListener('keydown',key);render();return()=>{window.removeEventListener('keydown',key);motion.dispose();};

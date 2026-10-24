@@ -1,0 +1,194 @@
+[
+  {
+    "pack": "lab01",
+    "name": "collect",
+    "actions": [
+      [
+        7,
+        4
+      ]
+    ],
+    "description": "拾花50、钥匙开一扇门、宝箱1000、蘑菇500"
+  },
+  {
+    "pack": "lab02",
+    "name": "push",
+    "actions": [
+      [
+        5,
+        4
+      ],
+      [
+        2,
+        4
+      ],
+      [
+        2,
+        7
+      ],
+      [
+        4,
+        7
+      ]
+    ],
+    "description": "圆石可推，桶和两颗连续苹果挡住"
+  },
+  {
+    "pack": "lab03",
+    "name": "apple",
+    "actions": [
+      [
+        4,
+        4
+      ],
+      [
+        2,
+        4
+      ]
+    ],
+    "description": "苹果到花旁被抓取，消化后闭合"
+  },
+  {
+    "pack": "lab04",
+    "name": "bud",
+    "actions": [
+      [
+        4,
+        4
+      ]
+    ],
+    "description": "花蕾检测四邻玩家、张嘴、抓取"
+  },
+  {
+    "pack": "lab05",
+    "name": "rotten",
+    "actions": [
+      [
+        4,
+        4
+      ],
+      [
+        2,
+        4
+      ]
+    ],
+    "description": "烂苹果可推，消化时间更长"
+  },
+  {
+    "pack": "lab06",
+    "name": "crystal",
+    "actions": [
+      [
+        4,
+        4
+      ],
+      [
+        2,
+        4
+      ]
+    ],
+    "description": "接触闪烁消除，每个200分"
+  },
+  {
+    "pack": "lab07",
+    "name": "bomb",
+    "actions": [
+      [
+        4,
+        4
+      ],
+      [
+        2,
+        4
+      ]
+    ],
+    "description": "推后引信，四邻爆炸；石头/桶/对角宝箱保留"
+  },
+  {
+    "pack": "lab08",
+    "name": "egg",
+    "actions": [
+      [
+        3,
+        4
+      ],
+      [
+        6,
+        4
+      ]
+    ],
+    "description": "两次拾蛋切换普通花颜色并加100分/次"
+  },
+  {
+    "pack": "lab09",
+    "name": "pill",
+    "actions": [
+      [
+        6,
+        4
+      ]
+    ],
+    "description": "隐身可停留在炮塔射线/花旁，药效到期死亡"
+  },
+  {
+    "pack": "lab10",
+    "name": "laser",
+    "actions": [
+      [
+        6,
+        4
+      ]
+    ],
+    "description": "石头挡光，横向直线射击"
+  },
+  {
+    "pack": "lab11",
+    "name": "grazer",
+    "actions": [],
+    "description": "吃草怪自动走、吃苹果和花、遇圆石转向"
+  },
+  {
+    "pack": "lab12",
+    "name": "partner",
+    "actions": [
+      [
+        4,
+        4
+      ]
+    ],
+    "description": "方向键与WASD控制两人"
+  },
+  {
+    "pack": "lab13",
+    "name": "blue",
+    "actions": [
+      [
+        3,
+        4
+      ]
+    ],
+    "description": "蓝花致死"
+  },
+  {
+    "pack": "lab14",
+    "name": "poison",
+    "actions": [
+      [
+        3,
+        4
+      ]
+    ],
+    "description": "毒蘑菇致死"
+  },
+  {
+    "pack": "lab15",
+    "name": "contact",
+    "actions": [
+      [
+        4,
+        4
+      ]
+    ],
+    "description": "两块独立晶石，推到相邻，闪烁后加400分"
+  }
+]

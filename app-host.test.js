@@ -6,6 +6,9 @@ import {pageInfo as mergePage} from './2048.js';
 import {pageInfo as dominoPage} from './domino.js';
 import {pageInfo as nonogramPage} from './nonogram.js';
 import {pageInfo as machinePage} from './machine.js';
+import {pageInfo as laserPage} from './laser.js';
+import {pageInfo as atomPage} from './atom.js';
+import {pageInfo as gardenPage} from './zeek.js';
 import {startGame} from './game-transition.js';
 
 function gatedHost(){
@@ -44,13 +47,13 @@ test('a restart action and its new timer only begin after permission',async()=>{
   const cancelled=startGame(ctx,'restart',()=>run++,{level:'7'});permit(false);await cancelled;assert.equal(run,1);
 });
 
-test('all eleven game codes report entry and repeat-round navigation without save data',()=>{
+test('all registered game codes report entry and repeat-round navigation without save data',()=>{
   const messages=[],handler={postMessage(message){assert.equal(this,handler);messages.push(message);}};
   const bridge=connectAppHost('https://atuz.github.io/brain-play/?app=1',{webkit:{messageHandlers:{brainPlay:handler}}});
   for(const game of Object.values(gameCodes))for(const reason of ['enter','restart','new-round','next','previous','select','reload']){
     assert.equal(bridge.navigate({screen:'game',game,level:'1',reason}),true);
   }
-  assert.equal(messages.length,77);assert.equal(new Set(messages.map(m=>m.navigation.id)).size,77);
+  const expected=Object.keys(gameCodes).length*7;assert.equal(messages.length,expected);assert.equal(new Set(messages.map(m=>m.navigation.id)).size,expected);
   for(const message of messages){assert.equal(message.type,'navigation');assert.equal(message.source,'brain-play');assert.equal(message.version,1);assert.equal('save' in message,false);assert.match(message.navigation.id,/^[a-zA-Z0-9_-]{8,80}:[1-9]\d*$/);}
   assert.equal(bridge.navigate({screen:'home',reason:'back'}),true);
 });
@@ -86,5 +89,6 @@ test('level descriptors match restored numbered levels, sandbox and all six merg
   assert.deepEqual(nonogramPage({load:()=>({level:7})}),{level:'8'});
   assert.deepEqual(machinePage({load:()=>({version:1,level:4})}),{level:'5'});
   assert.deepEqual(machinePage({load:()=>({version:1,free:true})}),{level:'sandbox'});
+  for(const describe of [laserPage,atomPage,gardenPage])assert.deepEqual(describe({load:()=>({level:7})}),{level:'8'});
   for(const level of [-1,999,{},'2',null])for(const describe of [dominoPage,nonogramPage])assert.deepEqual(describe({load:()=>({level})}),{level:'1'});
 });

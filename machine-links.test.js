@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {connectionPaths,connectionPathData,traceConnection,returnToTray} from './machine-links.js';
+import {connectionPaths,connectionPathData,traceConnection,returnToTray,hitConnection} from './machine-links.js';
 import {copy} from './machine-parts.js';
 import {machineLevels,sandbox} from './machine-levels.js';
 import {validateDraft} from './machine-engine.js';
@@ -28,7 +28,7 @@ test('returning one rope preserves another rope on the same endpoint and both co
 test('a belt can be returned without moving its motor or fixed conveyor',()=>{
   const level=machineLevels[3],draft=copy(level.solution),next=returnToTray(draft,'l1');
   assert.deepEqual(next,{pieces:draft.pieces,links:[]});assert.equal(validateDraft(level,next),true);
-  assert.deepEqual(returnToTray(draft,'s1'),{pieces:[],links:[]});
+  assert.equal(returnToTray(draft,'s1'),null,'the pre-installed motor cannot be returned');
 });
 
 test('rope touch paths use the visible attachment points and quadratic sag, including cut/run states',()=>{
@@ -50,4 +50,25 @@ test('belt touch paths follow both visible rails, mirrored shafts and the real c
   assert.equal(connectionPathData(paths),'M 119 193 L 254 193 M 119 207 L 254 207');
   const calls=[],c={beginPath:()=>{},moveTo:(...v)=>calls.push(['move',...v]),lineTo:(...v)=>calls.push(['line',...v])};
   traceConnection(c,paths);assert.deepEqual(calls,[['move',119,193],['line',254,193],['move',119,207],['line',254,207]]);
+});
+
+test('overview wire selection follows its visible curve and returning it keeps the endpoint tools',()=>{
+  const level=machineLevels[36],draft=copy(level.solution),pieces=[...level.fixed,...draft.pieces];
+  const wire=draft.links.find(l=>l.type==='wire'),point={x:862.5,y:398.4375};
+  assert.equal(hitConnection(point,draft.links,pieces,8/.206)?.id,wire.id);
+  const returned=returnToTray(draft,wire.id);
+  assert.deepEqual(returned.pieces,draft.pieces);
+  assert.equal(returned.links.length,draft.links.length-1);
+  assert.equal(validateDraft(level,returned),true);
+  assert.equal(hitConnection({x:1450,y:950},draft.links,pieces,8/.206),null);
+});
+
+test('belt rails and pulley rope segments remain selectable without inventing a straight shortcut',()=>{
+  const beltPieces=[{id:'a',type:'motor',x:100,y:200},{id:'b',type:'conveyor',x:300,y:200}],belt={id:'belt',type:'belt',a:'a',b:'b'};
+  const rail=connectionPaths(belt,beltPieces)[0],middle={x:(rail.from.x+rail.to.x)/2,y:(rail.from.y+rail.to.y)/2};
+  assert.equal(hitConnection(middle,[belt],beltPieces,1),belt);
+  const pieces=[{id:'a',type:'bucket',x:100,y:300},{id:'b',type:'bucket',x:300,y:300},{id:'p',type:'pulley',x:200,y:100}],rope={id:'rope',type:'rope',a:'a',b:'b',via:['p']};
+  const segment=connectionPaths(rope,pieces)[0],onRope={x:(segment.from.x+segment.to.x)/2,y:(segment.from.y+segment.to.y)/2};
+  assert.equal(hitConnection(onRope,[rope],pieces,1),rope);
+  assert.equal(hitConnection({x:200,y:300},[rope],pieces,1),null);
 });

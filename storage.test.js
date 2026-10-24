@@ -10,7 +10,7 @@ function localStorage() {
     removeItem: key => values.delete(key) };
 }
 
-test('all eleven games, variants, daily games and records round-trip under stable codes', () => {
+test('all games, variants, daily games and records round-trip under stable codes', () => {
   const store = createStorage({ nativeSave: null });
   const entries = [];
   for (const [id, code] of Object.entries(gameCodes)) {
@@ -29,7 +29,7 @@ test('all eleven games, variants, daily games and records round-trip under stabl
   for (const [key, value] of entries) assert.equal(store.write(key, value), true, key);
   const save = store.snapshot();
   assert.equal(validSave(save), true);
-  assert.equal(new Set(Object.values(gameCodes)).size, 11);
+  assert.equal(new Set(Object.values(gameCodes)).size, Object.keys(gameCodes).length);
   assert.equal(gameCodes.machine, 'g011');
   assert.deepEqual(Object.keys(save.games).sort(), Object.values(gameCodes).sort());
   assert.deepEqual(save.games.g001.options, { size: 5, mode: 'fibonacci' });

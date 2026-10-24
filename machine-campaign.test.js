@@ -32,10 +32,10 @@ test('authored boards have legal fixed parts, goals and fixed ropes; every examp
   }
 });
 
-for(const level of machineLevels.filter(l=>!l.tutorial))test(`campaign ${level.id}: every example item contributes to completing all goals`,()=>{
+for(const level of machineLevels)test(`campaign ${level.id}: every example item contributes to completing all goals`,()=>{
   for(const removed of [...level.solution.pieces,...level.solution.links]){
     const draft={pieces:level.solution.pieces.filter(p=>p.id!==removed.id),links:level.solution.links.filter(l=>l.id!==removed.id&&l.a!==removed.id&&l.b!==removed.id&&!l.via?.includes(removed.id))};
-    const sim=createMachine(level,draft);while(!sim.won&&sim.time<level.timeLimit)sim.step();
+    const sim=createMachine(level,draft);while(!sim.won&&sim.time<(level.timeLimit||16))sim.step();
     assert.equal(sim.won,false,`${level.id}: removing ${removed.type} ${removed.id} still wins`);sim.dispose();
   }
 });

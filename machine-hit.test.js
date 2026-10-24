@@ -29,3 +29,14 @@ test('旋转道具按画面倾角命中，空处放不了时保留触区容错',
   assert.equal(hitPart({x:225,y:200},[ramp],'r')?.id,'r');
   assert.equal(hitPart({x:225,y:200},[ramp],'r',{placeable:true}),null);
 });
+
+test('最终关全景中的引爆线不会被引爆器的隐形触区抢走',()=>{
+  const level=machineLevels[36],pieces=[...level.fixed,...level.solution.pieces];
+  const detonator=pieces.find(p=>p.type==='detonator');
+  // Visible wire at t=.25: the 44 CSS-pixel target around its endpoint covers
+  // this position at overview scale, but the detonator's actual body does not.
+  const point={x:862.5,y:398.4375};
+  assert.equal(hitPart(point,pieces,detonator.id)?.id,detonator.id);
+  assert.equal(hitPart(point,pieces,detonator.id,{preferConnection:true}),null);
+  assert.equal(hitPart({x:detonator.x,y:detonator.y},pieces,detonator.id,{preferConnection:true})?.id,detonator.id);
+});

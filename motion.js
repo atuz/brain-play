@@ -1,6 +1,6 @@
 // Short, cancellable motion shared by the small games. Game state is saved first.
-import { read, el, button } from './shared.js?v=27';
-import {gameRuntime} from './game-runtime.js?v=26';
+import { read, el, button } from './shared.js?v=46';
+import {gameRuntime} from './game-runtime.js?v=46';
 export const motionEnabled = () => read('animations', true) && !matchMedia('(prefers-reduced-motion: reduce)').matches;
 export function createMotion() {
   let alive = true;

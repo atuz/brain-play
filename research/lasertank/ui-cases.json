@@ -1,0 +1,1400 @@
+{
+  "recordedAt": "2026-10-22T14:58:53.230Z",
+  "settings": "Default decorative animations ON after browser recovery. Matrix was partly captured with Disable animations checked; beam travel still animated.",
+  "cases": [
+    {
+      "name": "C01-block-and-wall",
+      "placements": [
+        [
+          "tank",
+          2,
+          7
+        ],
+        [
+          "block",
+          4,
+          7
+        ],
+        [
+          "solid",
+          6,
+          7
+        ],
+        [
+          "flag",
+          2,
+          3
+        ]
+      ],
+      "status": "Abandoned: quick clicks did not paint objects; rebuilt using held drag"
+    },
+    {
+      "name": "C01-block-wall",
+      "placements": [
+        [
+          "tank",
+          2,
+          7
+        ],
+        [
+          "block",
+          4,
+          7
+        ],
+        [
+          "solid",
+          6,
+          7
+        ],
+        [
+          "flag",
+          2,
+          3
+        ]
+      ],
+      "status": "Abandoned: Restart reloads the published source layout"
+    },
+    {
+      "name": "C01-block-wall",
+      "placements": [
+        [
+          "tank",
+          2,
+          7
+        ],
+        [
+          "block",
+          4,
+          7
+        ],
+        [
+          "solid",
+          6,
+          7
+        ],
+        [
+          "flag",
+          2,
+          3
+        ]
+      ],
+      "status": "observed: block moves one tile, blocked next push, contact blocked, save/restore and custom flag victory"
+    },
+    {
+      "name": "M-NW-N",
+      "placements": [
+        [
+          "tank",
+          7,
+          11
+        ],
+        [
+          "mirrorNW",
+          7,
+          7
+        ],
+        [
+          "flag",
+          0,
+          0
+        ],
+        [
+          "water",
+          7,
+          6
+        ]
+      ],
+      "status": "built, awaiting observation",
+      "expected": {
+        "push": "N",
+        "mirrorSunk": true,
+        "waterRemains": true
+      }
+    },
+    {
+      "name": "M-NW-E",
+      "placements": [
+        [
+          "tank",
+          3,
+          7
+        ],
+        [
+          "mirrorNW",
+          7,
+          7
+        ],
+        [
+          "flag",
+          0,
+          0
+        ],
+        [
+          "brick",
+          7,
+          5
+        ]
+      ],
+      "status": "built, awaiting observation",
+      "expected": {
+        "reflect": "N",
+        "brickGone": true,
+        "mirrorStationary": true
+      }
+    },
+    {
+      "name": "M-NW-S",
+      "placements": [
+        [
+          "tank",
+          7,
+          3
+        ],
+        [
+          "mirrorNW",
+          7,
+          7
+        ],
+        [
+          "flag",
+          0,
+          0
+        ],
+        [
+          "brick",
+          5,
+          7
+        ]
+      ],
+      "status": "built, awaiting observation",
+      "expected": {
+        "reflect": "W",
+        "brickGone": true,
+        "mirrorStationary": true
+      }
+    },
+    {
+      "name": "M-NW-W",
+      "placements": [
+        [
+          "tank",
+          11,
+          7
+        ],
+        [
+          "mirrorNW",
+          7,
+          7
+        ],
+        [
+          "flag",
+          0,
+          0
+        ],
+        [
+          "water",
+          6,
+          7
+        ]
+      ],
+      "status": "built, awaiting observation",
+      "expected": {
+        "push": "W",
+        "mirrorSunk": true,
+        "waterRemains": true
+      }
+    },
+    {
+      "name": "M-NW-N",
+      "placements": [
+        [
+          "tank",
+          7,
+          11
+        ],
+        [
+          "mirrorNW",
+          7,
+          7
+        ],
+        [
+          "flag",
+          0,
+          0
+        ],
+        [
+          "water",
+          7,
+          6
+        ]
+      ],
+      "status": "built, awaiting observation",
+      "expected": {
+        "push": "N",
+        "mirrorSunk": true,
+        "waterRemains": true
+      }
+    },
+    {
+      "name": "M-NW-E",
+      "placements": [
+        [
+          "tank",
+          3,
+          7
+        ],
+        [
+          "mirrorNW",
+          7,
+          7
+        ],
+        [
+          "flag",
+          0,
+          0
+        ],
+        [
+          "brick",
+          7,
+          5
+        ]
+      ],
+      "status": "built, awaiting observation",
+      "expected": {
+        "reflect": "N",
+        "brickGone": true,
+        "mirrorStationary": true
+      }
+    },
+    {
+      "name": "M-NW-S",
+      "placements": [
+        [
+          "tank",
+          7,
+          3
+        ],
+        [
+          "mirrorNW",
+          7,
+          7
+        ],
+        [
+          "flag",
+          0,
+          0
+        ],
+        [
+          "brick",
+          5,
+          7
+        ]
+      ],
+      "status": "built, awaiting observation",
+      "expected": {
+        "reflect": "W",
+        "brickGone": true,
+        "mirrorStationary": true
+      }
+    },
+    {
+      "name": "M-NW-W",
+      "placements": [
+        [
+          "tank",
+          11,
+          7
+        ],
+        [
+          "mirrorNW",
+          7,
+          7
+        ],
+        [
+          "flag",
+          0,
+          0
+        ],
+        [
+          "water",
+          6,
+          7
+        ]
+      ],
+      "status": "built, awaiting observation",
+      "expected": {
+        "push": "W",
+        "mirrorSunk": true,
+        "waterRemains": true
+      }
+    },
+    {
+      "name": "M-NE-N",
+      "placements": [
+        [
+          "tank",
+          7,
+          11
+        ],
+        [
+          "mirrorNE",
+          7,
+          7
+        ],
+        [
+          "flag",
+          0,
+          0
+        ],
+        [
+          "water",
+          7,
+          6
+        ]
+      ],
+      "status": "built, awaiting observation",
+      "expected": {
+        "push": "N",
+        "mirrorSunk": true,
+        "waterRemains": true
+      }
+    },
+    {
+      "name": "M-NE-E",
+      "placements": [
+        [
+          "tank",
+          3,
+          7
+        ],
+        [
+          "mirrorNE",
+          7,
+          7
+        ],
+        [
+          "flag",
+          0,
+          0
+        ],
+        [
+          "water",
+          8,
+          7
+        ]
+      ],
+      "status": "built, awaiting observation",
+      "expected": {
+        "push": "E",
+        "mirrorSunk": true,
+        "waterRemains": true
+      }
+    },
+    {
+      "name": "M-NE-S",
+      "placements": [
+        [
+          "tank",
+          7,
+          3
+        ],
+        [
+          "mirrorNE",
+          7,
+          7
+        ],
+        [
+          "flag",
+          0,
+          0
+        ],
+        [
+          "brick",
+          9,
+          7
+        ]
+      ],
+      "status": "built, awaiting observation",
+      "expected": {
+        "reflect": "E",
+        "brickGone": true,
+        "mirrorStationary": true
+      }
+    },
+    {
+      "name": "M-NE-W",
+      "placements": [
+        [
+          "tank",
+          11,
+          7
+        ],
+        [
+          "mirrorNE",
+          7,
+          7
+        ],
+        [
+          "flag",
+          0,
+          0
+        ],
+        [
+          "brick",
+          7,
+          5
+        ]
+      ],
+      "status": "built, awaiting observation",
+      "expected": {
+        "reflect": "N",
+        "brickGone": true,
+        "mirrorStationary": true
+      }
+    },
+    {
+      "name": "M-SE-N",
+      "placements": [
+        [
+          "tank",
+          7,
+          11
+        ],
+        [
+          "mirrorSE",
+          7,
+          7
+        ],
+        [
+          "flag",
+          0,
+          0
+        ],
+        [
+          "brick",
+          9,
+          7
+        ]
+      ],
+      "status": "built, awaiting observation",
+      "expected": {
+        "reflect": "E",
+        "brickGone": true,
+        "mirrorStationary": true
+      }
+    },
+    {
+      "name": "M-SE-E",
+      "placements": [
+        [
+          "tank",
+          3,
+          7
+        ],
+        [
+          "mirrorSE",
+          7,
+          7
+        ],
+        [
+          "flag",
+          0,
+          0
+        ],
+        [
+          "water",
+          8,
+          7
+        ]
+      ],
+      "status": "built, awaiting observation",
+      "expected": {
+        "push": "E",
+        "mirrorSunk": true,
+        "waterRemains": true
+      }
+    },
+    {
+      "name": "M-SE-S",
+      "placements": [
+        [
+          "tank",
+          7,
+          3
+        ],
+        [
+          "mirrorSE",
+          7,
+          7
+        ],
+        [
+          "flag",
+          0,
+          0
+        ],
+        [
+          "water",
+          7,
+          8
+        ]
+      ],
+      "status": "built, awaiting observation",
+      "expected": {
+        "push": "S",
+        "mirrorSunk": true,
+        "waterRemains": true
+      }
+    },
+    {
+      "name": "M-SE-W",
+      "placements": [
+        [
+          "tank",
+          11,
+          7
+        ],
+        [
+          "mirrorSE",
+          7,
+          7
+        ],
+        [
+          "flag",
+          0,
+          0
+        ],
+        [
+          "brick",
+          7,
+          9
+        ]
+      ],
+      "status": "built, awaiting observation",
+      "expected": {
+        "reflect": "S",
+        "brickGone": true,
+        "mirrorStationary": true
+      }
+    },
+    {
+      "name": "M-SW-N",
+      "placements": [
+        [
+          "tank",
+          7,
+          11
+        ],
+        [
+          "mirrorSW",
+          7,
+          7
+        ],
+        [
+          "flag",
+          0,
+          0
+        ],
+        [
+          "brick",
+          5,
+          7
+        ]
+      ],
+      "status": "built, awaiting observation",
+      "expected": {
+        "reflect": "W",
+        "brickGone": true,
+        "mirrorStationary": true
+      }
+    },
+    {
+      "name": "M-SW-E",
+      "placements": [
+        [
+          "tank",
+          3,
+          7
+        ],
+        [
+          "mirrorSW",
+          7,
+          7
+        ],
+        [
+          "flag",
+          0,
+          0
+        ],
+        [
+          "brick",
+          7,
+          9
+        ]
+      ],
+      "status": "built, awaiting observation",
+      "expected": {
+        "reflect": "S",
+        "brickGone": true,
+        "mirrorStationary": true
+      }
+    },
+    {
+      "name": "M-SW-S",
+      "placements": [
+        [
+          "tank",
+          7,
+          3
+        ],
+        [
+          "mirrorSW",
+          7,
+          7
+        ],
+        [
+          "flag",
+          0,
+          0
+        ],
+        [
+          "water",
+          7,
+          8
+        ]
+      ],
+      "status": "built, awaiting observation",
+      "expected": {
+        "push": "S",
+        "mirrorSunk": true,
+        "waterRemains": true
+      }
+    },
+    {
+      "name": "M-SW-W",
+      "placements": [
+        [
+          "tank",
+          11,
+          7
+        ],
+        [
+          "mirrorSW",
+          7,
+          7
+        ],
+        [
+          "flag",
+          0,
+          0
+        ],
+        [
+          "water",
+          6,
+          7
+        ]
+      ],
+      "status": "built, awaiting observation",
+      "expected": {
+        "push": "W",
+        "mirrorSunk": true,
+        "waterRemains": true
+      }
+    },
+    {
+      "name": "C02-crystal-front-shot",
+      "placements": [
+        [
+          "tank",
+          2,
+          7
+        ],
+        [
+          "crystal",
+          4,
+          7
+        ],
+        [
+          "antiW",
+          5,
+          7
+        ],
+        [
+          "flag",
+          0,
+          0
+        ]
+      ],
+      "status": "aborted: a modal WebGL error in another tab blocked native input"
+    },
+    {
+      "name": "C02-crystal-front-shot",
+      "placements": [
+        [
+          "tank",
+          2,
+          7
+        ],
+        [
+          "crystal",
+          4,
+          7
+        ],
+        [
+          "antiW",
+          5,
+          7
+        ],
+        [
+          "flag",
+          0,
+          0
+        ]
+      ],
+      "status": "observed: crystal blocks enemy vision and tank movement; player laser passes; front hit makes solid wreck; second shot does not remove wreck"
+    },
+    {
+      "name": "C03-enemy-sight",
+      "placements": [
+        [
+          "tank",
+          2,
+          8
+        ],
+        [
+          "antiW",
+          4,
+          7
+        ],
+        [
+          "flag",
+          0,
+          0
+        ]
+      ],
+      "status": "observed: entering enemy line fires red beam, immediate death at Moves 1; undo offered"
+    },
+    {
+      "name": "C04-self-reflection",
+      "placements": [
+        [
+          "tank",
+          3,
+          7
+        ],
+        [
+          "mirrorSW",
+          7,
+          7
+        ],
+        [
+          "mirrorNW",
+          7,
+          11
+        ],
+        [
+          "mirrorNE",
+          3,
+          11
+        ],
+        [
+          "flag",
+          0,
+          0
+        ]
+      ],
+      "status": "observed: own green laser reflects through 3 mirrors and kills tank; death undo offered"
+    },
+    {
+      "name": "C05-box-on-ice",
+      "placements": [
+        [
+          "tank",
+          2,
+          7
+        ],
+        [
+          "block",
+          4,
+          7
+        ],
+        [
+          "ice",
+          5,
+          7
+        ],
+        [
+          "ice",
+          6,
+          7
+        ],
+        [
+          "ice",
+          7,
+          7
+        ],
+        [
+          "solid",
+          10,
+          7
+        ],
+        [
+          "flag",
+          0,
+          0
+        ]
+      ],
+      "status": "observed: one shot slides box E8 across F8-H8 ice to I8 ground; undo restores E8 and Shots 0"
+    },
+    {
+      "name": "C06-box-on-thin-ice",
+      "placements": [
+        [
+          "tank",
+          2,
+          7
+        ],
+        [
+          "block",
+          4,
+          7
+        ],
+        [
+          "thin",
+          5,
+          7
+        ],
+        [
+          "thin",
+          6,
+          7
+        ],
+        [
+          "thin",
+          7,
+          7
+        ],
+        [
+          "flag",
+          0,
+          0
+        ]
+      ],
+      "status": "observed: box E8 slides over thin F8-H8 to I8; every crossed thin cell becomes water"
+    },
+    {
+      "name": "C07-box-blocked-thin",
+      "placements": [
+        [
+          "tank",
+          2,
+          7
+        ],
+        [
+          "block",
+          4,
+          7
+        ],
+        [
+          "thin",
+          5,
+          7
+        ],
+        [
+          "solid",
+          6,
+          7
+        ],
+        [
+          "flag",
+          0,
+          0
+        ]
+      ],
+      "status": "observed: box blocked on thin ice becomes bridge; original thin and box disappear"
+    },
+    {
+      "name": "C08-mirror-ice-water",
+      "placements": [
+        [
+          "tank",
+          2,
+          7
+        ],
+        [
+          "mirrorNE",
+          4,
+          7
+        ],
+        [
+          "ice",
+          5,
+          7
+        ],
+        [
+          "ice",
+          6,
+          7
+        ],
+        [
+          "ice",
+          7,
+          7
+        ],
+        [
+          "water",
+          8,
+          7
+        ],
+        [
+          "flag",
+          0,
+          0
+        ]
+      ],
+      "status": "observed: mirror slides across ordinary ice, sinks in I8 water, no bridge"
+    },
+    {
+      "name": "C09-enemy-blocked-thin",
+      "placements": [
+        [
+          "tank",
+          2,
+          7
+        ],
+        [
+          "antiN",
+          4,
+          7
+        ],
+        [
+          "thin",
+          5,
+          7
+        ],
+        [
+          "solid",
+          6,
+          7
+        ],
+        [
+          "flag",
+          0,
+          0
+        ]
+      ],
+      "status": "observed: enemy blocked on thin F8 sinks, water remains, no bridge"
+    },
+    {
+      "name": "C10-mirror-blocked-thin",
+      "placements": [
+        [
+          "tank",
+          2,
+          7
+        ],
+        [
+          "mirrorNE",
+          4,
+          7
+        ],
+        [
+          "thin",
+          5,
+          7
+        ],
+        [
+          "solid",
+          6,
+          7
+        ],
+        [
+          "flag",
+          0,
+          0
+        ]
+      ],
+      "status": "observed: mirror blocked on thin F8 sinks, water remains, no bridge"
+    },
+    {
+      "name": "C11-rotary-fixed-water",
+      "placements": [
+        [
+          "tank",
+          7,
+          3
+        ],
+        [
+          "rotarySW",
+          7,
+          7
+        ],
+        [
+          "water",
+          7,
+          8
+        ],
+        [
+          "brick",
+          5,
+          7
+        ],
+        [
+          "flag",
+          0,
+          0
+        ]
+      ],
+      "status": "observed: SW rotary struck from N turns clockwise to NW, remains H8 above water; next shot reflects W and destroys F8 brick"
+    },
+    {
+      "name": "C12-box-on-movers",
+      "placements": [
+        [
+          "tank",
+          2,
+          7
+        ],
+        [
+          "block",
+          4,
+          7
+        ],
+        [
+          "moverE",
+          5,
+          7
+        ],
+        [
+          "moverE",
+          6,
+          7
+        ],
+        [
+          "moverE",
+          7,
+          7
+        ],
+        [
+          "flag",
+          0,
+          0
+        ]
+      ],
+      "status": "observed: box stops on F8 mover; second shot advances exactly one cell to G8, no conveyor carry"
+    },
+    {
+      "name": "C13-tank-blocked-mover",
+      "placements": [
+        [
+          "tank",
+          2,
+          7
+        ],
+        [
+          "moverE",
+          3,
+          7
+        ],
+        [
+          "moverE",
+          4,
+          7
+        ],
+        [
+          "moverE",
+          5,
+          7
+        ],
+        [
+          "solid",
+          6,
+          7
+        ],
+        [
+          "flag",
+          0,
+          0
+        ]
+      ],
+      "status": "observed: blocked mover F8 permits firing at wall, turning Down and leaving to F9; Moves 2 Shots 1"
+    },
+    {
+      "name": "C14-mover-cycle",
+      "placements": [
+        [
+          "tank",
+          2,
+          7
+        ],
+        [
+          "moverE",
+          3,
+          7
+        ],
+        [
+          "moverS",
+          4,
+          7
+        ],
+        [
+          "moverW",
+          4,
+          8
+        ],
+        [
+          "moverN",
+          3,
+          8
+        ],
+        [
+          "flag",
+          0,
+          0
+        ]
+      ],
+      "status": "observed: 4-mover loop keeps moving at Moves 1; fire and turning ignored; U interrupts and restores pre-entry at Moves 0"
+    },
+    {
+      "name": "C15-box-tunnel-laser",
+      "placements": [
+        [
+          "tank",
+          2,
+          7
+        ],
+        [
+          "block",
+          4,
+          7
+        ],
+        [
+          "red",
+          5,
+          7
+        ],
+        [
+          "red",
+          9,
+          11
+        ],
+        [
+          "brick",
+          12,
+          7
+        ],
+        [
+          "flag",
+          0,
+          0
+        ]
+      ],
+      "status": "observed: box E8 teleports via F8 to J12; laser passes F8 straight and destroys M8 brick; tank enters F8 but waits there while J12 is occupied"
+    },
+    {
+      "name": "C16-multiple-tunnel-blocked",
+      "placements": [
+        [
+          "tank",
+          7,
+          7
+        ],
+        [
+          "block",
+          8,
+          7
+        ],
+        [
+          "red",
+          5,
+          7
+        ],
+        [
+          "red",
+          9,
+          7
+        ],
+        [
+          "red",
+          12,
+          7
+        ],
+        [
+          "flag",
+          0,
+          0
+        ]
+      ],
+      "status": "Observed: box entering J8 exits F8; tank entering J8 skips blocked F8 and exits M8. Moves2 Shots1."
+    },
+    {
+      "name": "C17-waiting-tunnel-clears",
+      "placements": [
+        [
+          "flag",
+          0,
+          0
+        ],
+        [
+          "tank",
+          2,
+          7
+        ],
+        [
+          "block",
+          4,
+          7
+        ],
+        [
+          "red",
+          5,
+          7
+        ],
+        [
+          "red",
+          9,
+          11
+        ],
+        [
+          "mirrorNW",
+          12,
+          7
+        ],
+        [
+          "mirrorSW",
+          12,
+          5
+        ],
+        [
+          "mirrorSE",
+          9,
+          5
+        ]
+      ],
+      "status": "Observed: waiting tank on F8 automatically teleports J12 as reflected shot moves exit box to J13. No extra move: Moves3 Shots2."
+    },
+    {
+      "name": "C18-blocked-ice",
+      "placements": [
+        [
+          "flag",
+          0,
+          0
+        ],
+        [
+          "tank",
+          3,
+          7
+        ],
+        [
+          "ice",
+          4,
+          7
+        ],
+        [
+          "ice",
+          5,
+          7
+        ],
+        [
+          "ice",
+          6,
+          7
+        ],
+        [
+          "solid",
+          7,
+          7
+        ]
+      ],
+      "status": "Observed: tank slides D8 through E8/F8 to blocked G8 alive in one move; can turn Down and leave onto G9 in another move."
+    },
+    {
+      "name": "C19-enemy-ice-and-wreck",
+      "placements": [
+        [
+          "flag",
+          0,
+          0
+        ],
+        [
+          "tank",
+          2,
+          7
+        ],
+        [
+          "antiN",
+          4,
+          7
+        ],
+        [
+          "ice",
+          5,
+          7
+        ],
+        [
+          "ice",
+          6,
+          7
+        ],
+        [
+          "ice",
+          7,
+          7
+        ],
+        [
+          "solid",
+          10,
+          7
+        ]
+      ],
+      "status": "Observed: one side shot pushes north-facing enemy E8 across F8/G8/H8 ice to I8 ground; heading preserved."
+    },
+    {
+      "name": "C20-wreck-blocks-walking",
+      "placements": [
+        [
+          "flag",
+          0,
+          0
+        ],
+        [
+          "tank",
+          2,
+          7
+        ],
+        [
+          "antiW",
+          4,
+          7
+        ]
+      ],
+      "status": "Initial unsafe fixture: enemy shoots as tank turns, before any shot. Replaced by crystal-protected fixture."
+    },
+    {
+      "name": "C20b-wreck-blocks-walking",
+      "placements": [
+        [
+          "flag",
+          0,
+          0
+        ],
+        [
+          "tank",
+          2,
+          7
+        ],
+        [
+          "crystal",
+          3,
+          7
+        ],
+        [
+          "antiW",
+          4,
+          7
+        ]
+      ],
+      "status": "Observed: front shot through crystal creates black wreck E8; walking around crystal stops E9 when trying Up, Moves3; second shot does not remove wreck, Shots2."
+    }
+  ]
+}
