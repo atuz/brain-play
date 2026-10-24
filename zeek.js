@@ -1,11 +1,11 @@
-import {el,button,controls,keyboardAndSwipe,sound,finish} from './shared.js?v=46';
-import {t} from './i18n.js?v=46';
-import {createMotion} from './motion.js?v=46';
-import {gameRuntime} from './game-runtime.js?v=46';
-import {startGame} from './game-transition.js?v=46';
-import {gardenLevels} from './zeek-levels.js?v=46';
-import {createGardenState,validGardenState,gardenCopy,gardenStep,gardenRealtimeStep,gardenDanger} from './zeek-engine.js?v=46';
-import {gardenArt,gardenSVG} from './zeek-art.js?v=46';
+import {el,button,controls,keyboardAndSwipe,sound,finish} from './shared.js?v=48';
+import {t} from './i18n.js?v=48';
+import {createMotion} from './motion.js?v=48';
+import {gameRuntime} from './game-runtime.js?v=48';
+import {startGame} from './game-transition.js?v=48';
+import {gardenLevels} from './zeek-levels.js?v=48';
+import {createGardenState,validGardenState,gardenCopy,gardenStep,gardenRealtimeStep,gardenDanger} from './zeek-engine.js?v=48';
+import {gardenArt,gardenSVG} from './zeek-art.js?v=48';
 export const gardenObjects={
  wall:['苔石墙','固定的墙，不能推动或炸毁。'],barrel:['木桶','固定障碍，不能推动或炸毁。'],stone:['圆石','一次推一格，能挡激光，炸不坏。'],apple:['苹果','推到张嘴花的四邻，让花消化 7 回合。'],rotten:['烂苹果','花吃下后会消化 24 回合。'],flower:['黄花','吃掉加 50 分。'],poison:['蓝色毒花','碰到就中毒；彩蛋能把它变成黄花。'],goal:['出口蘑菇','走到这里即获胜。'],toxic:['毒蘑菇','碰到就中毒；彩蛋不会改变它。'],key:['钥匙','自动收起，每把开一扇门。'],door:['锁门','有钥匙时，走过去就能开门。'],egg:['变色蛋','黄花与蓝色毒花互换，加 100 分。'],pill:['隐身药','保护 14 回合，可叠加；不防毒和炸弹。'],chest:['宝箱','吃掉加 1000 分。'],crystal:['晶石','四邻相接后闪烁，两回合后消失，各加 200 分。'],bomb:['炸弹','第一次推动点燃，8 回合后炸十字一格。'],plant:['食人花','张嘴时抓四邻的人或苹果，斜角安全。花蕾两回合后张嘴。'],laser:['激光炮台','四向直线看到你就射击，物品和隐身能保护你。'],grazer:['巡游小兽','每回合前进一步，受阻按左、右、后转向，会吃植物。'],
 };
@@ -30,11 +30,11 @@ export function mount(root,ctx){
  const note=el('p',{class:'classic-note','aria-live':'polite'});
  root.append(toolbar,hud,stage,el('div',{class:'classic-footer garden-footer'},[pad,el('div',{class:'garden-tools'},[el('div',{},[undo,wait]),el('div',{},[pause,overview])])]),note);
  function save(){data.state=state;ctx.save(data);}
- function cancel(){epoch++;busy=false;queue=null;for(const a of board.getAnimations({subtree:true}))a.cancel();manuallyStopped.clear();}
+ function cancel(){epoch++;busy=false;queue=null;for(const a of gameRuntime.animationsFor(board,{subtree:true}))a.cancel();manuallyStopped.clear();}
  function rewind(){if(!data.history.length||gameRuntime.paused)return;cancel();state=data.history.pop();draw();save();focusPlayer();}
  function togglePause(){
   if(state.phase!=='playing')return;manualPause=!manualPause;ctx.roundPause?.(manualPause);queue=null;
-  if(manualPause){for(const animation of board.getAnimations({subtree:true}))if(animation.playState==='running'||animation.pending){animation.pause();manuallyStopped.add(animation);}}
+  if(manualPause){for(const animation of gameRuntime.animationsFor(board,{subtree:true}))if(animation.playState==='running'||animation.pending){animation.pause();manuallyStopped.add(animation);}}
   else{for(const animation of manuallyStopped)if(animation.playState==='paused')animation.play();manuallyStopped.clear();}
   draw();
  }

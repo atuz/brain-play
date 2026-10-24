@@ -1,7 +1,7 @@
-import {el} from './shared.js?v=46';
-import {t} from './i18n.js?v=46';
-import {motionEnabled} from './motion.js?v=46';
-import {gameRuntime} from './game-runtime.js?v=46';
+import {el} from './shared.js?v=48';
+import {t} from './i18n.js?v=48';
+import {motionEnabled} from './motion.js?v=48';
+import {gameRuntime} from './game-runtime.js?v=48';
 
 const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
 export function constrainCamera(camera,stage,view){

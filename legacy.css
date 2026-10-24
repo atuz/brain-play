@@ -1,0 +1,25 @@
+/* Grid gap already works in WebView 83. These fallbacks are for flex gap only. */
+#main[data-legacy-inert] { pointer-events: none; }
+.legacy-flex-gap .app-title > * + * { margin-left: 10px; }
+.legacy-aspect .home-game-art > svg { width: 100%; height: 100%; }
+.legacy-flex-gap .home-game > * + * { margin-top: 9px; }
+.legacy-flex-gap .mw-level > * + *,
+.legacy-flex-gap .classic-level > * + *,
+.legacy-flex-gap .rescue-level > * + *,
+.legacy-flex-gap .tf-new-deal > * + * { margin-left: 8px; }
+.legacy-flex-gap .rescue-actions > * + *,
+.legacy-flex-gap .rescue-transport > * + * { margin-left: 5px; }
+.legacy-flex-gap .app-header-actions > * + *,
+.legacy-flex-gap .actions > * + *,
+.legacy-flex-gap .classic-actions > * + *,
+.legacy-flex-gap .mw-toolbar-end > * + * { margin-left: 6px; }
+.legacy-flex-gap .stats > * + *,
+.legacy-flex-gap .classic-stats > * + *,
+.legacy-flex-gap .garden-hud > * + * { margin-left: 16px; }
+.legacy-flex-gap .tf-stage > * + * { margin-left: 8px; }
+.legacy-flex-gap .tf-goal > * + * { margin-left: 10px; }
+.legacy-flex-gap .tf-progress > * + * { margin-left: 7px; }
+.legacy-flex-gap .settings-form > * + * { margin-top: 10px; }
+.legacy-flex-gap .mw-actionbar > * + * { margin-left: 8px; }
+.legacy-flex-gap .classic-footer > * + * { margin-left: 10px; }
+.legacy-flex-gap .game-toolbar { justify-content: space-between; }

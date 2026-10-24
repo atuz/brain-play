@@ -1,7 +1,7 @@
-import {dominoEnglish,dominoTraditional} from './domino-i18n.js?v=46';
-import {machineEnglish,machineTraditional} from './machine-i18n.js?v=46';
-import {classicEnglish,classicTraditional} from './classic-i18n.js?v=46';
-import {rescueEnglish} from './lemmings-i18n.js?v=46';
+import {dominoEnglish,dominoTraditional} from './domino-i18n.js?v=48';
+import {machineEnglish,machineTraditional} from './machine-i18n.js?v=48';
+import {classicEnglish,classicTraditional} from './classic-i18n.js?v=48';
+import {rescueEnglish} from './lemmings-i18n.js?v=48';
 export const languages = [
   { code: 'zh-CN', name: '简体中文' },
   { code: 'zh-TW', name: '繁體中文' },

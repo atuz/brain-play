@@ -1,4 +1,4 @@
-import {dimensions,direction} from './machine-parts.js?v=46';
+import {dimensions,direction} from './machine-parts.js?v=48';
 const TAU=Math.PI*2;
 const round=(c,x,y,w,h,r,fill,stroke)=>{c.beginPath();c.roundRect(x,y,w,h,r);if(fill){c.fillStyle=fill;c.fill();}if(stroke){c.strokeStyle=stroke;c.stroke();}};
 const line=(c,x,y,X,Y,color,width=2)=>{c.beginPath();c.moveTo(x,y);c.lineTo(X,Y);c.strokeStyle=color;c.lineWidth=width;c.stroke();};

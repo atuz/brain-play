@@ -1,4 +1,4 @@
-import {readHostConfiguration} from './host-config.js?v=46';
+import {readHostConfiguration} from './host-config.js?v=48';
 // Stable save identifiers. Never reuse an identifier for a different game.
 export const gameCodes = Object.freeze({
   '2048': 'g001', twentyfour: 'g002', link: 'g003', stars: 'g004',
@@ -45,7 +45,10 @@ export function createStorage({ storage, nativeSave } = {}) {
       const saved = clone(value);
       if (key === 'completed') {
         for (const [id, code] of Object.entries(gameCodes)) {
-          if (Object.hasOwn(saved, id)) (data.games[code] ??= {}).completed = saved[id];
+          if (Object.hasOwn(saved, id)) {
+            if (data.games[code] == null) data.games[code] = {};
+            data.games[code].completed = saved[id];
+          }
           else if (data.games[code]) delete data.games[code].completed;
         }
         return true;
@@ -53,7 +56,8 @@ export function createStorage({ storage, nativeSave } = {}) {
       const target = address(key);
       if (!target) return false;
       const [group, slot] = target;
-      (group === 'settings' ? data.settings : data.games[group] ??= {})[slot] = saved;
+      if (group !== 'settings' && data.games[group] == null) data.games[group] = {};
+      (group === 'settings' ? data.settings : data.games[group])[slot] = saved;
       return true;
     } catch { return false; }
   }

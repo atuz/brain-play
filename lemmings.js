@@ -1,10 +1,10 @@
-import {el,button,sound,finish} from './shared.js?v=46';
-import {t} from './i18n.js?v=46';
-import {gameRuntime} from './game-runtime.js?v=46';
-import {startGame} from './game-transition.js?v=46';
-import {lemmingLevels,lemmingChapters} from './lemmings-levels.js?v=46';
-import {LEM_FPS,lemmingSkills,createLemmingState,restoreLemmingState,saveLemmingState,startLemmings,tickLemmings,assignLemming,lemmingAssignment,recallLemmings} from './lemmings-engine.js?v=46';
-import {createRescuePainter,rescueSkillIcon} from './lemmings-art.js?v=46';
+import {el,button,sound,finish} from './shared.js?v=48';
+import {t} from './i18n.js?v=48';
+import {gameRuntime} from './game-runtime.js?v=48';
+import {startGame} from './game-transition.js?v=48';
+import {lemmingLevels,lemmingChapters} from './lemmings-levels.js?v=48';
+import {LEM_FPS,lemmingSkills,createLemmingState,restoreLemmingState,saveLemmingState,startLemmings,tickLemmings,assignLemming,lemmingAssignment,recallLemmings} from './lemmings-engine.js?v=48';
+import {createRescuePainter,rescueSkillIcon} from './lemmings-art.js?v=48';
 export const rescueSkills={
  climber:['攀爬','碰到墙会攀爬；遇到顶檐会掉下来。'],floater:['降落伞','高处落下会自动撑伞；能力永久保留。'],
  blocker:['阻挡','原地张开双臂，让后来者掉头。'],builder:['搭桥','沿面朝方向铺 12 块砖，形成上升的斜桥。'],

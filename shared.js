@@ -1,7 +1,7 @@
-import { t } from './i18n.js?v=46';
-import {gameRuntime} from './game-runtime.js?v=46';
-import {createGameAudio} from './game-audio.js?v=46';
-import { read, write, remove } from './storage.js?v=46';
+import { t } from './i18n.js?v=48';
+import {gameRuntime} from './game-runtime.js?v=48';
+import {createGameAudio} from './game-audio.js?v=48';
+import { read, write, remove } from './storage.js?v=48';
 export { read, write, remove };
 export function seeded(seed) { let x = seed >>> 0; return () => { x += 0x6D2B79F5; let t = x; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 export function dateSeed(date = new Date()) { return Number(`${date.getFullYear()}${String(date.getMonth()+1).padStart(2,'0')}${String(date.getDate()).padStart(2,'0')}`); }

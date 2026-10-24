@@ -1,4 +1,4 @@
-import {bondDirections} from './atom-engine.js?v=46';
+import {bondDirections} from './atom-engine.js?v=48';
 const colors={H:['#e8d9a7','#bba36f'],C:['#638e96','#3e6974'],O:['#d18d77','#aa6555'],N:['#8a91b6','#656d94'],F:['#b393b2','#876a90'],Cl:['#9db078','#728b54'],red:['#cc8c79','#9b6255'],blue:['#83acbd','#588b9d'],gold:['#dac17d','#a88f55'],green:['#9bb68d','#6e8f6a'],purple:['#b09fbf','#817092'],white:['#e8e9d8','#adb69c']};
 export function atomArt(a,{ghost=false}={}){
   const [fill,edge]=colors[a.element]||colors.C,bonus=a.element.length>2;

@@ -1,12 +1,13 @@
-import { el, read, write, dateSeed, seeded, toast } from './shared.js?v=46';
-import { games, preview } from './catalog.js?v=46';
-import { languages, setLanguage, getLanguage, t } from './i18n.js?v=46';
-import { resolvePreferences, updatePreferenceURL } from './preferences.js?v=46';
+import { el, read, write, dateSeed, seeded, toast } from './shared.js?v=48';
+import { games, preview } from './catalog.js?v=48';
+import { languages, setLanguage, getLanguage, t } from './i18n.js?v=48';
+import { resolvePreferences, updatePreferenceURL } from './preferences.js?v=48';
 
-import { connectAppHost } from './app-host.js?v=46';
-import { storage, gameCodes } from './storage.js?v=46';
-import {gameRuntime,bindGameLifecycle} from './game-runtime.js?v=46';
-import {createRoundSession} from './game-round.js?v=46';
+import { connectAppHost } from './app-host.js?v=48';
+import { storage, gameCodes } from './storage.js?v=48';
+import {gameRuntime,bindGameLifecycle} from './game-runtime.js?v=48';
+import {createRoundSession} from './game-round.js?v=48';
+import {layoutFallback} from './layout-compat.js?v=48';
 
 const appHost = connectAppHost(location.href, window);
 const main = document.querySelector('#main');
@@ -14,14 +15,18 @@ const header = document.querySelector('#app-header');
 const waiting=el('div',{class:'app-game-wait',role:'status',hidden:true,text:'…','aria-label':'准备中'});
 main.before(waiting);
 function setWaiting(value){gameRuntime.setPaused('navigation',value);main.setAttribute('aria-busy',String(value));waiting.hidden=!value;}
-gameRuntime.subscribe(paused=>{main.inert=paused;});
+const nativeInert='inert' in HTMLElement.prototype;
+gameRuntime.subscribe(paused=>{
+  main.inert=paused;
+  if(!nativeInert){main.toggleAttribute('data-legacy-inert',paused);if(paused&&main.contains(document.activeElement))document.activeElement.blur();}
+});
 bindGameLifecycle(window,document,gameRuntime,appHost.embedded&&appHost.configuration.capabilities.activity!==false);
 document.addEventListener('keydown',event=>{if(gameRuntime.paused&&event.key!=='Tab'&&!header.contains(event.target)&&!event.target.closest?.('dialog[open]')){event.preventDefault();event.stopImmediatePropagation();}},true);
 const preferences = resolvePreferences(location.href, read('preferences', {}), navigator.languages || [navigator.language], Intl.DateTimeFormat().resolvedOptions().locale,appHost.configuration.config);
 const country = preferences.country;
 setLanguage(preferences.language);
 history.replaceState(null, '', preferences.url);
-let cleanup, currentGame, activeModule, routeVersion = 0;
+let cleanup, cleanupLayout, currentGame, activeModule, routeVersion = 0;
 let initialNavigation=true,lastLevelInfo=null;
 const initialNavigationReason=performance.getEntriesByType('navigation')[0]?.type==='reload'?'reload':'enter';
 
@@ -69,6 +74,7 @@ function home() {
     grid.append(card);
   }
   main.replaceChildren(grid);
+  cleanupLayout = layoutFallback(main);
 }
 
 function dialog(title, closeLabel) {
@@ -148,16 +154,16 @@ function showSettings() {
 }
 
 const mounts = {
-  lemmings: () => import('./lemmings.js?v=46'),
-  zeek: () => import('./zeek.js?v=46'),
-  atom: () => import('./atom.js?v=46'),
-  laser: () => import('./laser.js?v=46'),
-  machine: () => import('./machine.js?v=46'),
-  domino: () => import('./domino.js?v=46'),
-  '2048': () => import('./2048.js?v=46'), twentyfour: () => import('./twentyfour.js?v=46'),
-  lights: () => import('./lights.js?v=46'), fifteen: () => import('./fifteen.js?v=46'),
-  pipes: () => import('./pipes.js?v=46'), nonogram: () => import('./nonogram.js?v=46'),
-  link: () => import('./link.js?v=46'), stars: () => import('./stars.js?v=46'), guess: () => import('./guess.js?v=46'),
+  lemmings: () => import('./lemmings.js?v=48'),
+  zeek: () => import('./zeek.js?v=48'),
+  atom: () => import('./atom.js?v=48'),
+  laser: () => import('./laser.js?v=48'),
+  machine: () => import('./machine.js?v=48'),
+  domino: () => import('./domino.js?v=48'),
+  '2048': () => import('./2048.js?v=48'), twentyfour: () => import('./twentyfour.js?v=48'),
+  lights: () => import('./lights.js?v=48'), fifteen: () => import('./fifteen.js?v=48'),
+  pipes: () => import('./pipes.js?v=48'), nonogram: () => import('./nonogram.js?v=48'),
+  link: () => import('./link.js?v=48'), stars: () => import('./stars.js?v=48'), guess: () => import('./guess.js?v=48'),
 };
 
 async function route(scroll = true) {
@@ -166,6 +172,7 @@ async function route(scroll = true) {
   appHost.cancel();setWaiting(false);
   const previousGame = currentGame;
   cleanup?.();
+  cleanupLayout?.();
   cleanup = null;
   activeModule = null;
   const raw = location.hash.slice(1) || '/';
@@ -238,6 +245,7 @@ async function route(scroll = true) {
       el('span',{class:'rule-summary',text:summary}),el('span',{class:'rule-more',text:'玩法 ›','aria-hidden':'true'}),
     ]);
     panel.querySelector('.game-toolbar').after(ruleStrip);
+    cleanupLayout = layoutFallback(main);
     lastLevelInfo=levelInfo();
     initialNavigation=false;
     if(entryPermit){const permitted=await entryPermit;if(!permitted||version!==routeVersion)return;}

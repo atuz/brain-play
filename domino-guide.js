@@ -1,4 +1,4 @@
-import {at,clone,hasFloor,neighbors} from './domino-engine.js?v=46';
+import {at,clone,hasFloor,neighbors} from './domino-engine.js?v=48';
 
 export function failureSummary(result){
   return ({tie:'开门牌必须最后一个倒',

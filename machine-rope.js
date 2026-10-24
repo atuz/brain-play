@@ -1,4 +1,4 @@
-import {anchor} from './machine-parts.js?v=46';
+import {anchor} from './machine-parts.js?v=48';
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 export function ropePoints(link,pieces){
   const get=id=>pieces instanceof Map?pieces.get(id):pieces.find(p=>p.id===id);

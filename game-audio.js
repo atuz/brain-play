@@ -6,7 +6,7 @@ export function createGameAudio(runtime,createContext){
   return win=>{
     if(runtime.paused)return;
     try{
-      context??=createContext();void context.resume().catch(()=>{});
+      if(context==null)context=createContext();void context.resume().catch(()=>{});
       const oscillator=context.createOscillator(),gain=context.createGain();notes.add(oscillator);
       oscillator.onended=()=>{notes.delete(oscillator);oscillator.disconnect();gain.disconnect();};
       oscillator.connect(gain);gain.connect(context.destination);oscillator.type='sine';

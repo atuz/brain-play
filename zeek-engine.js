@@ -20,7 +20,7 @@ export function validGardenState(s,l){
 }
 export function gardenStep(level,input,action='wait'){
   if(input.phase!=='playing'||!['wait',...directions].includes(action))return {state:input,changed:false,events:[]};
-  const s=gardenCopy(input),events=[],p=s.player; s.effects=[];s.keys??=0;
+  const s=gardenCopy(input),events=[],p=s.player; s.effects=[];if(s.keys==null)s.keys=0;
   const event=(type,data={})=>{const e={type,...data};events.push(e);s.effects.push(e);};
   const remove=o=>{const i=s.objects.indexOf(o);if(i>=0)s.objects.splice(i,1);};
   const die=cause=>{if(s.phase==='playing'){s.phase='lost';s.cause=cause;event('death',{cause,x:p.x,y:p.y});}};

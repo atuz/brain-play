@@ -1,4 +1,4 @@
-import {expansionMessages} from './machine-expansion-i18n.js?v=46';
+import {expansionMessages} from './machine-expansion-i18n.js?v=48';
 const messages = [
  ['电动机已经装好。选皮带，依次点电动机和传送带。','The motor is already installed. Select a belt, then tap the motor and conveyor shafts.','電動機已經裝好。選皮帶，依次點電動機和傳送帶。'],
  ['太阳能板已经装好。用绳索连接灯和吊桶，再把风扇放在太阳能板右边。','The solar panel is installed. Connect the lamp to the bucket with a rope, then place the fan to the right of the panel.','太陽能板已經裝好。用繩索連接燈和吊桶，再把風扇放在太陽能板右邊。'],

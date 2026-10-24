@@ -1,7 +1,7 @@
-import {startGame} from './game-transition.js?v=46';
-import {el,button,stat,statusNode,sound,finish} from './shared.js?v=46';
-import {createMotion} from './motion.js?v=46';
-import {t} from './i18n.js?v=46';
+import {startGame} from './game-transition.js?v=48';
+import {el,button,stat,statusNode,sound,finish} from './shared.js?v=48';
+import {createMotion} from './motion.js?v=48';
+import {t} from './i18n.js?v=48';
 // Original hand-drawn 5×5 puzzles. Clue uniqueness is verified in tests.
 export const patterns=[
 {name:'小小爱心',rows:['01010','11111','11111','01110','00100']},
@@ -19,7 +19,7 @@ export function clues(board,size=5){return {rows:Array.from({length:size},(_,r)=
 // A stroke locks to its first row or column; all cells use the starting paint value.
 export function strokeCells(start,end,size=5,axis=null){
   const r=Math.floor(start/size),c=start%size,rr=Math.floor(end/size),cc=end%size;
-  axis??=Math.abs(cc-c)>=Math.abs(rr-r)?'row':'col';
+  if(axis==null)axis=Math.abs(cc-c)>=Math.abs(rr-r)?'row':'col';
   const target=axis==='row'?r*size+cc:rr*size+c,step=target===start?1:Math.sign(target-start)*(axis==='row'?1:size),out=[];
   for(let i=start;;i+=step){out.push(i);if(i===target)break;}return out;
 }

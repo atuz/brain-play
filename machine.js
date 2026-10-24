@@ -1,14 +1,14 @@
-import {startGame} from './game-transition.js?v=46';
-import {gameRuntime} from './game-runtime.js?v=46';
-import {el,sound,finish} from './shared.js?v=46';
-import {t} from './i18n.js?v=46';
-import {parts,copy,dimensions,compatible,worldSize,WIDTH,HEIGHT,STEP} from './machine-parts.js?v=46';
-import {machineLevels,machineChapters,sandbox} from './machine-levels.js?v=46';
-import {createMachine,canPlace,validateDraft} from './machine-engine.js?v=46';
-import {drawMachine,drawIcon} from './machine-art.js?v=46';
-import {edgePan,overviewScale,worldPoint} from './machine-camera.js?v=46';
-import {connectionPaths,connectionPathData,returnToTray,hitConnection} from './machine-links.js?v=46';
-import {hitPart} from './machine-hit.js?v=46';
+import {startGame} from './game-transition.js?v=48';
+import {gameRuntime} from './game-runtime.js?v=48';
+import {el,sound,finish} from './shared.js?v=48';
+import {t} from './i18n.js?v=48';
+import {parts,copy,dimensions,compatible,worldSize,WIDTH,HEIGHT,STEP} from './machine-parts.js?v=48';
+import {machineLevels,machineChapters,sandbox} from './machine-levels.js?v=48';
+import {createMachine,canPlace,validateDraft} from './machine-engine.js?v=48';
+import {drawMachine,drawIcon} from './machine-art.js?v=48';
+import {edgePan,overviewScale,worldPoint} from './machine-camera.js?v=48';
+import {connectionPaths,connectionPathData,returnToTray,hitConnection} from './machine-links.js?v=48';
+import {hitPart} from './machine-hit.js?v=48';
 
 const empty=()=>({pieces:[],links:[]});
 const defaults=type=>({angle:type==='ramp'?30:0,flip:false});
@@ -76,7 +76,7 @@ export function mount(root,ctx){
   const c=canvas.getContext('2d');
   function save(){
     const r=viewport.getBoundingClientRect(),focus=overview?overviewFocus:point({clientX:r.left+r.width/2,clientY:r.top+r.height/2});
-    const size=worldSize(level);state.views??={};state.views[level.id]=editingView||{x:Math.max(0,Math.min(size.width,focus.x)),y:Math.max(0,Math.min(size.height,focus.y)),overview};
+    const size=worldSize(level);if(state.views==null)state.views={};state.views[level.id]=editingView||{x:Math.max(0,Math.min(size.width,focus.x)),y:Math.max(0,Math.min(size.height,focus.y)),overview};
     if(state.free)state.freeDraft=copy(draft);else state.drafts[level.id]=copy(draft);ctx.save(copy(state));
   }
   function all(){return [...level.fixed.map(p=>({...p,fixed:true})),...draft.pieces];}
@@ -141,12 +141,12 @@ export function mount(root,ctx){
   function move(event){
     if(gameRuntime.paused)return;
     clientPointer={clientX:event.clientX,clientY:event.clientY};
-    if(drag?.pan){drag.moved ||= Math.hypot(event.clientX-drag.start.x,event.clientY-drag.start.y)>6;
+    if(drag?.pan){if(!drag.moved)drag.moved=Math.hypot(event.clientX-drag.start.x,event.clientY-drag.start.y)>6;
       viewport.scrollLeft=drag.scroll.x+drag.start.x-event.clientX;viewport.scrollTop=drag.scroll.y+drag.start.y-event.clientY;pointer=point(event);return;}
     if(mode!=='edit')return;
     pointer=point(event);
     if(!drag){if(activeTool&&!parts[activeTool].link&&inView(event)&&inside(pointer)){ghost={type:activeTool,...snap(pointer),...defaults(activeTool)};ghost.valid=fits(ghost);}else ghost=null;return;}
-    drag.moved ||= Math.hypot(event.clientX-drag.start.x,event.clientY-drag.start.y)>6;
+    if(!drag.moved)drag.moved=Math.hypot(event.clientX-drag.start.x,event.clientY-drag.start.y)>6;
     if(drag.tool){ghost={type:drag.tool,...snap(pointer),...defaults(drag.tool)};ghost.valid=inView(event)&&inside(pointer)&&fits(ghost);}
     else if(drag.moved){ghost={...drag.origin,...snap({x:pointer.x-drag.offset.x,y:pointer.y-drag.offset.y})};ghost.valid=inView(event)&&inside(pointer)&&fits(ghost);}
   }

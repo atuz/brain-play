@@ -6,10 +6,15 @@ import {restoreRescue,pageInfo} from './lemmings.js';
 import {gameCodes,createStorage} from './storage.js';
 import {translate} from './i18n.js';
 import {rescueEnglish} from './lemmings-i18n.js';
+import {rescuePreview} from './lemmings-art.js';
 import {runRescueRoute} from './dev/lemmings-solutions.mjs';
 function advance(s,l,condition,max=10000){while(s.phase==='playing'&&!condition(s)&&max-->0)tickLemmings(s,l);assert.ok(max>=0,'simulation must reach its condition');return s;}
 function lab(extra={}){return {id:'lab',width:160,height:140,entry:{x:32,y:78,dir:1},exit:{x:140,y:100},terrain:[[0,100,160,40]],skills:Object.fromEntries(lemmingSkills.map(k=>[k,2])),total:1,need:1,time:30,interval:20,hazards:[],...extra};}
 function begin(l){const s=createLemmingState(l);startLemmings(s);advance(s,l,s=>s.agents.some(a=>a.action==='walk'));return s;}
+test('rescue launcher SVG has intrinsic dimensions instead of relying on flex auto sizing',()=>{
+ assert.match(rescuePreview,/^<svg width="130" height="100" viewBox="0 0 130 100" preserveAspectRatio="xMidYMid meet"/);
+ assert.match(rescuePreview,/class="mini-machine"/);
+});
 for(const l of lemmingLevels)test(`rescue ${l.id}: authored route actually rescues enough and survives saving`,()=>{
  const r=runRescueRoute(l),s=r.state;assert.equal(s.phase,'won');assert.ok(s.saved>=l.need);assert.equal(s.saved+s.lost,l.total);assert.equal(r.pending.length,0);
  const json=saveLemmingState(s);assert.deepEqual(saveLemmingState(restoreLemmingState(JSON.parse(JSON.stringify(json)),l)),json);

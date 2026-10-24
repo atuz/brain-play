@@ -1,4 +1,4 @@
-import {dimensions,direction,STEP} from './machine-parts.js?v=46';
+import {dimensions,direction,STEP} from './machine-parts.js?v=48';
 const dt=STEP/1000;
 export const combustible=e=>['candle','rocket','cannon','dynamite'].includes(e.type);
 export const fusePoint=e=>{
@@ -64,7 +64,7 @@ export function createMechanisms({entities,connections,engine,push,effects,add,b
       if(!hit.body||hit.body.isStatic||hit.broken||hit.id===e.id||e.hitIds?.has(hit.id))continue;
       if(!Query.collides(test,[hit.body]).length)continue;
       if(e.type==='jack'&&hit.y>rect.y)continue;
-      Body.setVelocity(hit.body,velocity(hit));(e.hitIds??=new Set()).add(hit.id);push('launch',e,{target:hit.id});
+      Body.setVelocity(hit.body,velocity(hit));if(e.hitIds==null)e.hitIds=new Set();e.hitIds.add(hit.id);push('launch',e,{target:hit.id});
     }
   }
   function tick(){

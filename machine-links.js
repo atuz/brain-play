@@ -1,5 +1,5 @@
-import {anchor,shaft} from './machine-parts.js?v=46';
-import {ropePoints} from './machine-rope.js?v=46';
+import {anchor,shaft} from './machine-parts.js?v=48';
+import {ropePoints} from './machine-rope.js?v=48';
 
 // Canvas rendering and the touch targets share the same attachment points/curves.
 export function connectionPaths(link,pieces,mode='edit'){

@@ -1,12 +1,12 @@
-import {el,button,controls,keyboardAndSwipe,sound,finish} from './shared.js?v=46';
-import {t} from './i18n.js?v=46';
-import {createMotion,motionEnabled} from './motion.js?v=46';
-import {gameRuntime} from './game-runtime.js?v=46';
-import {startGame} from './game-transition.js?v=46';
-import {atomLevels} from './atom-levels.js?v=46';
-import {createAtomState,validAtomState,atomSlide,atomDestination,atomCopy,atomGuideFits,bondDirections} from './atom-engine.js?v=46';
-import {atomArt,atomModelSVG} from './atom-art.js?v=46';
-import {laserTileArt,laserSVG} from './laser-art.js?v=46';
+import {el,button,controls,keyboardAndSwipe,sound,finish} from './shared.js?v=48';
+import {t} from './i18n.js?v=48';
+import {createMotion,motionEnabled} from './motion.js?v=48';
+import {gameRuntime} from './game-runtime.js?v=48';
+import {startGame} from './game-transition.js?v=48';
+import {atomLevels} from './atom-levels.js?v=48';
+import {createAtomState,validAtomState,atomSlide,atomDestination,atomCopy,atomGuideFits,bondDirections} from './atom-engine.js?v=48';
+import {atomArt,atomModelSVG} from './atom-art.js?v=48';
+import {laserTileArt,laserSVG} from './laser-art.js?v=48';
 
 export function restoreAtom(saved){
   const level=Number.isInteger(saved?.level)&&atomLevels[saved.level]?saved.level:0,l=atomLevels[level];
@@ -32,7 +32,7 @@ export function mount(root,ctx){
   const note=el('p',{class:'classic-note','aria-live':'polite'});
   root.append(toolbar,goalBar,stage,el('div',{class:'classic-footer'},[pad,el('div',{class:'atom-tools'},[el('div',{},[undo,redo]),compare])]),note);
   function save(){data.state=state;ctx.save(data);}
-  function cancel(){epoch++;busy=false;pointer=null;for(const a of board.getAnimations({subtree:true}))a.cancel();}
+  function cancel(){epoch++;busy=false;pointer=null;for(const a of gameRuntime.animationsFor(board,{subtree:true}))a.cancel();}
   function rewind(forward){const source=forward?data.future:data.history,target=forward?data.history:data.future;if(!source.length)return;cancel();target.push(atomCopy(state));state=source.pop();draw();save();}
   async function switchLevel(index,reason='select'){
     if(!atomLevels[index])return;

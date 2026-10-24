@@ -1,4 +1,4 @@
-import {parts} from './machine-parts.js?v=46';
+import {parts} from './machine-parts.js?v=48';
 
 // Belts preserve direction; meshed gears reverse it. Solve whole connected
 // components so a closed contradictory loop cannot spin through itself.

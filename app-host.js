@@ -1,8 +1,8 @@
 // WKWebView exposes this handler before the page loads. The URL flag is also
 // supported so an App can identify itself without relying on a user-agent guess.
-import {gameCodes} from './storage.js?v=46';
-import {readHostConfiguration,webClient} from './host-config.js?v=46';
-import {validResult} from './game-round.js?v=46';
+import {gameCodes} from './storage.js?v=48';
+import {readHostConfiguration,webClient} from './host-config.js?v=48';
+import {validResult} from './game-round.js?v=48';
 const reasons=new Set(['enter','reload','back','restart','new-round','next','previous','select','settings']);
 const token=value=>typeof value==='string'&&/^[a-zA-Z0-9:_-]{1,80}$/.test(value);
 export function validNavigation(page){

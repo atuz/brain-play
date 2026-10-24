@@ -1,7 +1,7 @@
-import {gardenArt} from './zeek-art.js?v=46';
-import {atomArt} from './atom-art.js?v=46';
-import {laserActorArt,laserTileArt} from './laser-art.js?v=46';
-import {rescuePreview} from './lemmings-art.js?v=46';
+import {gardenArt} from './zeek-art.js?v=48';
+import {atomArt} from './atom-art.js?v=48';
+import {laserActorArt,laserTileArt} from './laser-art.js?v=48';
+import {rescuePreview} from './lemmings-art.js?v=48';
 const guide=(play,limits,goal,goalTitle='怎么算赢')=>[
   {title:'怎么玩',text:play},{title:'规则与限制',text:limits},{title:goalTitle,text:goal},
 ];

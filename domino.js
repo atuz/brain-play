@@ -1,16 +1,16 @@
-import {startGame} from './game-transition.js?v=46';
-import {gameRuntime} from './game-runtime.js?v=46';
-import {el,button,sound,finish,keyboardAndSwipe} from './shared.js?v=46';
-import {createMotion,motionEnabled} from './motion.js?v=46';
-import {t} from './i18n.js?v=46';
-import {levels,chapters} from './domino-levels.js?v=46';
-import {at,clone,hasFloor,neighbors,pathTo,edit,initialPosition,simulate,validPosition,walkable} from './domino-engine.js?v=46';
-import {failureSummary,nextGuide} from './domino-guide.js?v=46';
-import {mountCamera} from './domino-camera.js?v=46';
-import {antArtwork,createAntActor} from './domino-actor.js?v=46';
-import {sceneryForLevel,chapterSceneries} from './domino-scenery.js?v=46';
-import {dominoArtwork} from './domino-material.js?v=46';
-import {restingDominoes} from './domino-resting.js?v=46';
+import {startGame} from './game-transition.js?v=48';
+import {gameRuntime} from './game-runtime.js?v=48';
+import {el,button,sound,finish,keyboardAndSwipe} from './shared.js?v=48';
+import {createMotion,motionEnabled} from './motion.js?v=48';
+import {t} from './i18n.js?v=48';
+import {levels,chapters} from './domino-levels.js?v=48';
+import {at,clone,hasFloor,neighbors,pathTo,edit,initialPosition,simulate,validPosition,walkable} from './domino-engine.js?v=48';
+import {failureSummary,nextGuide} from './domino-guide.js?v=48';
+import {mountCamera} from './domino-camera.js?v=48';
+import {antArtwork,createAntActor} from './domino-actor.js?v=48';
+import {sceneryForLevel,chapterSceneries} from './domino-scenery.js?v=48';
+import {dominoArtwork} from './domino-material.js?v=48';
+import {restingDominoes} from './domino-resting.js?v=48';
 
 const types={
   normal:['普通牌','碰到下一张牌，继续连锁。',''],

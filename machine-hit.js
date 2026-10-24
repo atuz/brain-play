@@ -1,4 +1,4 @@
-import {dimensions} from './machine-parts.js?v=46';
+import {dimensions} from './machine-parts.js?v=48';
 
 function contains(point,part,padding=0,minHalf=0){
   const {w,h}=dimensions(part),a=-(part.angle||0)*Math.PI/180;

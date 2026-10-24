@@ -1,9 +1,9 @@
-import './vendor/matter-0.20.0.js?v=46';
-import {parts,dimensions,direction,anchor,compatible,worldSize,WIDTH,HEIGHT,STEP,copy} from './machine-parts.js?v=46';
-import {createDrive} from './machine-drive.js?v=46';
-import {goalsOf,goalDuration,goalSatisfied} from './machine-goals.js?v=46';
-import {ropePoints,ropeLength,solveRoutedRope} from './machine-rope.js?v=46';
-import {createMechanisms,combustible,fusePoint,illuminates} from './machine-mechanisms.js?v=46';
+import './vendor/matter-0.20.0.js?v=48';
+import {parts,dimensions,direction,anchor,compatible,worldSize,WIDTH,HEIGHT,STEP,copy} from './machine-parts.js?v=48';
+import {createDrive} from './machine-drive.js?v=48';
+import {goalsOf,goalDuration,goalSatisfied} from './machine-goals.js?v=48';
+import {ropePoints,ropeLength,solveRoutedRope} from './machine-rope.js?v=48';
+import {createMechanisms,combustible,fusePoint,illuminates} from './machine-mechanisms.js?v=48';
 const {Engine,Body,Bodies,Composite,Constraint,Query,Events}=globalThis.Matter;
 const radians=a=>(a||0)*Math.PI/180;
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -140,7 +140,7 @@ export function createMachine(level,draft={pieces:[],links:[]}) {
       const impulse=Math.max(9.5,-incoming*1.12)-incoming;
       // Reverse the normal component while preserving travel along the bed.
       Body.setVelocity(hit.body,{x:v.x+n.x*impulse,y:v.y+n.y*impulse});
-      (e.bounces??=new Map()).set(hit.id,time);e.bump=time;push('bounce',e);
+      if(e.bounces==null)e.bounces=new Map();e.bounces.set(hit.id,time);e.bump=time;push('bounce',e);
     }
   }
   const contacts=event=>{for(const pair of event.pairs){

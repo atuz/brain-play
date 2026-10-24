@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createGameRuntime,bindGameLifecycle,bindGameDialogs} from './game-runtime.js';
+import {createGameRuntime,bindGameLifecycle,bindGameDialogs,animationFinished} from './game-runtime.js';
 import {createGameAudio} from './game-audio.js';
 
 function fixture(){
@@ -77,4 +77,23 @@ test('an interruption stops active sound, suppresses new notes and never replays
   r.setPaused('ad',true);assert.equal(suspends,1);assert.equal(notes[0].stops,2);sound();assert.equal(notes.length,1);
   r.setPaused('ad',false);assert.equal(notes.length,1);assert.equal(resumes,1);
   sound();assert.equal(notes.length,2);assert.equal(resumes,2);
+});
+test('animation completion preserves native promises and waits for legacy finish/cancel events',async()=>{
+  const promise=Promise.resolve('native');assert.equal(animationFinished({finished:promise}),promise);
+  const legacy=new EventTarget();legacy.playState='running';let done=false;
+  const finished=animationFinished(legacy).then(()=>{done=true;});
+  legacy.playState='paused';await Promise.resolve();assert.equal(done,false);
+  legacy.playState='finished';legacy.dispatchEvent(new Event('finish'));await finished;assert.equal(done,true);
+  const cancelled=new EventTarget();cancelled.playState='running';const failure=assert.rejects(animationFinished(cancelled),/cancelled/);
+  cancelled.dispatchEvent(new Event('cancel'));await failure;
+  await assert.rejects(animationFinished({playState:'idle',pending:false}),/cancelled/);
+});
+test('legacy animation lookup includes tracked descendants and drops released animations',()=>{
+  const {runtime:r}=fixture(),child={},outside={},target={contains:node=>node===child};
+  const own={effect:{target}},descendant={effect:{target:child}},other={effect:{target:outside}};
+  const release=r.trackAnimation(own);r.trackAnimation(descendant);r.trackAnimation(other);
+  assert.deepEqual(r.animationsFor(target),[own]);
+  assert.deepEqual(r.animationsFor(target,{subtree:true}),[own,descendant]);release();
+  assert.deepEqual(r.animationsFor(target,{subtree:true}),[descendant]);
+  const native={getAnimations:options=>[options.subtree]};assert.deepEqual(r.animationsFor(native,{subtree:true}),[true]);
 });

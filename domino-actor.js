@@ -1,6 +1,6 @@
-import {motionEnabled} from './motion.js?v=46';
-import {gameRuntime} from './game-runtime.js?v=46';
-import {dominoMaterial} from './domino-material.js?v=46';
+import {motionEnabled} from './motion.js?v=48';
+import {gameRuntime,animationFinished} from './game-runtime.js?v=48';
+import {dominoMaterial} from './domino-material.js?v=48';
 
 // Original vector character: four walking legs and two working arms.
 export const antArtwork=`<div class="dc-ant-facing"><svg class="dc-ant-art" viewBox="0 0 80 100" aria-hidden="true">
@@ -35,7 +35,7 @@ export function createAntActor(node){
     const animation=target.animate(frames,{duration,easing:'cubic-bezier(.25,.7,.25,1)',fill:'both'});
     const release=gameRuntime.trackAnimation(animation);
     animations.add(animation);
-    try{await animation.finished;}catch{}finally{release();animations.delete(animation);animation.cancel();}
+    try{await animationFinished(animation);}catch{}finally{release();animations.delete(animation);animation.cancel();}
   }
   async function action(name,jobs){
     cancel();const token=generation;node.dataset.action=name;

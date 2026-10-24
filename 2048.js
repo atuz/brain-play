@@ -1,8 +1,8 @@
-import {startGame} from './game-transition.js?v=46';
-import { el, button, stat, statusNode, controls, keyboardAndSwipe, sound, finish } from './shared.js?v=46';
-import { normalizeMergeSettings, mergeTarget, mergeSlot, tileRank, slideBoard, hasMoves, spawn, createMergeState, restoreMergeState } from './merge-engine.js?v=46';
-import {createMotion,floatScore} from './motion.js?v=46';
-export { slideLine, slideBoard, hasMoves, spawn } from './merge-engine.js?v=46';
+import {startGame} from './game-transition.js?v=48';
+import { el, button, stat, statusNode, controls, keyboardAndSwipe, sound, finish } from './shared.js?v=48';
+import { normalizeMergeSettings, mergeTarget, mergeSlot, tileRank, slideBoard, hasMoves, spawn, createMergeState, restoreMergeState } from './merge-engine.js?v=48';
+import {createMotion,floatScore} from './motion.js?v=48';
+export { slideLine, slideBoard, hasMoves, spawn } from './merge-engine.js?v=48';
 
 export function settings(ctx) {
   return {

@@ -1,11 +1,11 @@
-import {el,button,controls,keyboardAndSwipe,sound,finish} from './shared.js?v=46';
-import {t} from './i18n.js?v=46';
-import {createMotion,motionEnabled} from './motion.js?v=46';
-import {gameRuntime} from './game-runtime.js?v=46';
-import {startGame} from './game-transition.js?v=46';
-import {laserLevels} from './laser-levels.js?v=46';
-import {createLaserState,validLaserState,laserAction,laserCopy} from './laser-engine.js?v=46';
-import {laserTileArt,laserActorArt,laserSVG} from './laser-art.js?v=46';
+import {el,button,controls,keyboardAndSwipe,sound,finish} from './shared.js?v=48';
+import {t} from './i18n.js?v=48';
+import {createMotion,motionEnabled} from './motion.js?v=48';
+import {gameRuntime} from './game-runtime.js?v=48';
+import {startGame} from './game-transition.js?v=48';
+import {laserLevels} from './laser-levels.js?v=48';
+import {createLaserState,validLaserState,laserAction,laserCopy} from './laser-engine.js?v=48';
+import {laserTileArt,laserActorArt,laserSVG} from './laser-art.js?v=48';
 
 export function restoreLaser(saved){
   const level=Number.isInteger(saved?.level)&&laserLevels[saved.level]?saved.level:0;
@@ -46,7 +46,7 @@ export function mount(root,ctx){
   legend.append(objects);
   root.append(toolbar,hintNode,stats,stage,el('div',{class:'classic-footer'},[pad,el('div',{},[fire,el('div',{style:'margin-top:10px;text-align:right'},undo)])]),note,legend);
   function save(){data.state=state;ctx.save(data);}
-  function cancel(){epoch++;delay?.cancel();delay=null;busy=false;for(const a of board.getAnimations({subtree:true}))a.cancel();}
+  function cancel(){epoch++;delay?.cancel();delay=null;busy=false;for(const a of gameRuntime.animationsFor(board,{subtree:true}))a.cancel();}
   async function switchLevel(index,reason='select'){
     if(!laserLevels[index])return;
     await startGame(ctx,reason,()=>{cancel();data.level=index;level=laserLevels[index];state=createLaserState(level);data.history=[];hint=false;hintNode.hidden=true;draw(state);save();},{level:String(index+1)});

@@ -39,5 +39,5 @@ export const machineChapters=[
   {id:'mechanisms',name:'机械实验室'}, {id:'demolition',name:'重型机库'},
 ];
 export const sandbox = {id:'sandbox',name:'自由实验',scene:'harbor',width:1440,height:900,goal:'自由搭建，看看会发生什么。',tools:{},fixed:[],target:null};
-import {formalLevels} from './machine-levels-formal.js?v=46';
-import {expansionLevels} from './machine-levels-expansion.js?v=46';
+import {formalLevels} from './machine-levels-formal.js?v=48';
+import {expansionLevels} from './machine-levels-expansion.js?v=48';

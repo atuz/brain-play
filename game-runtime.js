@@ -28,6 +28,13 @@ export function createGameRuntime({now=()=>performance.now(),schedule=(fn,ms)=>s
       if(reasons.size)suspendAnimation(animation);
       return()=>{tracked.delete(animation);animations.delete(animation);};
     },
+    animationsFor(target,options){
+      if(typeof target.getAnimations==='function')return target.getAnimations(options);
+      return [...tracked].filter(animation=>{
+        const node=animation.effect?.target;
+        return node===target||!!(options?.subtree&&node&&target.contains(node));
+      });
+    },
     suspendAnimation,
     delay(ms){
       let remaining=Math.max(0,ms),started=0,id=null,resolve;
@@ -44,6 +51,18 @@ export function createGameRuntime({now=()=>performance.now(),schedule=(fn,ms)=>s
 }
 
 export const gameRuntime=createGameRuntime();
+
+export function animationFinished(animation){
+  if(animation.finished)return animation.finished;
+  if(animation.playState==='finished')return Promise.resolve(animation);
+  if(animation.playState==='idle'&&!animation.pending)return Promise.reject(new Error('Animation cancelled'));
+  // Finish/cancel events honor pause and resume without polling or wall-clock timers.
+  return new Promise((resolve,reject)=>{
+    const clear=()=>{animation.removeEventListener('finish',finish);animation.removeEventListener('cancel',cancel);};
+    const finish=()=>{clear();resolve(animation);},cancel=()=>{clear();reject(new Error('Animation cancelled'));};
+    animation.addEventListener('finish',finish);animation.addEventListener('cancel',cancel);
+  });
+}
 
 // Help, settings and game-owned dialogs all interrupt the same active clock.
 // Observe open dialogs so closing one cannot resume beneath another dialog/ad.

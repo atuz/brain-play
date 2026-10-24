@@ -1,4 +1,4 @@
-import {gardenEnglish,gardenTraditional} from './zeek-i18n.js?v=46';
+import {gardenEnglish,gardenTraditional} from './zeek-i18n.js?v=48';
 export const classicEnglish={
   '朝上开火，让镜子把光转向右边，把箱子推入水中搭桥。':'Fire upwards. The mirror turns the beam right, pushing the box into water to make a bridge.',
   '朝上连续开火，先转动镜面，再反射激光，把箱子推入水中。':'Fire upwards repeatedly to rotate the mirror, then reflect the beam and push the box into water.',

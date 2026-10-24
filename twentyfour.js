@@ -1,13 +1,13 @@
-import {startGame} from './game-transition.js?v=46';
-import {gameRuntime} from './game-runtime.js?v=46';
-import {createMotion} from './motion.js?v=46';
-import { t } from './i18n.js?v=46';
-import { el, button, stat, statusNode, sound, finish } from './shared.js?v=46';
+import {startGame} from './game-transition.js?v=48';
+import {gameRuntime,animationFinished} from './game-runtime.js?v=48';
+import {createMotion} from './motion.js?v=48';
+import { t } from './i18n.js?v=48';
+import { el, button, stat, statusNode, sound, finish } from './shared.js?v=48';
 import {
   calculate, createRound, displayOp, formatFraction, generate24,
   mergeRound, plan24, resetRound, restoreRound, undoRound,
-} from './twentyfour-engine.js?v=46';
-export { parseExpression, solve24, generate24 } from './twentyfour-engine.js?v=46';
+} from './twentyfour-engine.js?v=48';
+export { parseExpression, solve24, generate24 } from './twentyfour-engine.js?v=48';
 
 export function mount(root, ctx) {
   let round = restoreRound(ctx.load(), ctx.rng);
@@ -205,7 +205,7 @@ export function mount(root, ctx) {
     const animation = node.animate(frames, options);
     const release=gameRuntime.trackAnimation(animation);
     animations.add(animation);
-    try { await animation.finished; } catch {} finally { release();animations.delete(animation); if(options.fill!=='forwards')animation.cancel(); }
+    try { await animationFinished(animation); } catch {} finally { release();animations.delete(animation); if(options.fill!=='forwards')animation.cancel(); }
   }
 
   async function deal() {
@@ -285,7 +285,7 @@ export function mount(root, ctx) {
     });
     status.set('两张牌正在合并…');
     await Promise.all([...flights, ...shifts]);
-    ghosts.forEach(({node})=>{for(const animation of node.getAnimations())animation.cancel();node.remove();});
+    ghosts.forEach(({node})=>{for(const animation of gameRuntime.animationsFor(node))animation.cancel();node.remove();});
     if (!alive) return;
     result.classList.remove('tf-result-pending');
     if (!round.done) sound();

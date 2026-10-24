@@ -1,4 +1,4 @@
-import {advancedDefinitions} from './domino-levels-advanced.js?v=46';
+import {advancedDefinitions} from './domino-levels-advanced.js?v=48';
 // Original, fixed puzzles. Recorded edit plans are checked by domino.test.js.
 const piece=(type,x,y=5)=>({type,x,y});
 const n=(x,y=5)=>piece('normal',x,y), d=(x,y=5)=>piece('delay',x,y),

@@ -1,6 +1,6 @@
 // Short, cancellable motion shared by the small games. Game state is saved first.
-import { read, el, button } from './shared.js?v=46';
-import {gameRuntime} from './game-runtime.js?v=46';
+import { read, el, button } from './shared.js?v=48';
+import {gameRuntime,animationFinished} from './game-runtime.js?v=48';
 export const motionEnabled = () => read('animations', true) && !matchMedia('(prefers-reduced-motion: reduce)').matches;
 export function createMotion() {
   let alive = true;
@@ -10,13 +10,13 @@ export function createMotion() {
     const animation = node.animate(frames, { duration, easing: 'cubic-bezier(.2,.75,.3,1)', fill: 'both', ...extra });
     const release=gameRuntime.trackAnimation(animation);
     active.add(animation);
-    try { await animation.finished; } catch {} finally { release();active.delete(animation); animation.cancel(); }
+    try { await animationFinished(animation); } catch {} finally { release();active.delete(animation); animation.cancel(); }
   }
   async function grid(board, moves, commit, duration = 180, concealed = []) {
     if (!alive) return;
     if (!motionEnabled()) { commit(); return; }
     const bounds = board.getBoundingClientRect(), cells = [...board.children];
-    for(const cell of cells)for(const animation of cell.getAnimations())animation.cancel();
+    for(const cell of cells)for(const animation of gameRuntime.animationsFor(cell))animation.cancel();
     const snapshots = moves.map(move => {
       const source = cells[move.from], destination = cells[move.to];
       const a = source.getBoundingClientRect(), b = destination.getBoundingClientRect();
