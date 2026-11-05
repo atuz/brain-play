@@ -5,6 +5,7 @@ import {readHostConfiguration,webClient} from './host-config.js?v=48';
 import {validResult} from './game-round.js?v=48';
 const reasons=new Set(['enter','reload','back','restart','new-round','next','previous','select','settings']);
 const token=value=>typeof value==='string'&&/^[a-zA-Z0-9:_-]{1,80}$/.test(value);
+const NAVIGATION_GATE_TIMEOUT_MS=5000;
 export function validNavigation(page){
   if(!page||typeof page!=='object'||Array.isArray(page)||!reasons.has(page.reason)
     ||Object.keys(page).some(k=>!['screen','reason','game','level','variant','daily','day'].includes(k)))return false;
@@ -48,8 +49,16 @@ export function connectAppHost(href, host = {}) {
       const info=navigation(page);
       if(!gated||!available()){send('navigation',{navigation:info});return Promise.resolve(true);}
       return new Promise(resolve=>{
-        pending={id:info.id,resolve};
-        if(!send('navigation',{navigation:info})){pending=null;resolve(true);}
+        let timer=null;
+        const finish=value=>{if(timer)clearTimeout(timer);resolve(value);};
+        pending={id:info.id,resolve:finish};
+        timer=setTimeout(()=>{
+          if(pending?.id!==info.id)return;
+          pending=null;
+          console.warn('[brain-play] navigation gate timed out',info.reason);
+          resolve(true);
+        },NAVIGATION_GATE_TIMEOUT_MS);
+        if(!send('navigation',{navigation:info})){pending=null;clearTimeout(timer);resolve(true);}
       });
     },
     checkpoint: save => configuration.capabilities.save!==false&&send('save', savePayload(save)), close: save => configuration.capabilities.close!==false&&send('close', savePayload(save)) };
