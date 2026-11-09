@@ -1,5 +1,5 @@
 import {el} from './shared.js?v=48';
-import {t} from './i18n.js?v=48';
+import {t} from './i18n.js?v=58';
 import {motionEnabled} from './motion.js?v=48';
 import {gameRuntime} from './game-runtime.js?v=48';
 

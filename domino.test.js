@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {levels} from './domino-levels.js';
-import {at,clone,edit,initialPosition,pathTo,simulate,validPosition} from './domino-engine.js';
+import {at,clone,edit,initialPosition,pathTo,simulate,validPosition,doorBlocked,entryCell} from './domino-engine.js';
 import {restore} from './domino.js';
 import {dominoEnglish} from './domino-i18n.js';
 import {translate} from './i18n.js';
@@ -14,7 +14,7 @@ function walk(level,position,target) {
   for(const to of path) {position=edit(level,position,{type:'walk',to});assert.ok(position);}
   return position;
 }
-for(const level of levels) test(`Domino ${level.id}: original recorded plan is playable, wins and reaches the exit`,()=>{
+for(const level of levels.filter(level=>!level.dos)) test(`Domino ${level.id}: original recorded plan is playable, wins and reaches the exit`,()=>{
   let position=initialPosition(level);
   assert.ok(validPosition(level,position));
   for(const transfer of level.plan) {
@@ -36,13 +36,14 @@ for(const level of levels) test(`Domino ${level.id}: original recorded plan is p
 });
 test('Only the opening tutorial is already arranged; later levels need edits',()=>{
   for(const level of levels.slice(1)) {
+    if(!level.push) continue;
     const starter=level.pieces.find(p=>at(p,level.push));
     if(starter) assert.equal(simulate(level,level.pieces,starter.id,level.push.dir).won,false,`Level ${level.id}`);
   }
 });
 test('Advanced chapters grow in area, relay depth and recorded rearrangements, with a real timing constraint',()=>{
   for(let chapter=1;chapter<=4;chapter++){
-    const group=levels.filter(level=>level.chapter===chapter);
+    const group=levels.filter(level=>level.chapter===chapter&&!level.dos);
     assert.equal(group.length,6);
     for(const level of group){
       assert.equal(level.width,9+chapter*4);assert.equal(level.height,level.width);
@@ -65,6 +66,25 @@ test('Trigger cannot be carried, illegal placement cannot overlap or block a doo
   position.player={x:1,y:5};assert.equal(edit(level,position,{type:'place'}),null);
   position.player=clone(level.exit);assert.equal(edit(level,position,{type:'place'}),null);
   assert.equal(edit(level,position,{type:'take'}),null);
+});
+test('Every level blocks both doorways for normal dominoes',()=>{
+  for(const level of levels){
+    const entry=entryCell(level);
+    if(entry)assert.ok(doorBlocked(level,entry),`Level ${level.id}: entrance is not blocked`);
+    if(level.exit)assert.ok(doorBlocked(level,level.exit),`Level ${level.id}: exit is not blocked`);
+  }
+});
+test('A vanisher may fill the exit but never the entrance',()=>{
+  const level={width:9,height:7,player:{x:5,y:5},exit:{x:3,y:5},platforms:[[5,0,8]],ladders:[],
+    pieces:[{id:'v',type:'vanish',x:1,y:5},{id:'n',type:'normal',x:2,y:5}]};
+  const entry=entryCell(level);
+  assert.deepEqual(entry,{x:4,y:5});
+  const carry=(id)=>{const position=initialPosition(level);position.player={x:level.pieces.find(p=>p.id===id).x,y:5};return edit(level,position,{type:'take'});};
+  const vanish=carry('v');assert.ok(vanish);
+  const normal=carry('n');assert.ok(normal);
+  assert.equal(edit(level,{...vanish,player:{...entry}},{type:'place'}),null,'vanisher must not fill the entrance');
+  assert.equal(edit(level,{...normal,player:{...level.exit}},{type:'place'}),null,'normal must not fill the exit');
+  assert.ok(edit(level,{...vanish,player:{...level.exit}},{type:'place'}),'vanisher may fill the exit');
 });
 test('Delay changes which branch finishes last; simultaneous trigger is too early',()=>{
   const level={width:9,height:7,platforms:[[1,0,2],[5,0,8]],ladders:[],exit:{x:8,y:5}};
@@ -154,7 +174,7 @@ test('Screenshot regression: moved upper domino makes the trigger simultaneous; 
 });
 test('Guidance solves every original puzzle and legal scrambled layouts, including carried pieces and swaps',()=>{
   let seed=91823;const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
-  for(const level of levels){
+  for(const level of levels.filter(level=>!level.dos)){
     followGuide(level,initialPosition(level));
     for(let run=0;run<8;run++){
       let position=initialPosition(level);

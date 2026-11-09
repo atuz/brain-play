@@ -35,6 +35,7 @@ export function nextGuide(level,position){
     return {kind:at(position.player,target)?'place':'walk-place',type:position.carrying.type,target:{x:target.x,y:target.y}};
   }
   const wrong=pieces.filter(p=>!correct(p)&&p.type!=='trigger');
+  if(!level.push)return {kind:'unavailable'};
   if(!wrong.length){
     const target={x:level.push.x,y:level.push.y};
     return {kind:at(position.player,target)?'push':'walk-push',target,dir:level.push.dir};

@@ -101,6 +101,17 @@ export const chapterSceneries = Object.freeze([
   { kind: 'harbor', label: '游船港湾', evening: false },
   { kind: 'city', label: '高楼城市', evening: true },
   { kind: 'ruins', label: '古代遗迹', evening: false },
+  { kind: 'workshop', label: '机关工坊', evening: true },
+  { kind: 'city', label: '工业都市', evening: true },
+  { kind: 'ruins', label: '雨林遗迹', evening: false },
+  { kind: 'city', label: '轨道都市', evening: true },
+  { kind: 'workshop', label: '电路工坊', evening: false },
+  { kind: 'ruins', label: '爱琴遗迹', evening: false },
+  { kind: 'ruins', label: '夜色城堡', evening: true },
+  { kind: 'workshop', label: '蒸汽工坊', evening: true },
+  { kind: 'workshop', label: '地下工坊', evening: true },
+  { kind: 'garden', label: '日式庭院', evening: false },
+  { kind: 'ruins', label: '幽暗洞窟', evening: true },
 ].map(Object.freeze));
 
 export function sceneryForLevel(level) {

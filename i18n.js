@@ -1,4 +1,5 @@
-import {dominoEnglish,dominoTraditional} from './domino-i18n.js?v=48';
+import {dominoEnglish,dominoTraditional} from './domino-i18n.js?v=56';
+import {pushoverEnglish} from './domino-i18n-pushover.js?v=1';
 import {machineEnglish,machineTraditional} from './machine-i18n.js?v=48';
 import {classicEnglish,classicTraditional} from './classic-i18n.js?v=48';
 import {rescueEnglish} from './lemmings-i18n.js?v=48';
@@ -21,6 +22,7 @@ const english = {
   ...rescueEnglish,
   ...classicEnglish,
   ...dominoEnglish,
+  ...pushoverEnglish,
   ...machineEnglish,
   "按 1、2、3、5、8、13… 数列，只能合并相邻两数，例如 2＋3＝5。1＋1＝2；其他相同数不能合并。每个数字每次滑动仅合并一次。":"Use the sequence 1, 2, 3, 5, 8, 13… Only consecutive terms merge, such as 2 + 3 = 5. Also, 1 + 1 = 2; other equal numbers cannot merge. Each tile merges at most once per swipe.",
   "怎么玩":"How to play",

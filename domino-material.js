@@ -2,9 +2,12 @@
 // The front stays 13×60; its projected top/right faces add visible thickness.
 let materialID = 0;
 export function dominoMaterial({ width = 13, half = false, type } = {}) {
-  const id = `dc-piece-light-${++materialID}`, depth = 3, r = half ? 1.7 : 2.3;
+  const id = `dc-piece-light-${++materialID}`, depth = 4.2, r = half ? 1.9 : 2.7;
   const symbols = {
     normal: [19, 30, 41].map(y => `<circle cx="6.5" cy="${y + .55}" r="1.7" fill="#fff2c5" opacity=".65"/><circle cx="6.5" cy="${y}" r="1.55"/><path d="M5.4 ${y}a1.1 1.1 0 0 1 2.1-.4" fill="none" stroke="#49311d" stroke-width=".65" opacity=".5"/>`).join(''),
+    tumbler: '<path d="M1.4 26h10.2v8H1.4z" fill="var(--dc-mark,#bd4b3f)" stroke="#7e302a" stroke-width=".8"/>',
+    ascender: '<path d="M6.5 50V10m-2.4 4.5 2.4-4.5 2.4 4.5" fill="none" stroke="#c94f42" stroke-width="2.1"/>',
+    exploder: '<path d="m2 25 3 4-3 3 4 1-1 5 4-3 3 3v-5l-4-3 3-4-5 1Z" fill="var(--dc-mark,#c94f42)" stroke="#8a342b" stroke-width=".8"/>',
     delay: '<path d="M3.5 20h6m-6 20h6M4 21v4l5 10v4m0-18v4L4 35v4M4.5 38l2-4 2 4Z"/>',
     bridge: '<path d="M2.5 29h8M3 25v8m7-8v8m-6-6h5"/>',
     vanish: '<path d="M3 27h7m-7 6h7"/>',

@@ -1,40 +1,53 @@
+import {dominoTiming} from './domino-timing.js?v=2';
+import {createAscenderNode,renderAscender} from './domino-ascender-view.js?v=6';
 import {startGame} from './game-transition.js?v=48';
 import {gameRuntime} from './game-runtime.js?v=48';
 import {el,button,sound,finish,keyboardAndSwipe} from './shared.js?v=48';
 import {createMotion,motionEnabled} from './motion.js?v=48';
-import {t} from './i18n.js?v=48';
-import {levels,chapters} from './domino-levels.js?v=48';
-import {at,clone,hasFloor,neighbors,pathTo,edit,initialPosition,simulate,validPosition,walkable} from './domino-engine.js?v=48';
-import {failureSummary,nextGuide} from './domino-guide.js?v=48';
-import {mountCamera} from './domino-camera.js?v=48';
-import {antArtwork,createAntActor} from './domino-actor.js?v=48';
-import {sceneryForLevel,chapterSceneries} from './domino-scenery.js?v=48';
-import {dominoArtwork} from './domino-material.js?v=48';
+import {t} from './i18n.js?v=58';
+import {levels,chapters} from './domino-levels.js?v=62';
+import {at,clone,hasFloor,neighbors,pathTo,edit,initialPosition,simulate,createChain,validPosition,walkable,doorBlocked,entryCell} from './domino-engine.js?v=107';
+import {failureSummary,nextGuide} from './domino-guide.js?v=49';
+import {mountCamera} from './domino-camera.js?v=51';
+import {antArtwork,createAntActor} from './domino-actor.js?v=59';
+import {sceneryForLevel,chapterSceneries} from './domino-scenery.js?v=53';
+import {dominoArtwork} from './domino-material.js?v=53';
 import {restingDominoes} from './domino-resting.js?v=48';
 
 const types={
   normal:['普通牌','碰到下一张牌，继续连锁。',''],
+  stopper:['阻挡牌','可以搬动，但不会倒下；它会挡住倒下的骨牌。','■'],
+  tumbler:['翻滚牌','被碰倒后会一路翻滚，直到遇到障碍或倒下的骨牌。','▤'],
   delay:['延时牌','停顿一下，再向同一方向倒下。','⌛'],
-  bridge:['搭桥牌','朝一格宽的断口倒下，搭桥并碰到对面的牌。','━'],
-  vanish:['消失牌','倒下后消失；只有它可以放在门口。','═'],
+  bridge:['搭桥牌','朝一格宽的断口倒下，搭好桥后消失，不会碰到对面的牌。','━'],
+  vanish:['消失牌','倒下后消失。','═'],
   splitter:['分叉牌','必须被上方落下的骨牌击中，才会向左右分开。','↔'],
+  exploder:['爆炸牌','被碰倒后爆炸，炸掉脚下的一格地面。','✹'],
   trigger:['开门牌','不能搬动；最后倒下时远程开门，和门不必相邻。','≡'],
+  ascender:['上升牌','被碰倒后竖着升到上方平台底部，再以顶部为支点按推倒方向翻倒。','↑'],
 };
 
-function fresh(index=0){return {version:1,level:index,position:initialPosition(levels[index]),history:[],attempt:null,phase:'arrange',walker:null,postHistory:[]};}
+function dosWin(sim,triggerDown){
+  if(!sim||sim.crashed||sim.overflow)return false;
+  const all=sim.pieces.every(p=>p.type==='stopper'||['flat','vanished','ceiling'].includes(p.state));
+  const trig=!!triggerDown||sim.pieces.some(p=>p.type==='trigger'&&['flat','vanished','ceiling'].includes(p.state));
+  return all&&trig;
+}
+function fresh(index=0){return {version:1,level:index,position:initialPosition(levels[index]),history:[],attempt:null,phase:'arrange',death:false,walker:null,postHistory:[],fallen:[],structures:{bridges:[],holes:[]},triggerDown:false};}
 export function restore(saved){
   try {
     if(saved?.version!==1||!Number.isInteger(saved.level)||!levels[saved.level])return fresh();
     const level=levels[saved.level];
     if(!validPosition(level,saved.position)||!Array.isArray(saved.history)||saved.history.length>100||!saved.history.every(p=>validPosition(level,p)))return fresh(saved.level);
     if(!['arrange','failed','exit','won'].includes(saved.phase))return fresh(saved.level);
-    if(!saved.attempt)return saved.phase==='arrange'?clone(saved):fresh(saved.level);
+    if(!saved.attempt)return ['arrange','exit'].includes(saved.phase)?clone(saved):fresh(saved.level);
     if(saved.position.carrying||!saved.position.pieces.some(p=>p.id===saved.attempt.id&&at(p,saved.position.player)))return fresh(saved.level);
-    const result=simulate(level,saved.position.pieces,saved.attempt.id,saved.attempt.dir);
-    if(!result.valid||saved.phase==='arrange'||(saved.phase==='failed')===result.won)return fresh(saved.level);
+    const result=simulate(level,saved.position.pieces,saved.attempt.id,saved.attempt.dir,saved.structures||{},dominoTiming);
+    const dos=level.rules==='dos',won=dos?dosWin(result,saved.triggerDown):result.won;
+    if(!result.valid||saved.phase==='arrange'||(saved.phase==='failed')===won)return fresh(saved.level);
     if(!Array.isArray(saved.postHistory)||saved.postHistory.length>500)return fresh(saved.level);
-    if(result.won&&(!walkable(level,saved.walker||{},result.bridges)||!pathTo(level,saved.position.player,saved.walker,result.bridges)))return fresh(saved.level);
-    if(!saved.postHistory.every(p=>walkable(level,p,result.bridges)))return fresh(saved.level);
+    if(won&&(!walkable(level,saved.walker||{},result.bridges,result.holes)||!pathTo(level,saved.position.player,saved.walker,result.bridges,result.holes)))return fresh(saved.level);
+    if(!saved.postHistory.every(p=>walkable(level,p,result.bridges,result.holes)))return fresh(saved.level);
     if(saved.phase==='won'&&!at(saved.walker,level.exit))return fresh(saved.level);
     return clone(saved);
   } catch {return fresh();}
@@ -44,24 +57,80 @@ export const pageInfo=ctx=>{const i=ctx.load()?.level;return {level:String(Numbe
 export function mount(root,ctx){
   root.classList.add('play-domino');
   let state=restore(ctx.load()),level=levels[state.level],result=null,frame=null,running=false,walking=false,facing=1;
-  let runToken=0,walkToken=0,alive=true,notice='',guideActive=false,guide=null;
-  let actor,acting=false,transfer=null,actionToken=0,queuedWalk=null,moveKind='idle',moveDuration=180;
+  if(state.phase==='exit'&&!result)result={won:true,bridges:state.structures?.bridges||[],holes:state.structures?.holes||[],pieces:[]};
+  let runToken=0,walkToken=0,alive=true,notice='',guideActive=false,guide=null,intro=false,liveChain=null,chainWalker=null;
+  const bridgesNow=()=>liveChain?liveChain.bridges:frame?.bridges??result?.bridges??state.structures?.bridges??[];
+  const holesNow=()=>liveChain?liveChain.holes:frame?.holes??result?.holes??state.structures?.holes??[];
+  function dropPlayer(p,structures){
+    const holes=structures?.holes||[];
+    if(hasFloor(level,p.x,p.y,structures?.bridges||[],holes))return p;
+    const landing=level.platforms.filter(([y,a,b])=>y>p.y&&p.x>=a&&p.x<=b&&!holes.some(h=>h.x===p.x&&h.y===y)).sort((a,b)=>a[0]-b[0])[0];
+    return landing?{x:p.x,y:landing[0]}:p;
+  }
+  let actor,acting=false,transfer=null,actionToken=0,queuedWalk=null,moveKind='idle',moveDuration=180,antStance=null;
   const timers=new Set(),dialogs=new Set(),motion=createMotion(),stoneNodes=new Map();
+  // Tumbler rolling: the block pivots 90 degrees at a time around its own
+  // corners (right-bottom -> right-top -> left-top -> left-bottom) and keeps
+  // going until the chain stops it against another domino.
+  const rollViews=new Map(),frozenRolls=new Map();
+  let rollRaf=0;
+  function rollPose(rs,phase,node){
+    const CW=node?.offsetWidth||40,CH=node?.offsetHeight||40;
+    const W=.32*CW,H=CH,offX=.34*CW,offY=-.10*CH;
+    const q=Math.floor(Math.max(0,phase)),frac=Math.max(0,phase)-q,dir=rs.dir||1;
+    const theta=(q+frac)*Math.PI/2*dir;
+    let px=.66*CW,py=.90*CH;
+    for(let k=0;k<q;k++)px+=(k%2===0?CH:W);
+    const corners=[[W,H],[W,0],[0,0],[0,H]];
+    let lx=corners[q%4][0],ly=corners[q%4][1];
+    if(dir<0){lx=W-lx;px=CW-px;}
+    // rotate the rest-frame corner with the angle the body already accumulated
+    const cA=Math.cos(dir*(q+frac)*Math.PI/2),sA=Math.sin(dir*(q+frac)*Math.PI/2);
+    let tx=px-(cA*lx-sA*ly)-offX,ty=py-(sA*lx+cA*ly)-offY;
+    // Lock every half turn to exactly one cell: the physical roll advances a
+    // thickness more than a cell each time, so slide the pose back by that
+    // thickness, spread across the standing-up quarter.
+    const shift=q%2===0?W*(q/2):W*((q-1)/2+frac);
+    tx+=dir>0?-shift:shift;
+    return `translate(${tx}px,${ty}px) rotate(${theta}rad)`;
+  }
+  function paintRoll(rs){
+    if(!rs.face)return;
+    rs.face.style.transformOrigin='0 0';
+    rs.face.style.transition='none';
+    rs.face.style.transform=rollPose(rs,rs.phase,rs.node);
+  }
+  function tickRoll(){
+    rollRaf=0;
+    const now=performance.now();
+    for(const [id,rv] of [...rollViews]){
+      const dt=now-(rv.last||now);rv.last=now;
+      // one quarter turn every 100ms, capped at the flat pose of the cell the
+      // engine has actually reached, so the block can never run ahead of it
+      rv.phase=Math.min(rv.cap,rv.phase+dt/100);
+      paintRoll(rv);
+      if(rv.freezing&&rv.phase>=rv.cap-1e-3){frozenRolls.set(id,{...rv,frozen:true});rollViews.delete(id);}
+    }
+    if(rollViews.size)rollRaf=requestAnimationFrame(tickRoll);
+  }
+  function startRollLoop(){if(!rollRaf)rollRaf=requestAnimationFrame(tickRoll);}
+  function clearRolls(){if(rollRaf){cancelAnimationFrame(rollRaf);rollRaf=0;}rollViews.clear();frozenRolls.clear();}
   let records=ctx.read('domino:records',{});
   if(!records||typeof records!=='object'||Array.isArray(records))records={};
   const wait=ms=>{const timer=gameRuntime.delay(ms);timers.add(timer);return timer.finished.finally(()=>timers.delete(timer));};
-  function stop(){runToken++;walkToken++;actionToken++;walking=false;running=false;acting=false;transfer=null;queuedWalk=null;moveKind='idle';actor?.cancel();for(const timer of timers)timer.cancel();timers.clear();}
+  function stop(){clearRolls();runToken++;walkToken++;actionToken++;walking=false;running=false;acting=false;intro=false;liveChain=null;chainWalker=null;transfer=null;queuedWalk=null;moveKind='idle';ant.style.transition='';actor?.cancel();for(const timer of timers)timer.cancel();timers.clear();}
   const levelNumber=el('span',{class:'dc-level-number'}),levelName=el('span',{class:'dc-level-name'}),progress=el('span',{class:'dc-progress',title:'已完成关卡'});
   const levelButton=el('button',{type:'button',class:'dc-level-button','aria-label':'选择骨牌关卡',onclick:chooseLevel},[levelNumber,levelName,el('span',{text:'⌄','aria-hidden':'true'})]);
   const hint=button('提示',()=>{guideActive=true;notice='';render();const target=guide?.source||guide?.target;if(target)stageCamera.show(stagePoint(target));},'plain');
   const viewport=el('div',{class:'dc-viewport'});
   const world=el('div',{class:'dc-world','aria-label':'骨牌棋盘'});
   const scenery=el('div',{class:'dc-scenery','aria-hidden':'true'}),surfaces=el('div',{class:'dc-surfaces','aria-hidden':'true'}),tileLayer=el('div',{class:'dc-tiles'}),stones=el('div',{class:'dc-stones','aria-hidden':'true'});
-  const door=el('div',{class:'dc-door','aria-hidden':'true'},[el('i'),el('span',{text:'↗'}),el('small',{class:'dc-door-label',text:'出口'})]);
+  const door=el('div',{class:'dc-door','aria-hidden':'true'},[el('i'),el('span',{text:'↗'}),el('small',{class:'dc-door-label',text:t('出口')})]);
+  const entryDoor=el('div',{class:'dc-door dc-entry','aria-hidden':'true'},[el('i'),el('span',{text:'↘'}),el('small',{class:'dc-door-label',text:t('入口')})]);
   const signal=document.createElementNS('http://www.w3.org/2000/svg','svg');signal.setAttribute('class','dc-signal');signal.setAttribute('aria-hidden','true');signal.setAttribute('preserveAspectRatio','none');
   const signalPath=document.createElementNS('http://www.w3.org/2000/svg','path');signal.append(signalPath);
   const ant=el('div',{class:'dc-ant','aria-hidden':'true'});ant.innerHTML=antArtwork;actor=createAntActor(ant);
-  world.append(surfaces,signal,door,stones,ant,tileLayer);
+  world.append(surfaces,signal,entryDoor,door,stones,ant,tileLayer);
   viewport.append(scenery,world);
   const badge=el('span',{class:'dc-badge'}),instruction=el('span',{class:'dc-instruction'}),readout=el('div',{class:'dc-readout','aria-live':'polite'},[badge,instruction]);
   const guideTextNode=el('span'),guideBox=el('div',{class:'dc-guide-box',hidden:'hidden','aria-live':'polite'},[guideTextNode,el('button',{type:'button',text:'×','aria-label':'关闭提示',onclick:()=>{guideActive=false;render();}})]);
@@ -71,7 +140,7 @@ export function mount(root,ctx){
   const pushLeft=button('← 推倒',()=>push(-1),'dc-push'),pushRight=button('推倒 →',()=>push(1),'dc-push');
   const actions=el('div',{class:'dc-action-pad'},[carry,el('div',{class:'dc-push-row'},[pushLeft,pushRight])]);
   const undo=button('撤销',undoAction,'plain'),retry=button('回到摆放',retryAction,'plain');
-  const restart=button('重开',()=>motion.confirmRestart(state.history.length>0||!!state.attempt,()=>loadLevel(state.level,'restart')),'plain');
+  const restart=button('重开',()=>motion.confirmRestart(state.history.length>0||!!state.attempt||!!state.chainBackup,()=>loadLevel(state.level,'restart')),'plain');
   const status=el('p',{class:'dc-status','aria-live':'polite'});
   const next=button('下一关',()=>loadLevel((state.level+1)%levels.length,'next'));
   const celebration=el('section',{class:'dc-complete',hidden:'hidden'},[el('span',{text:'✓','aria-hidden':'true'}),el('h2',{text:'连锁完成！'}),next]);
@@ -87,14 +156,74 @@ export function mount(root,ctx){
   const stageCamera=mountCamera(viewport,world,{focusPoint:playerFocusPoint,onSwipe:step});
 
   function save(){ctx.save(state);}
-  function player(){return state.attempt?state.walker||state.position.player:state.position.player;}
+  function player(){return liveChain?chainWalker:(state.attempt?state.walker||state.position.player:state.position.player);}
   function playingPieces(){return frame?.pieces||result?.pieces||state.position.pieces;}
-  function currentPiece(){return !state.attempt&&state.position.pieces.find(p=>at(p,state.position.player));}
-  const viewTop=()=>level.ladders.length?0:3,viewRows=()=>level.height-viewTop();
+  function currentPiece(){if(liveChain){const p=player();return liveChain.stones.find(q=>q.x===p.x&&q.y===p.y&&q.state==='upright');}return !state.attempt&&state.position.pieces.find(p=>at(p,state.position.player));}
+  const viewTop=()=>Number.isInteger(level.viewTop)?level.viewTop:(level.ladders.length?0:3),viewRows=()=>level.height-viewTop();
   function stagePoint(p){return {x:(p.x+.5)*40,y:(p.y-viewTop()+.5)*40};}
   function playerFocusPoint(){const p=stagePoint(player());return {...p,y:p.y-18};}
   function placeNode(node,p){node.style.left=`${p.x/level.width*100}%`;node.style.top=`${(p.y-viewTop())/viewRows()*100}%`;}
+  function placeDoorNode(node,p){node.style.left=`${p.x/level.width*100}%`;node.style.top=`${(p.y-.1-viewTop())/viewRows()*100}%`;}
+  function renderSurfaces(){
+    surfaces.replaceChildren();
+    const holes=holesNow();
+    const addPlatform=(y,a,b,bridge=false,raise=0)=>{
+      if(b<a)return;
+      const pct=`${(y-viewTop()+.9)/viewRows()*100}%`;
+      const top=raise?`calc(${pct} - ${raise}px)`:pct;
+      surfaces.append(el('div',{class:`dc-platform${bridge?' dc-bridge-floor':''}`,style:`left:${a/level.width*100}%;top:${top};width:${(b-a+1)/level.width*100}%`}));
+    };
+    for(const [y,from,to,raise]of level.platforms){
+      let start=from;
+      for(const hx of holes.filter(h=>h.y===y).map(h=>h.x).sort((a,b)=>a-b)){
+        if(hx<from||hx>to)continue;
+        addPlatform(y,start,hx-1,false,raise);start=hx+1;
+      }
+      addPlatform(y,start,to,false,raise);
+    }
+    for(const l of level.ladders)surfaces.append(el('div',{class:'dc-ladder',style:`left:${(l.x+.36)/level.width*100}%;top:${(l.from-viewTop()+.7)/viewRows()*100}%;height:${(l.to-l.from+.2)/viewRows()*100}%`}));
+    // Half-row stair treads get a riser down to the next tread so the flight
+    // reads as one connected staircase instead of floating strips.
+    const treadAt=(x,y)=>level.platforms.some(([py,a,b])=>py===y&&x>=a&&x<=b)&&!holes.some(h=>h.x===x&&h.y===y);
+    for(const [y,a,b]of level.platforms){
+      if(Number.isInteger(y))continue;
+      for(let x=a;x<=b;x++){
+        if(!treadAt(x+1,y+.5))continue;
+        const top=(y-viewTop()+.9)/viewRows()*100;
+        surfaces.append(el('div',{class:'dc-riser',style:`left:calc(${(x+1)/level.width*100}% - 2px);top:calc(${top}% + 17px);height:calc(100% / var(--dc-rows) * .5 - 17px)`}));
+      }
+    }
+    for(const bridge of bridgesNow())addPlatform(bridge.y,bridge.x,bridge.x,true);
+  }
+  function entryPoint(){
+    if(level.entry&&Number.isInteger(level.entry.x))return {x:level.entry.x,y:level.player.y};
+    const p=level.player;
+    return [{x:p.x-1,y:p.y},{x:p.x+1,y:p.y}].find(q=>hasFloor(level,q.x,q.y))||{x:p.x,y:p.y};
+  }
+  function entryStart(){const e=entryPoint();return {x:e.x,y:e.y-.55};}
+  async function playIntro(){
+    if(!alive||state.phase!=='arrange'||state.death)return;
+    // Only play the entrance walk on a fresh level; a restored save keeps the
+    // ant where the player left it.
+    if((state.position.moves||0)>0)return;
+    const from=entryStart(),to=state.position.player;
+    if(at(from,to))return;
+    intro=true;acting=true;
+    entryDoor.classList.add('dc-door-open');
+    ant.style.transition='none';placeNode(ant,from);
+    renderText();
+    await wait(40);
+    if(!alive)return;
+    ant.style.transition='left 460ms ease, top 460ms ease';
+    placeNode(ant,to);
+    await wait(500);
+    if(!alive)return;
+    ant.style.transition='';intro=false;acting=false;
+    entryDoor.classList.remove('dc-door-open');
+    render();
+  }
   function buildWorld(){
+    antStance=null;
     // A new stage has a different coordinate system. Snap its first frame;
     // only subsequent player/piece moves should interpolate from old positions.
     world.classList.add('dc-reset');
@@ -104,24 +233,35 @@ export function mount(root,ctx){
     viewport.dataset.scene=landscape.kind;
     viewport.dataset.evening=String(landscape.evening);
     scenery.innerHTML=landscape.artwork;
-    surfaces.replaceChildren();tileLayer.replaceChildren();stones.replaceChildren();stoneNodes.clear();
-    for(const [y,from,to]of level.platforms){
-      const surface=el('div',{class:'dc-platform',style:`left:${from/level.width*100}%;top:${(y-viewTop()+.9)/viewRows()*100}%;width:${(to-from+1)/level.width*100}%`});surfaces.append(surface);
-    }
-    for(const l of level.ladders)surfaces.append(el('div',{class:'dc-ladder',style:`left:${(l.x+.36)/level.width*100}%;top:${(l.from-viewTop()+.7)/viewRows()*100}%;height:${(l.to-l.from+.2)/viewRows()*100}%`}));
+    surfaces.replaceChildren();tileLayer.replaceChildren();stones.replaceChildren();stoneNodes.clear();ant.dataset.dead='false';
+    renderSurfaces();
     for(let y=0;y<level.height;y++)for(let x=0;x<level.width;x++){
       if(!hasFloor(level,x,y)&&!level.ladders.some(l=>l.x===x&&y>=l.from&&y<=l.to))continue;
       const cell=el('button',{type:'button',class:'dc-cell','data-x':x,'data-y':y,onclick:()=>walkTo({x,y})});placeNode(cell,{x,y});tileLayer.append(cell);
     }
-    placeNode(door,level.exit);
+    placeDoorNode(door,level.exit);placeDoorNode(entryDoor,entryPoint());
     for(const p of level.pieces){
-      const face=el('span',{class:'dc-stone-face'});face.innerHTML=dominoArtwork({type:p.type});
+      if(p.type==='ascender'){
+        const node=createAscenderNode(p);stoneNodes.set(p.id,node);stones.append(node);continue;
+      }
+      const face=el('span',{class:'dc-stone-face'});
+      face.innerHTML=`<span class="dc-art">${dominoArtwork({type:p.type})}</span>`;
       const node=el('div',{class:`dc-stone dc-${p.type}`,'data-stone-id':p.id},[face,el('small',{class:'dc-problem-label',hidden:'hidden'})]);
       if(p.type==='splitter')for(const side of ['left','right']){
         const half=el('span',{class:`dc-split-half dc-split-${side}`});half.innerHTML=dominoArtwork({width:6.5,half:true});node.append(half);
       }
+      if(p.type==='splitter')node.append(el('span',{class:'dc-impact-flash','aria-hidden':'true'}));
+      if(p.type==='exploder')node.append(el('span',{class:'dc-explosion','aria-hidden':'true'}));
       if(p.type==='trigger')node.append(el('small',{class:'dc-trigger-label',text:'机关'}));
       stoneNodes.set(p.id,node);stones.append(node);
+    }
+    // Stair treads that sit on half rows need their own click targets.
+    for(const [y,from,to]of level.platforms){
+      if(Number.isInteger(y))continue;
+      for(let x=from;x<=to;x++){
+        if(!hasFloor(level,x,y))continue;
+        const cell=el('button',{type:'button',class:'dc-cell','data-x':x,'data-y':y,onclick:()=>walkTo({x,y})});placeNode(cell,{x,y});tileLayer.append(cell);
+      }
     }
     const trigger=level.pieces.find(p=>p.type==='trigger'),sx=(trigger.x+.5)*100,sy=(trigger.y-viewTop()+.25)*100,ex=(level.exit.x+.5)*100,ey=(level.exit.y-viewTop()+.25)*100;
     signal.setAttribute('viewBox',`0 0 ${level.width*100} ${viewRows()*100}`);
@@ -130,28 +270,136 @@ export function mount(root,ctx){
   }
   function settleStage(){world.scrollTop=world.scrollLeft=0;void world.offsetHeight;world.classList.remove('dc-reset');}
   function renderScene(){
-    const p=player(),visible=playingPieces(),resting=restingDominoes(visible);
+    const p=player(),upright=playingPieces(),fallen=state.fallen||[],visible=[...upright,...fallen.filter(f=>!upright.some(q=>q.id===f.id))],resting=restingDominoes(visible);
     // Stand in the gap beside the selected domino instead of drawing through it.
     // Keep the grid position as the interaction target so existing saves still fit.
     const held=state.attempt?null:state.position.carrying||(transfer?.kind==='place'?transfer.piece:null);
     const beside=!(walking&&moveKind==='climb')&&(held||state.position.pieces.some(q=>at(q,p)))
-      ?[-facing,facing].find(dx=>hasFloor(level,p.x+dx,p.y,result?.bridges||[])):0;
-    const visualX=Math.max(.16,Math.min(level.width-1.16,p.x+(beside||0)*.5));
-    placeNode(ant,{x:visualX,y:p.y});
+      ?[-facing,facing].find(dx=>hasFloor(level,p.x+dx,p.y,bridgesNow(),holesNow())):0;
+    // Removing a fallen tile must not move an otherwise stationary ant.
+    // Choose a new stance when walking to another cell or avoiding a tile.
+    if(!antStance||!at(antStance,p)||beside||(walking&&moveKind==='climb')){
+      antStance={...p,beside:beside||0};
+    }
+    const visualX=Math.max(.16,Math.min(level.width-1.16,p.x+antStance.beside*.5));
+    if(!intro)placeNode(ant,{x:visualX,y:p.y});
     actor.update({facing:beside?-beside:facing,held,move:walking?moveKind:'idle',exited:state.phase==='won'});
     for(const original of level.pieces){
       const stone=visible.find(q=>q.id===original.id),node=stoneNodes.get(original.id);
       node.hidden=!stone;if(!stone)continue;
-      node.style.visibility=transfer?.kind==='place'&&transfer.piece.id===stone.id?'hidden':'';
+      const transferring=transfer?.kind==='place'&&transfer.piece.id===stone.id;
+      node.style.visibility=transferring?'hidden':'';
+      node.style.transition=transferring?'none':'';
+      node.style.opacity=transferring?'0':'';
       const stage=stone.state||'upright';
+      if(stone.type==='ascender'){
+        const problem=!running&&state.phase==='failed'&&result?.problemIds?.includes(stone.id);
+        const placement=renderAscender(node,stone,{level,timing:dominoTiming,
+          selected:!state.attempt&&at(stone,p),
+          guideSource:!!guide&&(guide.source?at(stone,guide.source):['push','walk-push'].includes(guide.kind)&&at(stone,guide.target)),
+          problem,problemText:t(result?.reason==='tie'?'同刻':'!'),place:p=>placeNode(node,p),
+        });
+        placeNode(node,placement||stone);continue;
+      }
+      const faceNode=node.querySelector('.dc-stone-face');
+      const contactMs=stone.type==='normal'?dominoTiming.contact:dominoTiming.beat;
+      if(stone.type==='normal'){
+        node.style.setProperty('--dc-contact-duration',`${contactMs}ms`);
+        node.style.setProperty('--dc-quarter-duration',`${dominoTiming.quarter}ms`);
+        node.style.setProperty('--dc-drop-duration',`${320*contactMs/dominoTiming.beat}ms`);
+      }
+      const prevStage=node.dataset.stage||'upright';
+      if(stone.type==='normal'){
+        // Preserve the actual half-turn from the airborne flip across all
+        // landing/rebound poses; switching pivots must not reset the artwork.
+        if(stage==='upright')node.dataset.normalInverted='false';
+        else if(stone.normalInverted!==undefined)node.dataset.normalInverted=String(stone.normalInverted);
+        else if(stage==='landing'&&prevStage==='dropping')node.dataset.normalInverted=String(node.dataset.normalInverted!=='true');
+        if(stage==='returning'&&prevStage!==stage){
+          // Capture the displayed landing angle before removing its keyframe.
+          const pose=getComputedStyle(faceNode).transform;
+          faceNode.style.setProperty('--dc-normal-return-from',pose==='none'?'rotate(0deg)':pose);
+        }
+        if(stage==='dropping'&&prevStage!=='dropping'){
+          const dir=stone.dir||1;
+          let from=0;
+          if(prevStage==='falling')from=dir*43;
+          else if(prevStage==='flat'){
+            const ra=parseFloat(getComputedStyle(node).getPropertyValue('--dc-rest-angle'))||90;
+            from=dir*ra;
+          }
+          faceNode.style.setProperty('--dc-drop-from',`${from}deg`);
+        }
+        if(prevStage==='landing'&&stage==='flat')node.dataset.landed='1';
+        else if(stage!=='flat'&&stage!=='landing')delete node.dataset.landed;
+        delete node.dataset.inverted;
+      }else{
+        if((stage==='dropping'||stage==='returning')&&prevStage!==stage){
+          // Preserve the displayed pose when a landing animation is interrupted
+          // by a drop or rebound. Resetting its class first loses that angle.
+          const transform=getComputedStyle(faceNode).transform;
+          if(stage==='returning')faceNode.style.setProperty('--dc-return-from',transform==='none'?'rotate(0deg)':transform);
+          else{
+            const values=transform.startsWith('matrix(')?transform.slice(7,-1).split(',').map(Number):null;
+            const angle=values?Math.atan2(values[1],values[0])*180/Math.PI:0;
+            faceNode.style.setProperty('--dc-drop-from',`${angle}deg`);
+          }
+        }
+        node.dataset.inverted=String(!!stone.inverted);
+        node.style.setProperty('--dc-landing-angle',`${stone.landingAngle??90}deg`);
+        node.style.setProperty('--dc-landing-duration',`${stone.landingTravel||400}ms`);
+      }
+      if(stone.type==='tumbler'){
+        if(stage==='upright')node.dataset.tumblerInverted='false';
+        else if(prevStage==='dropping'&&stage==='rolling'){
+          node.dataset.tumblerInverted=String(node.dataset.tumblerInverted!=='true');
+        }
+      }
+      node.dataset.stage=stage;
       node.className=`dc-stone dc-${stone.type} dc-${stage}`;
+
+      const rolling=stone.type==='tumbler'&&stone.state==='rolling';
+      let rollView=rollViews.get(stone.id);
+      if(rollView&&(rollView.dir!==(stone.dir||1)||rollView.startY!==stone.y)){
+        // Bounced off a stopper or landed on a lower platform: re-anchor the
+        // roll at the cell the engine is on now.
+        rollViews.delete(stone.id);rollView=null;
+      }
+      if(rolling){
+        if(!rollView){rollView={startX:stone.x,startY:stone.y,dir:stone.dir||1,phase:0,cap:1,last:performance.now(),moves:0,node,face:faceNode};rollViews.set(stone.id,rollView);frozenRolls.delete(stone.id);}
+        else{
+          rollView.node=node;rollView.face=faceNode;
+          const moved=Math.abs(stone.x-rollView.startX);
+          if(moved>rollView.moves){rollView.moves=moved;rollView.cap=moved*2+1;}
+        }
+        rollView.freezing=false;
+        startRollLoop();
+      }else if(stone.state==='dropping'){
+        if(rollView)rollViews.delete(stone.id);
+        frozenRolls.delete(stone.id);
+      }else if(rollView&&!rollView.freezing){
+        rollView.freezing=true;rollView.node=node;rollView.face=faceNode;rollView.last=performance.now();
+        startRollLoop();
+      }
+      const frozen=rolling?null:frozenRolls.get(stone.id);
+      if(rolling||frozen){
+        paintRoll(rolling?rollView:frozen);
+      }else if(stone.type==='tumbler'){
+        faceNode.style.transform='';faceNode.style.transformOrigin='';faceNode.style.transition='';
+      }
+      const impact=frame?.impacts?.find(event=>event.targetId===stone.id&&event.kind==='splitter-hit');
+      node.classList.toggle('dc-split-hit',!!impact);
+      const effects=frame?.effects||[];
+      node.classList.toggle('dc-stopper-hit',effects.some(event=>event.kind==='rebound'&&event.targetId===stone.id));
+      node.classList.toggle('dc-rebounded',effects.some(event=>event.kind==='rebound'&&event.sourceId===stone.id));
+      node.classList.toggle('dc-exploding',effects.some(event=>event.kind==='explode'&&event.sourceId===stone.id));
       node.classList.toggle('dc-selected',!state.attempt&&at(stone,p));
       const problem=!running&&state.phase==='failed'&&result?.problemIds?.includes(stone.id);
       node.classList.toggle('dc-problem',!!problem);
       node.classList.toggle('dc-guide-source',!!guide&&(guide.source?at(stone,guide.source):['push','walk-push'].includes(guide.kind)&&at(stone,guide.target)));
       node.dataset.edge=stone.x===0?'left':stone.x===level.width-1?'right':'';
       const pose=resting.get(stone.id);
-      node.style.zIndex=pose.layer;
+      node.style.zIndex=stage==='impact'?9:impact?10:pose.layer;
       if(pose.body){
         node.style.setProperty('--dc-rest-angle',`${pose.body.angle}deg`);
         node.style.setProperty('--dc-rest-lift',`${pose.body.lift}px`);
@@ -163,12 +411,32 @@ export function mount(root,ctx){
       }
       const label=node.querySelector('.dc-problem-label');label.hidden=!problem;label.textContent=t(result?.reason==='tie'?(stone.type==='trigger'?'机关·同刻':'同刻'):'!');
       node.style.setProperty('--dc-dir',stone.dir||1);
-      node.style.setProperty('--dc-travel',stage==='dropping'?`${Math.max(1,stone.dropY-stone.y)*200}ms`:'150ms');
-      placeNode(node,stage==='dropping'?{x:stone.dropX,y:stone.dropY}:stone);
+      node.style.setProperty('--dc-travel',stage==='dropping'?`${Math.max(1,stone.dropY-stone.y)*contactMs}ms`:stage==='ascending'?'180ms':'150ms');
+      if(stage==='dropping'&&!transferring){
+        const rows=Math.max(1,stone.dropY-stone.y);
+        node.style.transition=rows>1?`left ${contactMs}ms ease, top ${(rows-1)*contactMs}ms ease ${contactMs}ms`:`left ${contactMs}ms ease, top ${contactMs}ms ease`;
+      }
+      const heldView=rollViews.get(stone.id)||frozenRolls.get(stone.id);
+      let placeAt=stage==='dropping'?{x:stone.dropX,y:stone.dropY}:heldView?{x:heldView.startX,y:heldView.startY}:stone;
+      if(stage==='dropping'&&stone.type==='tumbler'&&!node.dataset.dropCommit){
+        // Re-anchor the rolling body, finish the half-turn for one beat,
+        // then move vertically. Commit now, rather than waiting for a tick.
+        node.dataset.dropCommit='1';
+        node.style.transition='none';
+        placeNode(node,{x:stone.x,y:stone.y});
+        void node.offsetHeight;
+        const beats=Math.max(2,stone.dropY-stone.y);
+        node.style.transition=`left 200ms linear, top ${(beats-1)*200}ms linear 200ms`;
+      }else if(stage==='dropping'&&stone.type==='tumbler'){
+        const beats=Math.max(2,stone.dropY-stone.y);
+        node.style.transition=`left 200ms linear, top ${(beats-1)*200}ms linear 200ms`;
+      }else if(stage!=='dropping'&&node.dataset.dropCommit){
+        delete node.dataset.dropCommit;
+      }
+      placeNode(node,placeAt);
     }
-    surfaces.querySelectorAll('.dc-bridge-floor').forEach(n=>n.remove());
-    for(const bridge of frame?.bridges||result?.bridges||[]){
-      surfaces.append(el('div',{class:'dc-platform dc-bridge-floor',style:`left:${bridge.x/level.width*100}%;top:${(bridge.y-viewTop()+.9)/viewRows()*100}%;width:${100/level.width}%`}));
+    renderSurfaces();
+    for(const bridge of bridgesNow()){
       if(!tileLayer.querySelector(`[data-x="${bridge.x}"][data-y="${bridge.y}"]`)){
         const cell=el('button',{type:'button',class:'dc-cell dc-bridge-cell','data-x':bridge.x,'data-y':bridge.y,onclick:()=>walkTo(bridge)});placeNode(cell,bridge);tileLayer.append(cell);
       }
@@ -176,26 +444,27 @@ export function mount(root,ctx){
     if(!state.attempt)tileLayer.querySelectorAll('.dc-bridge-cell').forEach(n=>n.remove());
     for(const cell of tileLayer.children){
       const q={x:Number(cell.dataset.x),y:Number(cell.dataset.y)},stone=visible.find(s=>at(s,q)&&s.state!=='vanished');
-      const word=at(q,p)?'蚂蚁':at(q,level.exit)?'出口':stone?types[stone.type][0]:hasFloor(level,q.x,q.y,frame?.bridges||result?.bridges||[])?'地面':'梯子';
-      cell.setAttribute('aria-label',t(`第${q.y+1}行第${q.x+1}列，${t(word)}`));cell.classList.toggle('dc-current',at(q,p));
+      const word=at(q,p)?'蚂蚁':at(q,level.exit)?'出口':stone?types[stone.type][0]:hasFloor(level,q.x,q.y,bridgesNow(),holesNow())?'地面':'梯子';
+      cell.setAttribute('aria-label',t(`第${q.y+1}行第${q.x+1}列，${t(word)}`));
       cell.classList.toggle('dc-guide-target',!!guide?.target&&at(q,guide.target));
-      cell.disabled=acting||running||state.phase==='failed'||state.phase==='won';
+      cell.disabled=acting||(running&&level.rules!=='dos')||state.phase==='failed'||state.phase==='won';
     }
     door.classList.toggle('dc-door-open',!!result?.won&&!running);
     signal.classList.toggle('is-visible',!running&&(currentPiece()?.type==='trigger'||['exit','won'].includes(state.phase)||!!guide&&!!state.attempt));
     signal.classList.toggle('is-open',!!result?.won);
     world.dataset.phase=running?'running':state.phase;
-    const active=visible.filter(s=>['falling','dropping','waiting'].includes(s.state));
-    const target=running?(active.find(s=>s.state==='dropping')||active.find(s=>s.type==='trigger')||active.at(-1)):null;
+    const active=visible.filter(s=>['falling','dropping','waiting','rolling','ascending'].includes(s.state));
+    const target=running?(active.find(s=>['dropping','rolling','ascending'].includes(s.state))||active.find(s=>s.type==='trigger')||active.at(-1)):null;
     stageCamera.follow(target?stagePoint(target.state==='dropping'?{x:target.dropX,y:target.dropY}:target):playerFocusPoint());
   }
   function renderText(){
     const piece=currentPiece(),held=state.position.carrying;
     levelNumber.textContent=String(state.level+1).padStart(2,'0');levelName.textContent=t(level.name);
     progress.textContent=`${Object.keys(records).filter(k=>levels[Number(k)]&&Number.isSafeInteger(records[k])).length}/${levels.length}`;
-    if(running){badge.textContent='↝';instruction.textContent=t('连锁进行中…');}
+    if(running){badge.textContent='↝';instruction.textContent=t(level.rules==='dos'?'连锁进行中…可以继续走或推。':'连锁进行中…');}
     else if(state.phase==='exit'){badge.textContent='↗';instruction.textContent=t('门开了，走进出口！');}
     else if(state.phase==='won'){badge.textContent='✓';instruction.textContent=t('连锁完成！');}
+    else if(state.death){badge.textContent='☠';instruction.textContent=t('蚂蚁摔死了：落差太大，点“重开”重试。');}
     else if(state.phase==='failed'){badge.textContent='!';instruction.textContent=t(failureSummary(result));}
     else {
       badge.textContent=held?types[held.type][2]||'▮':piece?types[piece.type][2]||'▮':'•';
@@ -210,11 +479,17 @@ export function mount(root,ctx){
     pushLeft.classList.toggle('dc-guide-action',guide?.kind==='push'&&guide.dir===-1);
     pushRight.classList.toggle('dc-guide-action',guide?.kind==='push'&&guide.dir===1);
     carry.textContent=t(held?'放下':'搬起');
-    carry.disabled=acting||running||walking||!!state.attempt||(!held&&(!piece||piece.type==='trigger'));
-    pushLeft.disabled=pushRight.disabled=acting||running||walking||!!state.attempt||!!held||!piece||piece.type==='splitter';
-    const deltas={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]},p=player(),reachable=neighbors(level,p,result?.bridges||[]);
-    for(const cell of pad.children){const delta=deltas[cell.dataset.direction];cell.disabled=acting||running||state.phase==='failed'||state.phase==='won'||!reachable.some(q=>q.x===p.x+delta[0]&&q.y===p.y+delta[1]);}
-    undo.disabled=!(state.history.length||state.attempt);retry.disabled=!state.attempt;hint.disabled=acting||running||walking||state.phase==='won';levelButton.disabled=acting||running;
+    carry.disabled=acting||(running&&level.rules!=='dos')||walking||!!state.attempt||state.phase==='failed'||(!held&&(!piece||piece.type==='trigger'));
+    pushLeft.disabled=pushRight.disabled=acting||(running&&level.rules!=='dos')||walking||!!state.attempt||state.phase==='failed'||!!held||!piece||['splitter','stopper'].includes(piece.type);
+    const deltas={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]},p=player(),reachable=neighbors(level,p,bridgesNow(),holesNow());
+    for(const cell of pad.children){
+      const delta=deltas[cell.dataset.direction];
+      const ok=reachable.some(q=>delta[0]
+        ?(q.y===p.y&&q.x===p.x+delta[0])||(Math.abs(q.y-p.y)===.5&&q.x===p.x+delta[0])||(q.y>p.y&&(q.x-p.x)*delta[0]>0)
+        :(q.x===p.x&&q.y===p.y+delta[1])||(Math.abs(q.y-p.y)===.5&&q.x!==p.x&&Math.sign(q.y-p.y)===delta[1])||(q.y===p.y+delta[1]&&q.x!==p.x));
+      cell.disabled=acting||(running&&level.rules!=='dos')||state.phase==='failed'||state.phase==='won'||!ok;
+    }
+    undo.disabled=!(state.history.length||state.attempt||state.chainBackup);retry.disabled=!state.attempt&&!state.chainBackup;hint.disabled=acting||running||walking||state.phase==='won';levelButton.disabled=acting||running;
     status.textContent=t(notice);status.classList.toggle('dc-error',state.phase==='failed');
     celebration.hidden=state.phase!=='won';
     next.textContent=t(state.level===levels.length-1?'再玩一轮':'下一关');
@@ -226,17 +501,24 @@ export function mount(root,ctx){
       'walk-place':'搬着{piece}走到闪亮空位，再点“放下”。',place:'点“放下”，把{piece}放在这里。',
       'walk-push':'摆好了。走到圈出的起始牌，不需要把牌接到门口。',
       push:step.dir===1?'点“推倒 →”。开门牌最后倒下后会远程开门。':'点“← 推倒”。开门牌最后倒下后会远程开门。',
-      unavailable:'请重开本关，再查看下一步提示。'})[step.kind];
+      unavailable:'请重开本关，再查看下一步提示。',
+      text:step.text||''})[step.kind];
     return t(text).replace('{piece}',t(types[step.type]?.[0]||''));
   }
   function render(){
     if(!alive)return;
-    guide=!guideActive||running||state.phase==='won'?null:state.attempt?(state.phase==='exit'?{kind:'exit',target:level.exit}:{kind:'retry'}):nextGuide(level,state.position);
+    if(!guideActive||running||state.phase==='won')guide=null;
+    else if(state.attempt)guide=state.phase==='exit'?{kind:'exit',target:level.exit}:{kind:'retry'};
+    else {
+      const next=nextGuide(level,state.position);
+      // The 101 original levels have no recorded step plan; show their written solution instead.
+      guide=next.kind==='unavailable'&&level.hint?{kind:'text',text:level.hint}:next;
+    }
     renderScene();renderText();
   }
   function remember(){state.history.push(clone(state.position));if(state.history.length>100)state.history.shift();}
   function markWon(){
-    if(state.phase!=='exit'||!at(state.walker,level.exit))return;
+    if(state.phase!=='exit'||!at(player(),level.exit))return;
     state.phase='won';notice='';
     const moves=state.position.moves+state.postHistory.length;
     ctx.result?.('won',{moves});
@@ -244,13 +526,25 @@ export function mount(root,ctx){
     ctx.write('domino:records',records);finish('domino');
   }
   function walkOne(to){
-    if(running||['failed','won'].includes(state.phase))return false;
+    if(['failed','won'].includes(state.phase))return false;
+    if(running&&level.rules!=='dos')return false;
     const before=player();
-    if(state.attempt){
-      if(!neighbors(level,before,result.bridges).some(p=>at(p,to)))return false;
+    if(liveChain){
+      const fall=to.y-before.y;
+      if(!neighbors(level,before,liveChain.bridges,liveChain.holes).some(p=>at(p,to)))return false;
+      chainWalker=clone(to);
+      if(fall>3){liveChain=null;running=false;chainWalker=null;die();return true;}
+    } else if(state.attempt){
+      if(!neighbors(level,before,result.bridges,result.holes).some(p=>at(p,to)))return false;
       state.postHistory.push(clone(before));if(state.postHistory.length>500)state.postHistory.shift();state.walker=clone(to);
     }else{
-      const next=edit(level,state.position,{type:'walk',to});if(!next)return false;remember();state.position=next;
+      const fall=to.y-state.position.player.y;
+      let next=edit(level,state.position,{type:'walk',to});
+      if(!next&&level.rules==='dos'&&neighbors(level,state.position.player,bridgesNow(),holesNow()).some(p=>at(p,to))){
+        next=clone(state.position);next.player=clone(to);next.moves++;
+      }
+      if(!next)return false;remember();state.position=next;
+      if(fall>3){die();return true;}
     }
     if(to.x!==before.x)facing=Math.sign(to.x-before.x);
     moveKind=to.y!==before.y?'climb':'walk';moveDuration=moveKind==='climb'?220:180;
@@ -258,8 +552,8 @@ export function mount(root,ctx){
     stageCamera.resume();notice='';save();render();return true;
   }
   function walkTo(target){
-    if(acting||running||['failed','won'].includes(state.phase))return;
-    const path=pathTo(level,player(),target,result?.bridges||[]);if(!path){notice='这里走不到，可以找梯子绕行。';renderText();return;}
+    if(acting||(running&&level.rules!=='dos')||['failed','won'].includes(state.phase))return;
+    const path=pathTo(level,player(),target,bridgesNow(),holesNow());if(!path){notice='这里走不到，可以找梯子绕行。';renderText();return;}
     if(walking){queuedWalk={target};return;}
     void runWalk(path);
   }
@@ -267,33 +561,88 @@ export function mount(root,ctx){
   async function runWalk(path){
     const token=++walkToken;walking=true;
     while(path.length&&alive&&token===walkToken){
+      const to=path[0],before=player(),drop=to.y-before.y;
+      if(drop>1&&motionEnabled()){
+        ant.style.transition='left 140ms ease';
+        placeNode(ant,{x:to.x,y:before.y});
+        ant.dataset.move='scared';
+        await wait(250);
+        if(!alive||token!==walkToken)return;
+        ant.style.transition='top 280ms cubic-bezier(.3,0,.8,1)';
+        placeNode(ant,to);
+        ant.dataset.move='falling';
+        await wait(300);
+        ant.style.transition='';
+        if(!alive||token!==walkToken)return;
+      }
       if(!walkOne(path.shift()))break;
       await wait(motionEnabled()?moveDuration:0);
       if(!alive||token!==walkToken)return;
       if(state.phase==='exit'&&at(player(),level.exit)){walking=false;queuedWalk=null;moveKind='idle';await enterExit();return;}
       if(queuedWalk){
         const next=queuedWalk;queuedWalk=null;
-        if(next.target)path=pathTo(level,player(),next.target,result?.bridges||[])||[];
+        if(next.target)path=pathTo(level,player(),next.target,bridgesNow(),holesNow())||[];
         else {const p=player(),delta=deltas[next.direction];path=[{x:p.x+delta[0],y:p.y+delta[1]}];}
       }
     }
     if(alive&&token===walkToken){walking=false;moveKind='idle';render();}
   }
   function step(direction){
-    if(acting||running||!deltas[direction]||['failed','won'].includes(state.phase))return;
+    if(acting||(running&&level.rules!=='dos')||!deltas[direction]||['failed','won'].includes(state.phase))return;
     if(walking){queuedWalk={direction};return;}
-    const delta=deltas[direction],p=player();void runWalk([{x:p.x+delta[0],y:p.y+delta[1]}]);
+    const delta=deltas[direction],p=player(),opts=neighbors(level,p,bridgesNow(),holesNow()),reach=q=>opts.some(r=>at(r,q));
+    let target={x:p.x+delta[0],y:p.y+delta[1]};
+    if(!reach(target)&&delta[0]){
+      // Half-row stair treads sit diagonally beside the ant; prefer the step,
+      // then a ledge drop.
+      const tread=opts.find(q=>q.x===p.x+delta[0]&&Math.abs(q.y-p.y)===.5);
+      const fall=opts.find(q=>q.y>p.y&&(q.x-p.x)*delta[0]>0);
+      if(tread||fall)target=tread||fall;
+    }
+    if(!reach(target)&&delta[1]){
+      const half=opts.find(q=>q.x!==p.x&&Math.abs(q.y-p.y)===.5&&Math.sign(q.y-p.y)===delta[1]);
+      const stair=opts.find(q=>q.y===p.y+delta[1]&&q.x!==p.x);
+      if(half||stair)target=half||stair;
+    }
+    void runWalk([target]);
   }
   async function carryOrPlace(){
-    if(acting||running||walking||state.attempt)return;
+    if(acting||(running&&level.rules!=='dos')||walking||state.attempt||state.phase==='failed')return;
+    if(!liveChain&&(state.fallen||[]).some(q=>at(q,player()))){notice='这里躺着牌，先换个位置。';renderText();return;}
+    if(liveChain){
+      if(state.position.carrying){
+        const p=player();
+        const carried=state.position.carrying;
+        if(!hasFloor(level,p.x,p.y,liveChain.bridges,liveChain.holes)||(doorBlocked(level,p)&&(carried.type!=='vanish'||at(p,entryCell(level)||{x:-1,y:-1})))||liveChain.stones.some(q=>q.x===p.x&&q.y===p.y&&q.state!=='vanished')||(state.fallen||[]).some(q=>q.x===p.x&&q.y===p.y)){notice='这里不能放牌。';renderText();return;}
+        liveChain.addStone(state.position.carrying);
+        state.position={...state.position,carrying:null};
+      }else{
+        const stone=liveChain.stones.find(q=>q.x===player().x&&q.y===player().y&&q.state==='upright');
+        if(!stone||stone.type==='trigger')return;
+        liveChain.removeStone(stone.id);
+        state.position={...state.position,carrying:stone};
+      }
+      notice='';save();render();return;
+    }
     const piece=state.position.carrying||currentPiece(),kind=state.position.carrying?'place':'take';
     const next=edit(level,state.position,{type:kind});
-    if(!next){notice='这里不能放牌：需要空的地面，门口只允许消失牌。';renderText();return;}
-    const from=stoneNodes.get(piece.id)?.querySelector('.dc-stone-face').getBoundingClientRect();
+    if(!next){notice='这里不能放牌：需要空的地面，门口那一格也不能放。';renderText();return;}
+    const from=kind==='take'?stoneNodes.get(piece.id)?.querySelector('.dc-stone-face').getBoundingClientRect():null;
     const token=++actionToken;acting=true;transfer={kind,piece};remember();state.position=next;notice='';save();render();
-    const complete=kind==='take'?await actor.take(from):await actor.place(stoneNodes.get(piece.id).querySelector('.dc-stone-face').getBoundingClientRect());
+    const complete=kind==='take'?await actor.take(from):await actor.place(()=>{
+      const boardStone=stoneNodes.get(piece.id);
+      if(!boardStone)return;
+      boardStone.style.visibility='';
+      boardStone.style.transition='opacity 240ms ease-out';
+      boardStone.style.opacity='0';
+      requestAnimationFrame(()=>{if(alive&&transfer?.piece.id===piece.id)boardStone.style.opacity='1';});
+    });
     if(!alive||token!==actionToken||!complete)return;
     acting=false;transfer=null;sound();render();
+  }
+  function die(){
+    state.phase='failed';state.death=true;state.attempt=null;state.walker=null;state.postHistory=[];
+    ant.dataset.dead='true';result=null;frame=null;notice='';save();render();
   }
   async function enterExit(){
     if(acting||state.phase!=='exit'||!at(player(),level.exit))return;
@@ -303,12 +652,30 @@ export function mount(root,ctx){
   }
   async function push(dir){
     const starter=currentPiece();
-    if(!starter||starter.type==='splitter'||acting||running||walking||state.attempt||state.position.carrying)return;
-    const simulation=simulate(level,state.position.pieces,starter.id,dir);if(!simulation.valid)return;
+    if(level.rules==='dos'){
+      if(!starter||['splitter','stopper'].includes(starter.type)||acting||walking||state.position.carrying)return;
+      if(liveChain){
+        if(liveChain.activateStone(starter.id,dir)){facing=dir;sound();render();}
+        return;
+      }
+      const chain=createChain(level,state.position.pieces,state.structures||{},dominoTiming);
+      if(!chain.activateStone(starter.id,dir))return;
+      state.chainBackup={position:clone(state.position),fallen:clone(state.fallen||[]),structures:clone(state.structures||{}),triggerDown:!!state.triggerDown};
+      liveChain=chain;chainWalker=clone(state.position.player);
+      result=null;frame=chain.snapshot();running=true;facing=dir;
+      const token=++runToken;render();sound();
+      void runLiveChain(token);
+      return;
+    }
+    if(!starter||['splitter','stopper'].includes(starter.type)||acting||running||walking||state.attempt||state.phase==='failed'||state.position.carrying)return;
+    const simulation=simulate(level,state.position.pieces,starter.id,dir,state.structures||{},dominoTiming);
+    if(!simulation.valid)return;
+    const won=simulation.won;
     stop();facing=dir;const token=++runToken;acting=true;render();
     if(!await actor.reach()||!alive||token!==runToken)return;
     acting=false;result=simulation;state.attempt={id:starter.id,dir};state.walker=clone(state.position.player);state.postHistory=[];
-    state.phase=result.won?'exit':'failed';save();notice='';running=true;frame=result.trace[0];stageCamera.resume();render();sound();
+    state.phase=won?'exit':'failed';
+    save();notice='';running=true;frame=result.trace[0];stageCamera.resume();render();sound();
     void actor.recoil();
     if(motionEnabled())for(let i=1;i<result.trace.length;i++){
       await wait((result.trace[i].time-result.trace[i-1].time)*200);
@@ -318,13 +685,55 @@ export function mount(root,ctx){
     if(motionEnabled())await wait(200);
     if(!alive||token!==runToken)return;
     frame=null;running=false;
-    if(!result.won)ctx.result?.('lost',{moves:state.position.moves});
+    if(!won)ctx.result?.('lost',{moves:state.position.moves});
     notice='';
-    save();render();if(result.won)sound(true);
+    save();render();if(won)sound(true);
+  }
+  async function runLiveChain(token){
+    let deadline=gameRuntime.now();
+    while(liveChain&&!liveChain.done()){
+      deadline+=liveChain.nextTickBeats*dominoTiming.beat;
+      await wait(Math.max(0,deadline-gameRuntime.now()));
+      if(!alive||token!==runToken||!liveChain)return;
+      if(!liveChain.tick())continue;
+      frame=liveChain.snapshot();
+      renderScene();
+    }
+    if(!alive||token!==runToken||!liveChain)return;
+    frame=null;running=false;
+    finishLiveChain();
+  }
+  function finishLiveChain(){
+    const snap=liveChain.snapshot(),pieces=snap.pieces;
+    const trigDown=!!state.triggerDown||pieces.some(p=>p.type==='trigger'&&['flat','vanished','ceiling'].includes(p.state));
+    const allDown=pieces.every(p=>p.type==='stopper'||['flat','vanished','ceiling'].includes(p.state));
+    const won=!snap.crashed&&!snap.overflow&&allDown&&trigDown;
+    const structures={bridges:snap.bridges,holes:snap.holes};
+    const pos=dropPlayer(chainWalker,structures),fall=pos.y-chainWalker.y;
+    const remaining=pieces.filter(p=>p.state==='upright');
+    const byId=new Map((state.fallen||[]).map(p=>[p.id,p]));
+    for(const p of pieces)if(['flat','crashed','dropping','ceiling'].includes(p.state))byId.set(p.id,{id:p.id,type:p.type,x:p.x,y:p.y,state:p.state,dir:p.dir,...(p.type==='normal'?{normalInverted:stoneNodes.get(p.id)?.dataset.normalInverted==='true'}:{inverted:!!p.inverted})});
+    state.fallen=[...byId.values()];
+    liveChain=null;chainWalker=null;
+    state.structures=structures;state.triggerDown=trigDown;
+    state.position={...state.position,pieces:remaining,player:pos,carrying:null};
+    state.history=[];
+    if(fall>3){die();return;}
+    if(won){state.phase='exit';result={...snap,problemIds:[],pieces};notice='';}
+    else if(snap.crashed||snap.overflow){state.phase='failed';result={...snap,problemIds:pieces.filter(p=>p.state==='crashed').map(p=>p.id)};}
+    else {state.phase='arrange';result=null;notice='连锁结束：还有骨牌没倒，可以继续走、搬或推。';}
+    save();render();if(won)sound(true);
   }
   function retryAction(notify=true){
-    if(!state.attempt)return;stop();
-    const reset=()=>{state.attempt=null;state.walker=null;state.postHistory=[];state.phase='arrange';result=null;frame=null;notice='';save();render();};
+    if(!state.attempt&&!state.chainBackup)return;stop();
+    const reset=()=>{
+      if(state.chainBackup){
+        const b=state.chainBackup;
+        state.position=clone(b.position);state.fallen=clone(b.fallen);state.structures=clone(b.structures);state.triggerDown=b.triggerDown;
+        state.chainBackup=null;
+      }
+      state.attempt=null;state.walker=null;state.postHistory=[];state.phase='arrange';state.death=false;result=null;frame=null;notice='';save();render();
+    };
     return notify?startGame(ctx,'restart',reset,{level:String(state.level+1)}):reset();
   }
   function undoAction(){
@@ -332,9 +741,9 @@ export function mount(root,ctx){
       if(!running&&state.postHistory.length){stop();state.walker=state.postHistory.pop();state.phase='exit';notice='';save();render();return;}
       retryAction(false);return;
     }
-    if(state.history.length){stop();state.position=state.history.pop();notice='';save();render();}
+    if(state.history.length){stop();state.position=state.history.pop();state.phase='arrange';state.death=false;ant.dataset.dead='false';notice='';save();render();}
   }
-  function loadLevel(index,reason='select'){stop();return startGame(ctx,reason,()=>{state=fresh(index);level=levels[index];result=null;frame=null;notice='';guideActive=false;facing=1;buildWorld();save();render();settleStage();void motion.play(viewport,[{opacity:.25,transform:'translateY(6px)'},{opacity:1,transform:'translateY(0)'}],280);},{level:String(index+1)});}
+  function loadLevel(index,reason='select'){stop();return startGame(ctx,reason,()=>{state=fresh(index);level=levels[index];result=null;frame=null;notice='';guideActive=false;facing=1;buildWorld();save();render();settleStage();void playIntro();void motion.play(viewport,[{opacity:.25,transform:'translateY(6px)'},{opacity:1,transform:'translateY(0)'}],280);},{level:String(index+1)});}
   function chooseLevel(){
     const modal=el('dialog',{class:'app-dialog dc-level-dialog','aria-label':'选择骨牌关卡'});
     const close=()=>modal.close();
@@ -357,8 +766,8 @@ export function mount(root,ctx){
   };
   window.addEventListener('keydown',shortcuts);
   const detach=keyboardAndSwipe(world,step,{swipe:false});
-  if(state.attempt)result=simulate(level,state.position.pieces,state.attempt.id,state.attempt.dir);
-  buildWorld();render();settleStage();
+  if(state.attempt)result=simulate(level,state.position.pieces,state.attempt.id,state.attempt.dir,{},dominoTiming);
+  buildWorld();render();settleStage();void playIntro();
   if(state.phase==='exit'&&at(player(),level.exit))void enterExit();
   return()=>{alive=false;stop();detach();stageCamera.dispose();window.removeEventListener('keydown',shortcuts);for(const modal of dialogs)modal.close();dialogs.clear();motion.dispose();};
 }
