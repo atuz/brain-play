@@ -1,4 +1,6 @@
 const messages={
+  "本关只能手推一次，仍可抱牌跳下启动连锁。":["You can push only once per level. Dropping a carried domino can still start a chain.","本關只能手推一次，仍可抱牌跳下啟動連鎖。"],
+  "连锁结束：还有骨牌没倒，可以继续走、搬或抱牌跳下。":["The chain has stopped. Some dominoes are still standing; you can walk, carry, or drop a carried domino.","連鎖結束：還有骨牌沒倒，可以繼續走、搬或抱牌跳下。"],
   "蚂蚁多米诺":["Ant Domino","螞蟻多米諾"],
   "骨牌棋盘":["Domino board","骨牌棋盤"],
   "入门":["Basics","入門"],

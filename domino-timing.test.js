@@ -50,7 +50,7 @@ test('Live tick delay follows partial beats exactly, including shared event boun
 });
 
 test('Unrequested special tile clocks and the trigger fall retain their original timing',()=>{
-  for(const type of ['trigger','tumbler','delay','vanish','bridge','exploder']){
+  for(const type of ['trigger','vanish','bridge','exploder']){
     const level={width:8,height:7,rules:'dos',platforms:[[5,0,7]],ladders:[],ramps:[],pieces:[{id:'source',type,x:2,y:5},{id:'stop',type:'stopper',x:6,y:5}]};
     const original=simulate(level,level.pieces,'source',1);
     const recorded=simulate(level,level.pieces,'source',1,{},dominoTiming);

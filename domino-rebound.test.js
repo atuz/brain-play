@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {simulate,pathTo,createChain} from './domino-engine.js';
 import {levels} from './domino-levels.js';
+import {baseDominoTiming} from './domino-timing.js';
+import {dominoContactPhase} from './domino-contact-motion.js';
 import {ceilingContactAngle} from './domino-ascender-contact.js';
 
 for(const dir of [-1,1])for(const ceiling of [false,true])for(const obstacle of ['stopper','normal',null])for(const behind of [false,true]){
@@ -57,13 +59,14 @@ for(const type of ['normal','ascender'])test(`Live clock preserves declared ${ty
   chain.activateStone('a',-1);
   const stages=new Map();
   while(!chain.done()){
-    const before=chain.time;chain.tick();
-    assert.equal(chain.time,before+1,'live playback must not compress event gaps');
+    const before=chain.time,delta=chain.nextTickBeats;chain.tick();
+    assert.ok(Math.abs(chain.time-before-delta)<1e-6,'live playback preserves partial contact beats');
     const a=chain.stones.find(p=>p.id==='a');
     if(!stages.has(a.state))stages.set(a.state,chain.time);
   }
   const prefix=type==='ascender'?'ceiling-':'';
-  assert.equal(stages.get(prefix+'reversing')-stages.get(prefix+(type==='ascender'?'return':'returning')),type==='ascender'?1:2);
+  const returnBeats=type==='ascender'?1:dominoContactPhase*baseDominoTiming.quarter/baseDominoTiming.beat;
+  assert.ok(Math.abs(stages.get(prefix+'reversing')-stages.get(prefix+(type==='ascender'?'return':'returning'))-returnBeats)<1e-6);
   assert.equal(chain.stones.find(p=>p.id==='a').finish-stages.get(prefix+'reversing'),2);
 });
 
@@ -71,9 +74,10 @@ test('A new push during an event gap uses the live clock',()=>{
   const level={width:9,height:7,platforms:[[5,0,8]],rules:'dos'};
   const chain=createChain(level,[{id:'a',type:'normal',x:2,y:5},{id:'s',type:'stopper',x:3,y:5},{id:'b',type:'normal',x:6,y:5}]);
   chain.activateStone('a',1);chain.tick();chain.tick();
-  assert.equal(chain.time,2);
-  chain.activateStone('b',1);chain.tick();
-  assert.equal(chain.stones.find(p=>p.id==='b').finish,3);
+  const pushedAt=chain.time;
+  chain.activateStone('b',1);
+  while(chain.stones.find(p=>p.id==='b').finish===null)chain.tick();
+  assert.ok(Math.abs(chain.stones.find(p=>p.id==='b').finish-pushedAt-1)<1e-6);
 });
 
 

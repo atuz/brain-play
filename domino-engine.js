@@ -1,5 +1,8 @@
-import {baseDominoTiming,eventBeatDuration} from './domino-timing.js?v=2';
-import {createAscenderMechanic} from './domino-ascender-engine.js?v=5';
+import {baseDominoTiming,eventBeatDuration} from './domino-timing.js?v=7';
+import {dominoContactPhase,resistsDomino,reboundDuration} from './domino-contact-motion.js?v=2';
+import {dominoOutcome} from './domino-outcome.js';
+import {carriedDropTiming} from './domino-actions.js';
+import {createAscenderMechanic} from './domino-ascender-engine.js?v=6';
 // Independent, discrete JavaScript rules for the original Brain Play domino puzzles.
 // No Domino-Chain/Pushover program, graphics, sounds or levels are included.
 export const TYPES = ['normal', 'stopper', 'tumbler', 'delay', 'splitter', 'exploder', 'bridge', 'vanish', 'trigger', 'ascender'];
@@ -71,6 +74,17 @@ export function neighbors(level, p, bridges = [], holes = []) {
   }
   return out;
 }
+// A ledge descent is different from walking down a connected stair or ladder.
+export function isLedgeDrop(level,from,to){
+  const dy=to.y-from.y,dx=Math.abs(to.x-from.x);
+  if(dy<=0)return false;
+  if(from.x===to.x&&level.ladders.some(l=>l.x===from.x&&from.y>=l.from&&to.y<=l.to))return false;
+  if(dx===1&&dy===.5)return false;
+  const onRamp=p=>(level.ramps||[]).some(([x,y])=>x===p.x&&y===p.y);
+  if(dy<=1&&dx>=1&&dx<=2&&(onRamp(from)||onRamp(to)))return false;
+  return true;
+}
+
 export function pathTo(level, start, target, bridges = [], holes = []) {
   if (!walkable(level, start, bridges, holes) || !walkable(level, target, bridges, holes)) return null;
   const key = p => `${p.x},${p.y}`, queue = [start], previous = new Map([[key(start), null]]);
@@ -132,8 +146,9 @@ export function edit(level, position, action) {
 // "trigger last" cannot depend on the iteration order of the domino array.
 export function createChain(level, pieces, structures = {}, timing = baseDominoTiming) {
   const stones=clone(pieces).map(p=>({...p,state:'upright',dir:0,finish:null}));
+  for(const p of clone(structures.settledPieces||[]))if(!stones.some(q=>q.id===p.id))stones.push(p);
   const bridges=clone(structures.bridges||[]),holes=clone(structures.holes||[]),events=[],trace=[];
-  let time=0,crashed=false,overflow=false;
+  let time=0,crashed=false,overflow=false,collisionEffects=null;
   const find=id=>stones.find(p=>p.id===id);
   const schedule=(kind,id,dir,when,extra={})=>{
     const elapsed=(when-time)*eventBeatDuration(kind,find(id)?.type,timing)/timing.beat;
@@ -141,17 +156,66 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
   };
   const capture=(impacts=[],effects=[])=>trace.push({time,pieces:clone(stones),bridges:clone(bridges),holes:clone(holes),crashed,impacts:clone(impacts),effects:clone(effects)});
   const floor=(x,y)=>hasFloor(level,x,y,bridges)&&!holes.some(h=>h.x===x&&h.y===y);
+  let rollSerial=0;
+  function queueRoll(p,dir){
+    const x=p.x+dir,target=stones.find(s=>s.id!==p.id&&s.x===x&&s.y===p.y&&s.state!=='vanished');
+    const resisting=resistsDomino(target)||target?.type==='delay'&&target.state==='upright';
+    const solid=target&&!['exploder','bridge','vanish'].includes(target.type);
+    const upright=(p.x-p.rollOriginX)*2*p.rollBaseDir;
+    const relativeDir=dir*p.rollBaseDir,rollMs=timing.roll??timing.beat;
+    p.rollFrom=p.rollPhase;
+    p.rollTo=upright+relativeDir*(resisting?dominoContactPhase:solid||!floor(x,p.y)?1:2);
+    // Preserve the current contact angle when changing direction. Returning
+    // to upright is part of the next travel, never a reset to a new pose.
+    const returnMs=reboundDuration(p.rollFrom-upright,timing);
+    p.rollReturnDuration=returnMs;p.rollVia=upright;
+    p.rollDuration=resisting?reboundDuration(p.rollTo-p.rollFrom,timing):rollMs+returnMs;
+    p.rollSerial=++rollSerial;
+    schedule('roll',p.id,dir,time+p.rollDuration/rollMs);
+  }
+  function beginRoll(p,dir){
+    p.dir=dir;p.state='rolling';p.rollOriginX=p.x;p.rollOriginY=p.y;
+    p.rollBaseDir=dir;p.rollPhase=0;queueRoll(p,dir);
+  }
+  function rebound(source,target,dir,effects){
+    if(!source){effects.push({kind:'rebound',targetId:target.id});return;}
+    const pressed=source.type==='normal'&&stones.some(p=>p.id!==source.id&&p.state==='flat'&&p.y===source.y&&
+      (p.type==='splitter'?Math.abs(p.x-source.x)===1:p.x+p.dir===source.x));
+    if(pressed){
+      // A fallen upstream tile rests on this tile. Resistance cannot lift
+      // that load: keep the ordinary tile down instead of returning upright.
+      for(let i=events.length-1;i>=0;i--)if(events[i].id===source.id&&['reverse-turn','reverse-hit','normal-reverse-rest'].includes(events[i].kind))events.splice(i,1);
+      source.state='flat';source.finish=time;return;
+    }
+    effects.push({kind:'rebound',sourceId:source.id,targetId:target.id});
+    source.finish=null;
+    if(source.type==='tumbler'){
+      source.dir=-dir;queueRoll(source,-dir);
+    }else{
+      // Interrupt the previous swing, including its pending rest event, so a
+      // second resisting neighbour cannot silently flatten a returning tile.
+      for(let i=events.length-1;i>=0;i--)if(events[i].id===source.id&&['reverse-turn','reverse-hit','normal-reverse-rest'].includes(events[i].kind))events.splice(i,1);
+      source.returnDuration=reboundDuration(dominoContactPhase,timing);
+      source.state='returning';schedule('reverse-turn',source.id,-dir,time+dominoContactPhase);
+    }
+  }
   const activate=(piece,dir,fromAbove=false)=>{
     if (!piece || piece.state!=='upright') return;
     if (piece.type==='splitter' && !fromAbove) {crashed=true;piece.state='crashed';return;}
+    if(piece.type==='exploder'&&level.rules==='dos'&&collisionEffects){
+      piece.dir=dir;explode(piece,collisionEffects);return;
+    }
     if (piece.type==='tumbler') {
-      piece.dir=dir;piece.state='rolling';schedule('roll',piece.id,dir,time+1);return;
+      beginRoll(piece,dir);return;
     }
     if (piece.type==='ascender') {
       ascenders.begin(piece,dir);return;
     }
-    piece.dir=dir;piece.state=piece.type==='delay'?'waiting':'falling';
-    schedule('settle',piece.id,dir,time+(piece.type==='delay'?3:1));
+    piece.dir=dir;
+    if(piece.type==='delay'){
+      piece.state='waiting';schedule('delay-start',piece.id,dir,time+1);return;
+    }
+    piece.state='falling';schedule('settle',piece.id,dir,time+1);
   };
   const ascenders=createAscenderMechanic({level,stones,floor,schedule,activate,getTime:()=>time,timing});
   // An exploder tears a hole in the floor under itself.  It does not knock
@@ -163,13 +227,19 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
     if(!holes.some(h=>h.x===hx&&h.y===hy))holes.push({x:hx,y:hy});
     effects.push({kind:'explode',sourceId:piece.id,x:hx,y:hy});
     for(const q of stones){
-      if(q===piece||q.state!=='flat'||q.y!==hy||q.x+q.dir!==hx)continue;
+      if(q===piece||q.type==='ascender'||q.y!==hy)continue;
+      const leaning=q.state==='flat'&&q.x+q.dir===hx;
+      const rolling=q.state==='rolling'&&(q.x===hx||q.x+q.dir===hx);
+      const arriving=q.state==='dropping'&&q.x===hx;
+      if(!leaning&&!rolling&&!arriving)continue;
+      // The removed support wins over previously queued rolling/topple events.
+      for(let i=events.length-1;i>=0;i--)if(events[i].id===q.id)events.splice(i,1);
       const landing=level.platforms
         .filter(([y,from,to])=>y>hy&&hx>=from&&hx<=to&&!holes.some(h=>h.x===hx&&h.y===y))
         .sort((a,b)=>a[0]-b[0])[0];
       if(landing){
-        const rows=Math.max(1,landing[0]-hy);
-        q.state='dropping';q.dropX=hx;q.dropY=landing[0];
+        const rows=Math.max(q.type==='tumbler'?2:1,landing[0]-hy);
+        q.finish=null;q.state='dropping';q.dropX=hx;q.dropY=landing[0];
         for(let k=1;k<rows;k++)schedule('drop-tick',q.id,q.dir,time+k);
         schedule('land',q.id,q.dir,time+rows,{x:hx,y:landing[0]});
       }
@@ -182,32 +252,49 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
     if(++rounds>200){overflow=true;return false;}
     time=Math.min(...events.map(e=>e.time));
     const batch=events.filter(e=>e.time===time);
-    const impacts=[],effects=[];
+    const impacts=[],effects=[];collisionEffects=effects;
     for (let i=events.length-1;i>=0;i--) if(events[i].time===time) events.splice(i,1);
     const hits=[];
     for (const event of batch) {
       const p=find(event.id);
+      if(!p||p.state==='vanished')continue;
       // Ascenders never enter the ordinary fall, landing or rebound handlers.
       if(p?.type==='ascender'){ascenders.handle(event,p,effects);continue;}
       if (event.kind==='drop-tick') continue;
       if (event.kind==='impact-end') {p.state='vanished';continue;}
+      if(event.kind==='delay-start'){
+        if(p.state==='waiting'){
+          p.state='falling';schedule('settle',p.id,event.dir,time+1);
+        }
+        continue;
+      }
       if (event.kind==='roll') {
+        if(p.state!=='rolling')continue;
+        p.rollPhase=p.rollTo;
         const x=p.x+event.dir;
         if(x<0||x>=level.width){p.state='vanished';p.finish=time;continue;}
         const target=stones.find(s=>s.id!==p.id&&s.x===x&&s.y===p.y&&s.state!=='vanished');
         if(target){
           if(target.type==='stopper'){
-            effects.push({kind:'rebound',sourceId:p.id,targetId:target.id});
-            p.dir=-event.dir;
-            schedule('roll',p.id,-event.dir,time+1);
+            rebound(p,target,event.dir,effects);
             continue;
           }
-          if(target.type==='splitter'){crashed=true;target.state='crashed';p.state='crashed';continue;}
+          if(target.type==='splitter'){
+            // A side contact cannot activate a splitter; the tumbler stops.
+            if(level.rules!=='dos'){crashed=true;target.state='crashed';p.state='crashed';}
+            else {p.state='flat';p.finish=time;}
+            continue;
+          }
           if(target.state==='upright')activate(target,event.dir);
-          if(level.rules==='dos'){
-            // Pushover tumbler: it shoves the standing domino out of the way
-            // and keeps rolling.
-            p.x=x;schedule('roll',p.id,event.dir,time+1);continue;
+          if(p.state==='dropping'||p.state==='vanished')continue;
+          if(target.type==='delay'&&['waiting','falling'].includes(target.state)){
+            // A delayed domino still resists contact until it lies down.
+            // Repeated hits bounce without restarting its pending fall.
+            rebound(p,target,event.dir,effects);
+            continue;
+          }
+          if(level.rules==='dos'&&['exploder','bridge','vanish'].includes(target.type)){
+            p.x=x;queueRoll(p,event.dir);continue;
           }
           p.state='flat';p.finish=time;continue;
         }
@@ -224,17 +311,16 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
           else {p.state='vanished';p.finish=time;}
           continue;
         }
-        p.x=x;schedule('roll',p.id,event.dir,time+1);continue;
+        p.x=x;queueRoll(p,event.dir);continue;
       }
       if (event.kind==='topple') {
         const dir=p.dir||event.dir;
         const nx=p.x+dir;
         const next=stones.find(s=>s.id!==p.id&&s.x===nx&&s.y===p.y&&s.state!=='vanished');
         if(next){
-          if(next.type==='stopper'){
-            effects.push({kind:'rebound',sourceId:p.id,targetId:next.id});
-            p.state='returning';p.finish=null;
-            schedule('reverse-turn',p.id,-dir,time+2);
+          if(next.type==='delay'&&next.state==='upright')activate(next,dir);
+          if(resistsDomino(next)){
+            rebound(p,next,dir,effects);
           }
           else if(next.type==='splitter'){crashed=true;next.state='crashed';p.state='crashed';}
           else {if(next.state==='upright')activate(next,dir);p.state='flat';p.finish=time;}
@@ -253,8 +339,8 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
         p.dir=event.dir;p.state='reversing';
         // A normal tile contacts its neighbour halfway through the swing;
         // finishing its own motion is a separate event.
-        schedule('reverse-hit',p.id,event.dir,time+(p.type==='normal'?1:2));
-        if(p.type==='normal')schedule('normal-reverse-rest',p.id,event.dir,time+2);
+        schedule('reverse-hit',p.id,event.dir,time+(p.type==='normal'?dominoContactPhase:2));
+        if(p.type==='normal')schedule('normal-reverse-rest',p.id,event.dir,time+1);
         continue;
       }
       if (event.kind==='reverse-hit') {
@@ -275,8 +361,21 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
         if(p.state==='reversing'){p.state='flat';p.finish=time;}
         continue;
       }
-      if (event.kind==='land') {
+      if (event.kind==='land'||event.kind==='carried-land') {
         p.x=event.x;p.y=event.y;p.finish=time;
+        const target=stones.find(s=>s.id!==p.id&&s.x===event.x&&s.y===event.y&&s.state!=='vanished');
+        if(event.kind==='carried-land'){
+          p.carriedDrop=false;
+          if(!target){p.state='upright';p.dir=0;p.finish=null;continue;}
+          if(target.type!=='splitter'||target.state!=='upright'){
+            crashed=true;p.state='crashed';p.crashPile=true;
+            target.state='crashed';target.crashCovered=true;continue;
+          }
+          // Released bricks are a falling impact, not a manual push. They
+          // are consumed above the splitter and start both branches.
+          p.state='impact';schedule('impact-end',p.id,event.dir,time+1);
+          hits.push({target,dir:event.dir,above:true,sourceId:p.id});continue;
+        }
         if(p.type==='exploder'){
         if(level.rules==='dos'){ explode(p, effects); }
         else {
@@ -286,7 +385,9 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
         }
         continue;
       }
-        const target=stones.find(s=>s.id!==p.id&&s.x===event.x&&s.y===event.y&&s.state!=='vanished');
+        if(target?.type==='exploder'&&target.state==='upright'&&level.rules==='dos'){
+          activate(target,event.dir,true);continue;
+        }
         if (target?.type==='splitter'&&target.state==='upright') {
           // Hold the falling domino at the point of contact for one animation beat.
           // The following impact-end event removes it after the collision is visible.
@@ -296,7 +397,7 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
         }
         else if (target) {crashed=true;target.state='crashed';p.state='crashed';}
         else if (p.type==='tumbler') {
-          p.state='rolling';schedule('roll',p.id,p.dir||event.dir,time+1);
+          beginRoll(p,p.dir||event.dir);
         }
         else if (p.type==='normal'&&level.rules==='dos') {
           // Ordinary tile landing restored from the v145 source snapshot.
@@ -326,7 +427,7 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
         continue;
       }
       if(p.type==='tumbler'){
-        p.state='rolling';schedule('roll',p.id,event.dir,time+1);continue;
+        beginRoll(p,event.dir);continue;
       }
       p.state=p.type==='vanish'?'vanished':'flat';p.finish=time;
       if(p.type==='splitter') {
@@ -350,12 +451,9 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
       }
       const target=stones.find(p=>p.x===hit.x&&p.y===hit.y&&p.state!=='vanished');
       if (target) {
-        if(target.type==='stopper'){
-          effects.push({kind:'rebound',sourceId:hit.source?.id,targetId:target.id});
-          if(hit.source){
-            hit.source.state='returning';hit.source.finish=null;
-            schedule('reverse-turn',hit.source.id,-hit.dir,time+2);
-          }
+        if(target.type==='delay'&&target.state==='upright')activate(target,hit.dir);
+        if(resistsDomino(target)){
+          rebound(hit.source,target,hit.dir,effects);
           continue;
         }
         if(target.state==='upright') activate(target,hit.dir);
@@ -375,6 +473,7 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
       }
     }
     capture(impacts,effects);
+    collisionEffects=null;
     return true;
   }
   return {
@@ -383,6 +482,13 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
     get trace(){return trace;},
     activateStone(id,dir){const p=find(id);if(!p||p.state!=='upright'||p.type==='splitter')return false;activate(p,dir);return true;},
     addStone(piece){stones.push({...clone(piece),state:'upright',dir:0,finish:null,dropX:undefined,dropY:undefined});},
+    dropCarriedStone(piece,{from,to,dir=1}){
+      if(crashed||overflow||find(piece.id)||to.y<=from.y||!floor(to.x,to.y))return false;
+      stones.push({...clone(piece),x:to.x,y:from.y,state:'dropping',dir,finish:null,
+        dropX:to.x,dropY:to.y,carriedDrop:true});
+      schedule('carried-land',piece.id,dir,time+carriedDropTiming(to.y-from.y,timing).brickMs/timing.beat,{x:to.x,y:to.y});
+      return true;
+    },
     removeStone(id){const i=stones.findIndex(p=>p.id===id);if(i<0)return null;return stones.splice(i,1)[0];},
     step,
     get nextTickBeats(){return events.length?Math.min(1,Math.max(0,Math.min(...events.map(e=>e.time))-time)):0;},
@@ -407,30 +513,20 @@ export function simulate(level, pieces, starterId, direction, structures = {}, t
   while(!chain.done())chain.step();
   const {pieces:stones,bridges,holes,crashed,overflow}=chain.snapshot();
   const {trace}=chain;
-  const trigger=stones.find(p=>p.type==='trigger');
-  const triggers=stones.filter(p=>p.type==='trigger');
-  const others=stones.filter(p=>p!==trigger);
-  const allDown=stones.every(p=>p.type==='stopper'||['flat','vanished','ceiling'].includes(p.state));
-  // A domino that drops onto the splitter is consumed at impact, before it fires.
-  const last=!!trigger&&trigger.finish!==null&&others.filter(p=>p.type!=='stopper').every(p=>p.finish!==null&&p.finish<trigger.finish);
-  const won=!crashed&&!overflow&&allDown&&last;
-  const tied=allDown&&!last&&others.some(p=>p.type!=='stopper'&&p.finish===trigger?.finish)&&!others.some(p=>p.type!=='stopper'&&p.finish>trigger?.finish);
-  const reason=crashed?'crash':overflow?'overflow':!allDown?'remaining':!last?(tied?'tie':'early'):'clear';
-  const problemIds=reason==='crash'?stones.filter(p=>p.state==='crashed').map(p=>p.id)
-    :reason==='remaining'?stones.filter(p=>p.type!=='stopper'&&!['flat','vanished','ceiling'].includes(p.state)).map(p=>p.id)
-    :['tie','early'].includes(reason)&&trigger?stones.filter(p=>p===trigger||p.finish>=trigger.finish).map(p=>p.id):[];
-  return {valid:true,won,reason,problemIds,trace,pieces:stones,bridges,holes};
+  const outcome=dominoOutcome({pieces:stones,expectedPieces:level.pieces||pieces,crashed,overflow});
+  return {valid:true,...outcome,trace,pieces:stones,bridges,holes};
 }
 
-export function validPosition(level, position) {
-  if(!position || !Array.isArray(position.pieces)||!Number.isSafeInteger(position.moves)||position.moves<0 || !walkable(level,position.player||{})) return false;
+export function validPosition(level, position, {resolvedPieces=[],bridges=[],holes=[]}={}) {
+  if(!position || !Array.isArray(position.pieces)||!Number.isSafeInteger(position.moves)||position.moves<0 || !walkable(level,position.player||{},bridges,holes)) return false;
   const all=[...(Array.isArray(position.pieces)?position.pieces:[]),...(position.carrying?[position.carrying]:[])];
   if(level.rules==='dos'?all.length>level.pieces.length:all.length!==level.pieces.length)return false;
   if(new Set(all.map(p=>p.id)).size!==all.length)return false;
   if(!all.every(p=>level.pieces.some(q=>q.id===p.id&&q.type===p.type)))return false;
   if(position.carrying?.type==='trigger')return false;
-  if(!position.pieces.every(p=>Number.isInteger(p.x)&&Number.isFinite(p.y)&&hasFloor(level,p.x,p.y)))return false;
+  if(!position.pieces.every(p=>Number.isInteger(p.x)&&Number.isFinite(p.y)&&hasFloor(level,p.x,p.y,bridges,holes)))return false;
   if(new Set(position.pieces.map(p=>`${p.x},${p.y}`)).size!==position.pieces.length)return false;
   if(level.rules!=='dos'&&position.pieces.some(p=>at(p,level.exit)&&p.type!=='vanish'))return false;
-  return level.pieces.filter(p=>p.type==='trigger').every(p=>position.pieces.some(q=>q.id===p.id&&at(p,q)));
+  return level.pieces.filter(p=>p.type==='trigger').every(p=>position.pieces.some(q=>q.id===p.id&&at(p,q))||
+    level.rules==='dos'&&resolvedPieces.some(q=>q.id===p.id&&q.type===p.type&&at(p,q)&&['flat','vanished','ceiling'].includes(q.state)));
 }

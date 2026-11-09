@@ -1,12 +1,16 @@
-import {dominoTiming} from './domino-timing.js?v=2';
-import {createAscenderNode,renderAscender} from './domino-ascender-view.js?v=6';
+import {tumblerDropMotion} from './domino-tumbler-motion.js';
+import {dominoContactAngle,tumblerRollTransform,advanceContactMotion} from './domino-contact-motion.js?v=2';
+import {dominoSessionOutcome,dominoSessionPieces,recordDominoCompletion} from './domino-outcome.js';
+import {useManualPush,carriedDropTiming} from './domino-actions.js';
+import {dominoTiming} from './domino-timing.js?v=7';
+import {createAscenderNode,renderAscender} from './domino-ascender-view.js?v=7';
 import {startGame} from './game-transition.js?v=48';
 import {gameRuntime} from './game-runtime.js?v=48';
 import {el,button,sound,finish,keyboardAndSwipe} from './shared.js?v=48';
 import {createMotion,motionEnabled} from './motion.js?v=48';
-import {t} from './i18n.js?v=58';
-import {levels,chapters} from './domino-levels.js?v=62';
-import {at,clone,hasFloor,neighbors,pathTo,edit,initialPosition,simulate,createChain,validPosition,walkable,doorBlocked,entryCell} from './domino-engine.js?v=107';
+import {t} from './i18n.js?v=62';
+import {levels,chapters} from './domino-levels.js?v=66';
+import {at,clone,hasFloor,neighbors,pathTo,edit,initialPosition,simulate,createChain,validPosition,walkable,doorBlocked,entryCell,isLedgeDrop} from './domino-engine.js?v=119';
 import {failureSummary,nextGuide} from './domino-guide.js?v=49';
 import {mountCamera} from './domino-camera.js?v=51';
 import {antArtwork,createAntActor} from './domino-actor.js?v=59';
@@ -27,23 +31,26 @@ const types={
   ascender:['上升牌','被碰倒后竖着升到上方平台底部，再以顶部为支点按推倒方向翻倒。','↑'],
 };
 
-function dosWin(sim,triggerDown){
-  if(!sim||sim.crashed||sim.overflow)return false;
-  const all=sim.pieces.every(p=>p.type==='stopper'||['flat','vanished','ceiling'].includes(p.state));
-  const trig=!!triggerDown||sim.pieces.some(p=>p.type==='trigger'&&['flat','vanished','ceiling'].includes(p.state));
-  return all&&trig;
-}
-function fresh(index=0){return {version:1,level:index,position:initialPosition(levels[index]),history:[],attempt:null,phase:'arrange',death:false,walker:null,postHistory:[],fallen:[],structures:{bridges:[],holes:[]},triggerDown:false};}
+function fresh(index=0){return {version:1,level:index,position:initialPosition(levels[index]),history:[],attempt:null,phase:'arrange',death:false,walker:null,postHistory:[],fallen:[],structures:{bridges:[],holes:[]},triggerDown:false,completion:null,pushUsed:false};}
 export function restore(saved){
   try {
     if(saved?.version!==1||!Number.isInteger(saved.level)||!levels[saved.level])return fresh();
     const level=levels[saved.level];
-    if(!validPosition(level,saved.position)||!Array.isArray(saved.history)||saved.history.length>100||!saved.history.every(p=>validPosition(level,p)))return fresh(saved.level);
+    const context={resolvedPieces:[...(saved.completion?.pieces||[]),...(saved.fallen||[])],bridges:saved.structures?.bridges||[],holes:saved.structures?.holes||[]};
+    if(!validPosition(level,saved.position,context)||!Array.isArray(saved.history)||saved.history.length>100||!saved.history.every(p=>validPosition(level,p,context)))return fresh(saved.level);
     if(!['arrange','failed','exit','won'].includes(saved.phase))return fresh(saved.level);
-    if(!saved.attempt)return ['arrange','exit'].includes(saved.phase)?clone(saved):fresh(saved.level);
+    if(!saved.attempt){
+      if(!['arrange','exit'].includes(saved.phase))return fresh(saved.level);
+      const restored=clone(saved);
+      if(level.rules==='dos')restored.pushUsed=typeof saved.pushUsed==='boolean'?saved.pushUsed:!!saved.completion;
+      // Old exit saves without a complete ordering proof must not reopen a
+      // door merely because they previously stored phase='exit'.
+      if(level.rules==='dos'&&restored.phase==='exit'&&!dominoSessionOutcome(level,restored).won)restored.phase='arrange';
+      return restored;
+    }
     if(saved.position.carrying||!saved.position.pieces.some(p=>p.id===saved.attempt.id&&at(p,saved.position.player)))return fresh(saved.level);
     const result=simulate(level,saved.position.pieces,saved.attempt.id,saved.attempt.dir,saved.structures||{},dominoTiming);
-    const dos=level.rules==='dos',won=dos?dosWin(result,saved.triggerDown):result.won;
+    const won=result.won;
     if(!result.valid||saved.phase==='arrange'||(saved.phase==='failed')===won)return fresh(saved.level);
     if(!Array.isArray(saved.postHistory)||saved.postHistory.length>500)return fresh(saved.level);
     if(won&&(!walkable(level,saved.walker||{},result.bridges,result.holes)||!pathTo(level,saved.position.player,saved.walker,result.bridges,result.holes)))return fresh(saved.level);
@@ -57,7 +64,7 @@ export const pageInfo=ctx=>{const i=ctx.load()?.level;return {level:String(Numbe
 export function mount(root,ctx){
   root.classList.add('play-domino');
   let state=restore(ctx.load()),level=levels[state.level],result=null,frame=null,running=false,walking=false,facing=1;
-  if(state.phase==='exit'&&!result)result={won:true,bridges:state.structures?.bridges||[],holes:state.structures?.holes||[],pieces:[]};
+  if(state.phase==='exit'&&!result)result={won:true,bridges:state.structures?.bridges||[],holes:state.structures?.holes||[],pieces:level.rules==='dos'?dominoSessionPieces(state):[]};
   let runToken=0,walkToken=0,alive=true,notice='',guideActive=false,guide=null,intro=false,liveChain=null,chainWalker=null;
   const bridgesNow=()=>liveChain?liveChain.bridges:frame?.bridges??result?.bridges??state.structures?.bridges??[];
   const holesNow=()=>liveChain?liveChain.holes:frame?.holes??result?.holes??state.structures?.holes??[];
@@ -67,7 +74,7 @@ export function mount(root,ctx){
     const landing=level.platforms.filter(([y,a,b])=>y>p.y&&p.x>=a&&p.x<=b&&!holes.some(h=>h.x===p.x&&h.y===y)).sort((a,b)=>a[0]-b[0])[0];
     return landing?{x:p.x,y:landing[0]}:p;
   }
-  let actor,acting=false,transfer=null,actionToken=0,queuedWalk=null,moveKind='idle',moveDuration=180,antStance=null;
+  let actor,acting=false,transfer=null,actionToken=0,queuedWalk=null,moveKind='idle',moveDuration=180,antStance=null,ledgeFlight=false;
   const timers=new Set(),dialogs=new Set(),motion=createMotion(),stoneNodes=new Map();
   // Tumbler rolling: the block pivots 90 degrees at a time around its own
   // corners (right-bottom -> right-top -> left-top -> left-bottom) and keeps
@@ -75,24 +82,7 @@ export function mount(root,ctx){
   const rollViews=new Map(),frozenRolls=new Map();
   let rollRaf=0;
   function rollPose(rs,phase,node){
-    const CW=node?.offsetWidth||40,CH=node?.offsetHeight||40;
-    const W=.32*CW,H=CH,offX=.34*CW,offY=-.10*CH;
-    const q=Math.floor(Math.max(0,phase)),frac=Math.max(0,phase)-q,dir=rs.dir||1;
-    const theta=(q+frac)*Math.PI/2*dir;
-    let px=.66*CW,py=.90*CH;
-    for(let k=0;k<q;k++)px+=(k%2===0?CH:W);
-    const corners=[[W,H],[W,0],[0,0],[0,H]];
-    let lx=corners[q%4][0],ly=corners[q%4][1];
-    if(dir<0){lx=W-lx;px=CW-px;}
-    // rotate the rest-frame corner with the angle the body already accumulated
-    const cA=Math.cos(dir*(q+frac)*Math.PI/2),sA=Math.sin(dir*(q+frac)*Math.PI/2);
-    let tx=px-(cA*lx-sA*ly)-offX,ty=py-(sA*lx+cA*ly)-offY;
-    // Lock every half turn to exactly one cell: the physical roll advances a
-    // thickness more than a cell each time, so slide the pose back by that
-    // thickness, spread across the standing-up quarter.
-    const shift=q%2===0?W*(q/2):W*((q-1)/2+frac);
-    tx+=dir>0?-shift:shift;
-    return `translate(${tx}px,${ty}px) rotate(${theta}rad)`;
+    return tumblerRollTransform({phase,dir:rs.dir,width:node?.offsetWidth||40,height:node?.offsetHeight||40});
   }
   function paintRoll(rs){
     if(!rs.face)return;
@@ -105,11 +95,9 @@ export function mount(root,ctx){
     const now=performance.now();
     for(const [id,rv] of [...rollViews]){
       const dt=now-(rv.last||now);rv.last=now;
-      // one quarter turn every 100ms, capped at the flat pose of the cell the
-      // engine has actually reached, so the block can never run ahead of it
-      rv.phase=Math.min(rv.cap,rv.phase+dt/100);
+      const complete=advanceContactMotion(rv,dt);
       paintRoll(rv);
-      if(rv.freezing&&rv.phase>=rv.cap-1e-3){frozenRolls.set(id,{...rv,frozen:true});rollViews.delete(id);}
+      if(rv.freezing&&complete){frozenRolls.set(id,{...rv,frozen:true});rollViews.delete(id);}
     }
     if(rollViews.size)rollRaf=requestAnimationFrame(tickRoll);
   }
@@ -118,7 +106,7 @@ export function mount(root,ctx){
   let records=ctx.read('domino:records',{});
   if(!records||typeof records!=='object'||Array.isArray(records))records={};
   const wait=ms=>{const timer=gameRuntime.delay(ms);timers.add(timer);return timer.finished.finally(()=>timers.delete(timer));};
-  function stop(){clearRolls();runToken++;walkToken++;actionToken++;walking=false;running=false;acting=false;intro=false;liveChain=null;chainWalker=null;transfer=null;queuedWalk=null;moveKind='idle';ant.style.transition='';actor?.cancel();for(const timer of timers)timer.cancel();timers.clear();}
+  function stop(){clearRolls();runToken++;walkToken++;actionToken++;walking=false;running=false;acting=false;intro=false;ledgeFlight=false;liveChain=null;chainWalker=null;transfer=null;queuedWalk=null;moveKind='idle';ant.style.transition='';actor?.cancel();for(const timer of timers)timer.cancel();timers.clear();}
   const levelNumber=el('span',{class:'dc-level-number'}),levelName=el('span',{class:'dc-level-name'}),progress=el('span',{class:'dc-progress',title:'已完成关卡'});
   const levelButton=el('button',{type:'button',class:'dc-level-button','aria-label':'选择骨牌关卡',onclick:chooseLevel},[levelNumber,levelName,el('span',{text:'⌄','aria-hidden':'true'})]);
   const hint=button('提示',()=>{guideActive=true;notice='';render();const target=guide?.source||guide?.target;if(target)stageCamera.show(stagePoint(target));},'plain');
@@ -186,11 +174,10 @@ export function mount(root,ctx){
     // reads as one connected staircase instead of floating strips.
     const treadAt=(x,y)=>level.platforms.some(([py,a,b])=>py===y&&x>=a&&x<=b)&&!holes.some(h=>h.x===x&&h.y===y);
     for(const [y,a,b]of level.platforms){
-      if(Number.isInteger(y))continue;
-      for(let x=a;x<=b;x++){
-        if(!treadAt(x+1,y+.5))continue;
-        const top=(y-viewTop()+.9)/viewRows()*100;
-        surfaces.append(el('div',{class:'dc-riser',style:`left:calc(${(x+1)/level.width*100}% - 2px);top:calc(${top}% + 17px);height:calc(100% / var(--dc-rows) * .5 - 17px)`}));
+      for(let x=a;x<=b;x++)for(const dx of [-1,1]){
+        if(!treadAt(x+dx,y+.5))continue;
+        const top=(y-viewTop()+.9)/viewRows()*100,boundary=dx>0?x+1:x;
+        surfaces.append(el('div',{class:'dc-riser',style:`left:calc(${boundary/level.width*100}% - 2px);top:calc(${top}% + 17px);height:calc(100% / var(--dc-rows) * .5 - 17px)`}));
       }
     }
     for(const bridge of bridgesNow())addPlatform(bridge.y,bridge.x,bridge.x,true);
@@ -278,12 +265,14 @@ export function mount(root,ctx){
       ?[-facing,facing].find(dx=>hasFloor(level,p.x+dx,p.y,bridgesNow(),holesNow())):0;
     // Removing a fallen tile must not move an otherwise stationary ant.
     // Choose a new stance when walking to another cell or avoiding a tile.
-    if(!antStance||!at(antStance,p)||beside||(walking&&moveKind==='climb')){
-      antStance={...p,beside:beside||0};
+    if(!ledgeFlight){
+      if(!antStance||!at(antStance,p)||beside||(walking&&moveKind==='climb')){
+        antStance={...p,beside:beside||0};
+      }
+      const visualX=Math.max(.16,Math.min(level.width-1.16,p.x+antStance.beside*.5));
+      if(!intro)placeNode(ant,{x:visualX,y:p.y});
+      actor.update({facing:beside?-beside:facing,held,move:walking?moveKind:'idle',exited:state.phase==='won'});
     }
-    const visualX=Math.max(.16,Math.min(level.width-1.16,p.x+antStance.beside*.5));
-    if(!intro)placeNode(ant,{x:visualX,y:p.y});
-    actor.update({facing:beside?-beside:facing,held,move:walking?moveKind:'idle',exited:state.phase==='won'});
     for(const original of level.pieces){
       const stone=visible.find(q=>q.id===original.id),node=stoneNodes.get(original.id);
       node.hidden=!stone;if(!stone)continue;
@@ -302,11 +291,18 @@ export function mount(root,ctx){
         placeNode(node,placement||stone);continue;
       }
       const faceNode=node.querySelector('.dc-stone-face');
-      const contactMs=stone.type==='normal'?dominoTiming.contact:dominoTiming.beat;
+      node.style.setProperty('--dc-contact-angle',`${dominoContactAngle}deg`);
+      node.style.setProperty('--dc-return-duration',`${stone.returnDuration??dominoTiming.quarter}ms`);
+      const contactMs=['normal','delay'].includes(stone.type)?dominoTiming.contact:dominoTiming.beat;
+      if(stone.type==='delay'){
+        node.style.setProperty('--dc-delay-fall-duration',`${dominoTiming.contact}ms`);
+      }
       if(stone.type==='normal'){
         node.style.setProperty('--dc-contact-duration',`${contactMs}ms`);
         node.style.setProperty('--dc-quarter-duration',`${dominoTiming.quarter}ms`);
-        node.style.setProperty('--dc-drop-duration',`${320*contactMs/dominoTiming.beat}ms`);
+        // A short stair drop must finish its airborne half-turn before landing.
+        const flightMs=Math.max(1,(stone.dropY??stone.y)-stone.y)*contactMs;
+        node.style.setProperty('--dc-drop-duration',`${Math.min(320*contactMs/dominoTiming.beat,flightMs)}ms`);
       }
       const prevStage=node.dataset.stage||'upright';
       if(stone.type==='normal'){
@@ -320,15 +316,14 @@ export function mount(root,ctx){
           const pose=getComputedStyle(faceNode).transform;
           faceNode.style.setProperty('--dc-normal-return-from',pose==='none'?'rotate(0deg)':pose);
         }
-        if(stage==='dropping'&&prevStage!=='dropping'){
-          const dir=stone.dir||1;
-          let from=0;
-          if(prevStage==='falling')from=dir*43;
-          else if(prevStage==='flat'){
-            const ra=parseFloat(getComputedStyle(node).getPropertyValue('--dc-rest-angle'))||90;
-            from=dir*ra;
-          }
-          faceNode.style.setProperty('--dc-drop-from',`${from}deg`);
+        if((stage==='dropping'&&prevStage!=='dropping')||(prevStage==='landing'&&stage==='flat')){
+          // Continue from the painted contact pose, including a landing on a
+          // stair. Never restart a partly tipped tile at zero degrees.
+          const pose=getComputedStyle(faceNode).transform;
+          const values=pose.startsWith('matrix(')?pose.slice(7,-1).split(',').map(Number):null;
+          const angle=values?Math.atan2(values[1],values[0])*180/Math.PI:0;
+          faceNode.style.setProperty('--dc-drop-from',`${angle}deg`);
+          if(prevStage==='landing'&&stage==='flat')faceNode.style.setProperty('--dc-normal-contact-pose',pose==='none'?'rotate(0deg)':pose);
         }
         if(prevStage==='landing'&&stage==='flat')node.dataset.landed='1';
         else if(stage!=='flat'&&stage!=='landing')delete node.dataset.landed;
@@ -343,6 +338,18 @@ export function mount(root,ctx){
             const values=transform.startsWith('matrix(')?transform.slice(7,-1).split(',').map(Number):null;
             const angle=values?Math.atan2(values[1],values[0])*180/Math.PI:0;
             faceNode.style.setProperty('--dc-drop-from',`${angle}deg`);
+            if(stone.type==='tumbler'){
+              const rollingAngle=faceNode.style.transform.match(/rotate\(([-\d.e+]+)rad\)/);
+              const continuousAngle=rollingAngle?Number(rollingAngle[1])*180/Math.PI:angle;
+              const root=getComputedStyle(node),face=getComputedStyle(faceNode);
+              const motion=tumblerDropMotion({matrix:values||[1,0,0,1,0,0],angle:continuousAngle,dir:stone.dir||1,
+                width:parseFloat(face.width),height:parseFloat(face.height),
+                dx:parseFloat(root.left)-stone.x*node.offsetWidth,
+                dy:parseFloat(root.top)-(stone.y-viewTop())*node.offsetHeight});
+              faceNode.style.setProperty('--dc-tumbler-drop-from',motion.from);
+              faceNode.style.setProperty('--dc-tumbler-drop-to',motion.to);
+              node.dataset.tumblerDropInverted=String(motion.inverted);
+            }
           }
         }
         node.dataset.inverted=String(!!stone.inverted);
@@ -351,26 +358,29 @@ export function mount(root,ctx){
       }
       if(stone.type==='tumbler'){
         if(stage==='upright')node.dataset.tumblerInverted='false';
-        else if(prevStage==='dropping'&&stage==='rolling'){
+        else if(prevStage==='dropping'&&stage==='rolling'&&node.dataset.tumblerDropInverted==='true'){
           node.dataset.tumblerInverted=String(node.dataset.tumblerInverted!=='true');
         }
       }
       node.dataset.stage=stage;
-      node.className=`dc-stone dc-${stone.type} dc-${stage}`;
+      node.className=`dc-stone dc-${stone.type} dc-${stage}${stone.carriedDrop?' dc-carried-drop':''}${stone.crashPile?' dc-rubble-pile':''}${stone.crashCovered?' dc-rubble-covered':''}`;
+      if(stone.crashPile&&!node.querySelector('.dc-rubble'))node.append(el('span',{class:'dc-rubble','aria-hidden':'true'},[el('i'),el('i'),el('i'),el('i')]));
 
       const rolling=stone.type==='tumbler'&&stone.state==='rolling';
       let rollView=rollViews.get(stone.id);
-      if(rollView&&(rollView.dir!==(stone.dir||1)||rollView.startY!==stone.y)){
-        // Bounced off a stopper or landed on a lower platform: re-anchor the
-        // roll at the cell the engine is on now.
+      if(rollView&&rollView.startY!==stone.y){
         rollViews.delete(stone.id);rollView=null;
       }
       if(rolling){
-        if(!rollView){rollView={startX:stone.x,startY:stone.y,dir:stone.dir||1,phase:0,cap:1,last:performance.now(),moves:0,node,face:faceNode};rollViews.set(stone.id,rollView);frozenRolls.delete(stone.id);}
-        else{
-          rollView.node=node;rollView.face=faceNode;
-          const moved=Math.abs(stone.x-rollView.startX);
-          if(moved>rollView.moves){rollView.moves=moved;rollView.cap=moved*2+1;}
+        if(!rollView){
+          rollView={startX:stone.rollOriginX,startY:stone.rollOriginY,dir:stone.rollBaseDir,node,face:faceNode};
+          rollViews.set(stone.id,rollView);frozenRolls.delete(stone.id);
+        }
+        rollView.node=node;rollView.face=faceNode;
+        if(rollView.serial!==stone.rollSerial){
+          Object.assign(rollView,{serial:stone.rollSerial,from:stone.rollFrom,to:stone.rollTo,
+            phase:stone.rollFrom,elapsed:0,duration:stone.rollDuration,via:stone.rollVia,
+            returnDuration:stone.rollReturnDuration,last:performance.now()});
         }
         rollView.freezing=false;
         startRollLoop();
@@ -418,7 +428,13 @@ export function mount(root,ctx){
       }
       const heldView=rollViews.get(stone.id)||frozenRolls.get(stone.id);
       let placeAt=stage==='dropping'?{x:stone.dropX,y:stone.dropY}:heldView?{x:heldView.startX,y:heldView.startY}:stone;
-      if(stage==='dropping'&&stone.type==='tumbler'&&!node.dataset.dropCommit){
+      if(stage==='dropping'&&stone.carriedDrop){
+        if(!node.dataset.releaseCommit){
+          node.dataset.releaseCommit='1';node.style.transition='none';placeNode(node,stone);void node.offsetHeight;
+        }
+        const {brickMs}=carriedDropTiming(stone.dropY-stone.y,dominoTiming);
+        node.style.transition=`top ${brickMs}ms linear`;
+      }else if(stage==='dropping'&&stone.type==='tumbler'&&!node.dataset.dropCommit){
         // Re-anchor the rolling body, finish the half-turn for one beat,
         // then move vertically. Commit now, rather than waiting for a tick.
         node.dataset.dropCommit='1';
@@ -433,6 +449,7 @@ export function mount(root,ctx){
       }else if(stage!=='dropping'&&node.dataset.dropCommit){
         delete node.dataset.dropCommit;
       }
+      if(stage!=='dropping')delete node.dataset.releaseCommit;
       placeNode(node,placeAt);
     }
     renderSurfaces();
@@ -461,7 +478,7 @@ export function mount(root,ctx){
     const piece=currentPiece(),held=state.position.carrying;
     levelNumber.textContent=String(state.level+1).padStart(2,'0');levelName.textContent=t(level.name);
     progress.textContent=`${Object.keys(records).filter(k=>levels[Number(k)]&&Number.isSafeInteger(records[k])).length}/${levels.length}`;
-    if(running){badge.textContent='↝';instruction.textContent=t(level.rules==='dos'?'连锁进行中…可以继续走或推。':'连锁进行中…');}
+    if(running){badge.textContent='↝';instruction.textContent=t(level.rules==='dos'&&!state.pushUsed?'连锁进行中…可以继续走或推。':'连锁进行中…');}
     else if(state.phase==='exit'){badge.textContent='↗';instruction.textContent=t('门开了，走进出口！');}
     else if(state.phase==='won'){badge.textContent='✓';instruction.textContent=t('连锁完成！');}
     else if(state.death){badge.textContent='☠';instruction.textContent=t('蚂蚁摔死了：落差太大，点“重开”重试。');}
@@ -480,7 +497,8 @@ export function mount(root,ctx){
     pushRight.classList.toggle('dc-guide-action',guide?.kind==='push'&&guide.dir===1);
     carry.textContent=t(held?'放下':'搬起');
     carry.disabled=acting||(running&&level.rules!=='dos')||walking||!!state.attempt||state.phase==='failed'||(!held&&(!piece||piece.type==='trigger'));
-    pushLeft.disabled=pushRight.disabled=acting||(running&&level.rules!=='dos')||walking||!!state.attempt||state.phase==='failed'||!!held||!piece||['splitter','stopper'].includes(piece.type);
+    pushLeft.disabled=pushRight.disabled=acting||(running&&level.rules!=='dos')||walking||!!state.attempt||state.phase==='failed'||state.phase==='won'||!!held||!piece||['splitter','stopper'].includes(piece.type)||(level.rules==='dos'&&state.pushUsed);
+    pushLeft.title=pushRight.title=level.rules==='dos'&&state.pushUsed?t('本关只能手推一次，仍可抱牌跳下启动连锁。'):'';
     const deltas={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]},p=player(),reachable=neighbors(level,p,bridgesNow(),holesNow());
     for(const cell of pad.children){
       const delta=deltas[cell.dataset.direction];
@@ -518,15 +536,15 @@ export function mount(root,ctx){
   }
   function remember(){state.history.push(clone(state.position));if(state.history.length>100)state.history.shift();}
   function markWon(){
-    if(state.phase!=='exit'||!at(player(),level.exit))return;
+    if(state.phase!=='exit'||!at(player(),level.exit)||!exitReady())return;
     state.phase='won';notice='';
     const moves=state.position.moves+state.postHistory.length;
     ctx.result?.('won',{moves});
     records[state.level]=Math.min(Number.isSafeInteger(records[state.level])?records[state.level]:Infinity,moves);
     ctx.write('domino:records',records);finish('domino');
   }
-  function walkOne(to){
-    if(['failed','won'].includes(state.phase))return false;
+  function walkOne(to,{landed=false,released=false}={}){
+    if(['failed','won'].includes(state.phase)&&!(released&&state.phase==='failed'&&!state.death))return false;
     if(running&&level.rules!=='dos')return false;
     const before=player();
     if(liveChain){
@@ -547,7 +565,9 @@ export function mount(root,ctx){
       if(fall>3){die();return true;}
     }
     if(to.x!==before.x)facing=Math.sign(to.x-before.x);
-    moveKind=to.y!==before.y?'climb':'walk';moveDuration=moveKind==='climb'?220:180;
+    // The flight has already reached the lower floor. Commit the logical
+    // step without starting a second vertical (ladder) animation.
+    moveKind=landed?'idle':to.y!==before.y?'climb':'walk';moveDuration=landed?0:moveKind==='climb'?220:180;
     ant.style.setProperty('--dc-step-ms',`${moveDuration}ms`);
     stageCamera.resume();notice='';save();render();return true;
   }
@@ -562,22 +582,46 @@ export function mount(root,ctx){
     const token=++walkToken;walking=true;
     while(path.length&&alive&&token===walkToken){
       const to=path[0],before=player(),drop=to.y-before.y;
-      if(drop>1&&motionEnabled()){
+      const releasing=level.rules==='dos'&&!!state.position.carrying&&isLedgeDrop(level,before,to);
+      if(releasing&&!neighbors(level,before,bridgesNow(),holesNow()).some(p=>at(p,to)))break;
+      const animatedDrop=(drop>1||releasing)&&motionEnabled();
+      if(animatedDrop){
+        // Chain ticks still render the dominoes, but the flight owns the
+        // ant's position and complete pose until the landing is committed.
+        ledgeFlight=true;
+        if(to.x!==before.x)facing=Math.sign(to.x-before.x);
+        actor.update({facing,held:state.position.carrying,move:'scared'});
         ant.style.transition='left 140ms ease';
         placeNode(ant,{x:to.x,y:before.y});
-        ant.dataset.move='scared';
         await wait(250);
         if(!alive||token!==walkToken)return;
-        ant.style.transition='top 280ms cubic-bezier(.3,0,.8,1)';
+      }
+      if(releasing){
+        if(!releaseCarriedBrick(before,to))break;
+        if(animatedDrop){
+          actor.update({facing,held:null,move:'scared'});
+          await wait(carriedDropTiming(drop,dominoTiming).antLeadMs);
+          if(!alive||token!==walkToken)return;
+        }
+      }
+      if(animatedDrop){
+        const antMs=releasing?carriedDropTiming(drop,dominoTiming).antMs:280;
+        ant.style.transition=`top ${antMs}ms cubic-bezier(.3,0,.8,1)`;
         placeNode(ant,to);
         ant.dataset.move='falling';
-        await wait(300);
-        ant.style.transition='';
+        await wait(antMs+20);
         if(!alive||token!==walkToken)return;
+        ant.style.transition='';
       }
-      if(!walkOne(path.shift()))break;
+      ledgeFlight=false;
+      if(!walkOne(path.shift(),{landed:animatedDrop,released:releasing}))break;
       await wait(motionEnabled()?moveDuration:0);
       if(!alive||token!==walkToken)return;
+      if(!releasing&&isLedgeDrop(level,before,to)&&state.position.carrying&&state.phase!=='failed'){
+        moveKind='idle';
+        await carryOrPlace({afterDrop:true});
+        if(!alive||token!==walkToken)return;
+      }
       if(state.phase==='exit'&&at(player(),level.exit)){walking=false;queuedWalk=null;moveKind='idle';await enterExit();return;}
       if(queuedWalk){
         const next=queuedWalk;queuedWalk=null;
@@ -606,15 +650,16 @@ export function mount(root,ctx){
     }
     void runWalk([target]);
   }
-  async function carryOrPlace(){
-    if(acting||(running&&level.rules!=='dos')||walking||state.attempt||state.phase==='failed')return;
+  async function carryOrPlace({afterDrop=false}={}){
+    if(acting||(running&&level.rules!=='dos')||(walking&&!afterDrop)||state.attempt||state.phase==='failed')return;
+    if(afterDrop&&!state.position.carrying)return;
     if(!liveChain&&(state.fallen||[]).some(q=>at(q,player()))){notice='这里躺着牌，先换个位置。';renderText();return;}
     if(liveChain){
       if(state.position.carrying){
         const p=player();
         const carried=state.position.carrying;
         if(!hasFloor(level,p.x,p.y,liveChain.bridges,liveChain.holes)||(doorBlocked(level,p)&&(carried.type!=='vanish'||at(p,entryCell(level)||{x:-1,y:-1})))||liveChain.stones.some(q=>q.x===p.x&&q.y===p.y&&q.state!=='vanished')||(state.fallen||[]).some(q=>q.x===p.x&&q.y===p.y)){notice='这里不能放牌。';renderText();return;}
-        liveChain.addStone(state.position.carrying);
+        liveChain.addStone({...carried,...p});
         state.position={...state.position,carrying:null};
       }else{
         const stone=liveChain.stones.find(q=>q.x===player().x&&q.y===player().y&&q.state==='upright');
@@ -622,13 +667,15 @@ export function mount(root,ctx){
         liveChain.removeStone(stone.id);
         state.position={...state.position,carrying:stone};
       }
+      // Live edits must be visible immediately, even during a delay beat.
+      frame={...frame,...liveChain.snapshot()};
       notice='';save();render();return;
     }
     const piece=state.position.carrying||currentPiece(),kind=state.position.carrying?'place':'take';
     const next=edit(level,state.position,{type:kind});
     if(!next){notice='这里不能放牌：需要空的地面，门口那一格也不能放。';renderText();return;}
     const from=kind==='take'?stoneNodes.get(piece.id)?.querySelector('.dc-stone-face').getBoundingClientRect():null;
-    const token=++actionToken;acting=true;transfer={kind,piece};remember();state.position=next;notice='';save();render();
+    const token=++actionToken;acting=true;transfer={kind,piece};remember();state.position=next;notice='';refreshCompletedDoor();save();render();
     const complete=kind==='take'?await actor.take(from):await actor.place(()=>{
       const boardStone=stoneNodes.get(piece.id);
       if(!boardStone)return;
@@ -645,7 +692,7 @@ export function mount(root,ctx){
     ant.dataset.dead='true';result=null;frame=null;notice='';save();render();
   }
   async function enterExit(){
-    if(acting||state.phase!=='exit'||!at(player(),level.exit))return;
+    if(acting||state.phase!=='exit'||!at(player(),level.exit)||!exitReady())return;
     const token=++actionToken;acting=true;moveKind='idle';render();
     if(!await actor.enter()||!alive||token!==actionToken)return;
     acting=false;markWon();save();render();
@@ -655,15 +702,15 @@ export function mount(root,ctx){
     if(level.rules==='dos'){
       if(!starter||['splitter','stopper'].includes(starter.type)||acting||walking||state.position.carrying)return;
       if(liveChain){
-        if(liveChain.activateStone(starter.id,dir)){facing=dir;sound();render();}
+        if(useManualPush(state,()=>liveChain.activateStone(starter.id,dir))){facing=dir;save();sound();render();}
         return;
       }
-      const chain=createChain(level,state.position.pieces,state.structures||{},dominoTiming);
-      if(!chain.activateStone(starter.id,dir))return;
-      state.chainBackup={position:clone(state.position),fallen:clone(state.fallen||[]),structures:clone(state.structures||{}),triggerDown:!!state.triggerDown};
+      const chain=newLiveChain(),backup=chainBackup();
+      if(!useManualPush(state,()=>chain.activateStone(starter.id,dir)))return;
+      state.chainBackup=backup;
       liveChain=chain;chainWalker=clone(state.position.player);
       result=null;frame=chain.snapshot();running=true;facing=dir;
-      const token=++runToken;render();sound();
+      const token=++runToken;save();render();sound();
       void runLiveChain(token);
       return;
     }
@@ -689,6 +736,25 @@ export function mount(root,ctx){
     notice='';
     save();render();if(won)sound(true);
   }
+  function chainBackup(){
+    return {position:clone(state.position),fallen:clone(state.fallen||[]),structures:clone(state.structures||{}),
+      triggerDown:!!state.triggerDown,completion:clone(state.completion||null),pushUsed:!!state.pushUsed};
+  }
+  function newLiveChain(){
+    const offset=state.completion?.time||0;
+    const settledPieces=dominoSessionPieces(state).filter(p=>p.state!=='upright').map(p=>({...p,finish:Number.isFinite(p.finish)?p.finish-offset:null}));
+    return createChain(level,state.position.pieces,{...state.structures,settledPieces},dominoTiming);
+  }
+  function releaseCarriedBrick(from,to){
+    const piece=state.position.carrying;if(!piece)return false;
+    const chain=liveChain||newLiveChain(),backup=liveChain?null:chainBackup();
+    if(!chain.dropCarriedStone(piece,{from,to,dir:facing}))return false;
+    const starting=!liveChain;
+    if(starting){state.chainBackup=backup;liveChain=chain;chainWalker=clone(from);result=null;running=true;}
+    state.position={...state.position,carrying:null};frame=chain.snapshot();save();render();
+    if(starting){const token=++runToken;void runLiveChain(token);}
+    return true;
+  }
   async function runLiveChain(token){
     let deadline=gameRuntime.now();
     while(liveChain&&!liveChain.done()){
@@ -706,8 +772,7 @@ export function mount(root,ctx){
   function finishLiveChain(){
     const snap=liveChain.snapshot(),pieces=snap.pieces;
     const trigDown=!!state.triggerDown||pieces.some(p=>p.type==='trigger'&&['flat','vanished','ceiling'].includes(p.state));
-    const allDown=pieces.every(p=>p.type==='stopper'||['flat','vanished','ceiling'].includes(p.state));
-    const won=!snap.crashed&&!snap.overflow&&allDown&&trigDown;
+    state.completion=recordDominoCompletion(state,snap);
     const structures={bridges:snap.bridges,holes:snap.holes};
     const pos=dropPlayer(chainWalker,structures),fall=pos.y-chainWalker.y;
     const remaining=pieces.filter(p=>p.state==='upright');
@@ -716,13 +781,24 @@ export function mount(root,ctx){
     state.fallen=[...byId.values()];
     liveChain=null;chainWalker=null;
     state.structures=structures;state.triggerDown=trigDown;
-    state.position={...state.position,pieces:remaining,player:pos,carrying:null};
+    state.position={...state.position,pieces:remaining,player:pos};
     state.history=[];
     if(fall>3){die();return;}
-    if(won){state.phase='exit';result={...snap,problemIds:[],pieces};notice='';}
-    else if(snap.crashed||snap.overflow){state.phase='failed';result={...snap,problemIds:pieces.filter(p=>p.state==='crashed').map(p=>p.id)};}
-    else {state.phase='arrange';result=null;notice='连锁结束：还有骨牌没倒，可以继续走、搬或推。';}
-    save();render();if(won)sound(true);
+    const outcome=dominoSessionOutcome(level,state);
+    if(outcome.won){state.phase='exit';result={...snap,...outcome,pieces:state.completion.pieces};notice='';}
+    else if(['crash','overflow','early','tie','dead'].includes(outcome.reason)){state.phase='failed';result={...snap,...outcome,pieces:state.completion.pieces};}
+    else if(outcome.reason==='carrying'){state.phase='arrange';result=null;notice='搬着骨牌，走到空位后放下。';}
+    else {state.phase='arrange';result=null;notice=state.pushUsed?'连锁结束：还有骨牌没倒，可以继续走、搬或抱牌跳下。':'连锁结束：还有骨牌没倒，可以继续走、搬或推。';}
+    save();render();if(outcome.won)sound(true);
+  }
+  function exitReady(){
+    return !state.death&&!state.position.carrying&&(level.rules==='dos'?dominoSessionOutcome(level,state).won:!!result?.won);
+  }
+  function refreshCompletedDoor(){
+    if(level.rules!=='dos'||!state.completion||state.phase==='won'||state.phase==='failed')return;
+    const outcome=dominoSessionOutcome(level,state);
+    if(outcome.won){state.phase='exit';result={...state.completion,...outcome,pieces:dominoSessionPieces(state),bridges:bridgesNow(),holes:holesNow()};}
+    else if(state.phase==='exit'){state.phase='arrange';result=null;}
   }
   function retryAction(notify=true){
     if(!state.attempt&&!state.chainBackup)return;stop();
@@ -730,6 +806,8 @@ export function mount(root,ctx){
       if(state.chainBackup){
         const b=state.chainBackup;
         state.position=clone(b.position);state.fallen=clone(b.fallen);state.structures=clone(b.structures);state.triggerDown=b.triggerDown;
+        state.completion=clone(b.completion||null);
+        state.pushUsed=typeof b.pushUsed==='boolean'?b.pushUsed:!!b.completion;
         state.chainBackup=null;
       }
       state.attempt=null;state.walker=null;state.postHistory=[];state.phase='arrange';state.death=false;result=null;frame=null;notice='';save();render();
@@ -737,11 +815,12 @@ export function mount(root,ctx){
     return notify?startGame(ctx,'restart',reset,{level:String(state.level+1)}):reset();
   }
   function undoAction(){
+    if(state.chainBackup&&(running||state.phase==='failed'||state.phase==='exit'||!state.history.length)){retryAction(false);return;}
     if(state.attempt){
       if(!running&&state.postHistory.length){stop();state.walker=state.postHistory.pop();state.phase='exit';notice='';save();render();return;}
       retryAction(false);return;
     }
-    if(state.history.length){stop();state.position=state.history.pop();state.phase='arrange';state.death=false;ant.dataset.dead='false';notice='';save();render();}
+    if(state.history.length){stop();state.position=state.history.pop();state.phase='arrange';state.death=false;ant.dataset.dead='false';notice='';refreshCompletedDoor();save();render();}
   }
   function loadLevel(index,reason='select'){stop();return startGame(ctx,reason,()=>{state=fresh(index);level=levels[index];result=null;frame=null;notice='';guideActive=false;facing=1;buildWorld();save();render();settleStage();void playIntro();void motion.play(viewport,[{opacity:.25,transform:'translateY(6px)'},{opacity:1,transform:'translateY(0)'}],280);},{level:String(index+1)});}
   function chooseLevel(){

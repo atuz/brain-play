@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {simulate} from './domino-engine.js';
 import {levels} from './domino-levels.js';
+import {dominoContactPhase} from './domino-contact-motion.js';
 
 test('Level 49 retains airborne landing, then transmits the reverse chain and reaches the splitter',()=>{
   const level=levels[48],pieces=structuredClone(level.pieces);
@@ -49,7 +50,7 @@ test('Level 49 starts the next tile at reverse contact, before the source is fla
   const turn=sim.trace.find(f=>f.pieces.find(p=>p.id==='p0').state==='reversing');
   const hit=sim.trace.find(f=>f.pieces.find(p=>p.id==='p3').state==='falling');
   const rest=sim.trace.find(f=>f.pieces.find(p=>p.id==='p0').state==='flat'&&f.time>turn.time);
-  assert.equal(hit.time-turn.time,1);
+  assert.ok(Math.abs(hit.time-turn.time-dominoContactPhase*2)<1e-6);
   assert.equal(hit.pieces.find(p=>p.id==='p0').state,'reversing');
   assert.equal(rest.time-turn.time,2);
 });

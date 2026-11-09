@@ -87,14 +87,8 @@ def build(level):
                     ramp_cells.append((x - 1, y - 1))
                     ramp_cells.append((x, y - 1))
 
-    # A ladder cell that touches a platform on the same row is part of the
-    # platform, so the ant can step off the ladder there.
-    for y in range(H):
-        for x in range(W):
-            if ladders_raw[y][x] and (
-                (x > 0 and cells[y][x - 1]) or (x + 1 < W and cells[y][x + 1])
-            ):
-                cells[y][x] = True
+    # Ladder and floor are independent terrain. H/V provides climbing only;
+    # neighbouring floor must never fill an open ladder cell automatically.
 
     # Doors: the ant stands on the platform tile below the door sprite.  Six
     # levels have a door without a tile below; use the door cell itself.
@@ -146,6 +140,13 @@ def build(level):
             ladders.append({"x": x, "from": top, "to": bottom})
 
     ramps = sorted(set(ramp_cells))
+    # DOS 24's slope has a tread every column, descending half a row.
+    # The coarse source grid encodes each pair with one slash character.
+    if level["level"] == 24:
+        platforms = [[2,15,18],[2.5,14,14],[3,3,5],[3,13,13],
+                     [3.5,12,12],[4,11,11],[4.5,10,10],
+                     [5,2,3],[5,7,9],[5,12,13],[7,4,9],[7,13,16],[9,10,14]]
+        ramps = []
     entry = doors.get('1')
     return platforms, ladders, pieces, player, exit_, ramps, entry
 
@@ -250,7 +251,7 @@ def main():
             "{type:'%s',x:%d,y:%d}" % (p["type"], p["x"], p["y"])
             for p in lv["pieces"]
         )
-        platforms = ",".join("[%d,%d,%d]" % tuple(p) for p in lv["platforms"])
+        platforms = ",".join("[%g,%d,%d]" % tuple(p) for p in lv["platforms"])
         ladders = ",".join(
             "{x:%d,from:%d,to:%d}" % (l["x"], l["from"], l["to"]) for l in lv["ladders"]
         )

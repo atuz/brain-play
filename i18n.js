@@ -1,4 +1,4 @@
-import {dominoEnglish,dominoTraditional} from './domino-i18n.js?v=56';
+import {dominoEnglish,dominoTraditional} from './domino-i18n.js?v=57';
 import {pushoverEnglish} from './domino-i18n-pushover.js?v=1';
 import {machineEnglish,machineTraditional} from './machine-i18n.js?v=48';
 import {classicEnglish,classicTraditional} from './classic-i18n.js?v=48';
@@ -105,6 +105,8 @@ const english = {
   '游戏加载遇到了问题，请刷新页面后重试。':'Could not load this game. Please refresh.',
   '24 点':'Make 24', '水果连连看':'Fruit Link', '消灭星星':'Pop Stars', '熄灯':'Lights Out',
   '数字华容道':'Sliding Puzzle', '接水管':'Pipe Connect', '迷你数织':'Nonogram', '猜数字':'Bulls & Cows',
+  '5×5、10×10、15×15 多种棋盘，逐关解开像素图案。':'Three board sizes: 5×5, 10×10, and 15×15, with pixel-art puzzles.',
+  '行列数字全部吻合即过关。空格不必全部标 ×；一笔拖涂可以一次撤销。可选 5×5、10×10 或 15×15 棋盘。':'Match all row and column clues to finish. Empty cells do not all need an ×; undo a whole stroke at once. Choose a 5×5, 10×10, or 15×15 board.',
   '滑动合并相同数字，目标是 2048。':'Swipe to merge matching numbers and reach 2048.',
   '可以撤销上一步。':'Undo is always available.',
   '点数字 → 选运算 → 点另一张牌，两张牌自动合并。':'Tap a number, an operation, and another card to merge them.',

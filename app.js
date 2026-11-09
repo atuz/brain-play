@@ -1,6 +1,6 @@
 import { el, read, write, dateSeed, seeded, toast } from './shared.js?v=48';
 import { games, preview } from './catalog.js?v=56';
-import { languages, setLanguage, getLanguage, t } from './i18n.js?v=61';
+import { languages, setLanguage, getLanguage, t } from './i18n.js?v=62';
 import { resolvePreferences, updatePreferenceURL } from './preferences.js?v=48';
 
 import { connectAppHost } from './app-host.js?v=48';
@@ -89,13 +89,25 @@ function dialog(title, closeLabel) {
   return modal;
 }
 
+function showDialog(modal) {
+  const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
+  document.body.style.setProperty('--dialog-scroll-top', `${-scrollY}px`);
+  document.body.classList.add('dialog-scroll-locked');
+  modal.addEventListener('close', () => {
+    document.body.classList.remove('dialog-scroll-locked');
+    document.body.style.removeProperty('--dialog-scroll-top');
+    requestAnimationFrame(() => window.scrollTo(0, scrollY));
+  }, { once: true });
+  modal.showModal();
+}
+
 function showHelp(game) {
   const modal = dialog(activeModule?.title?.({ read }) || t(game.name), '关闭帮助');
   const rules=activeModule?.rules?.({read})||game.rules;
   modal.append(el('div',{class:'help-sections'},rules.map(section=>el('section',{class:'help-section'},[
     el('h3',{text:section.title}),el('p',{text:section.text}),
   ]))));
-  modal.showModal();
+  showDialog(modal);
 }
 
 function showGameSettings() {
@@ -120,7 +132,7 @@ function showGameSettings() {
     void route(false);
   });
   modal.append(form);
-  modal.showModal();
+  showDialog(modal);
 }
 
 function showSettings() {
@@ -150,7 +162,7 @@ function showSettings() {
     void route(false);
   });
   modal.append(form);
-  modal.showModal();
+  showDialog(modal);
 }
 
 const mounts = {
@@ -159,10 +171,10 @@ const mounts = {
   atom: () => import('./atom.js?v=48'),
   laser: () => import('./laser.js?v=48'),
   machine: () => import('./machine.js?v=48'),
-  domino: () => import('./domino.js?v=163'),
+  domino: () => import('./domino.js?v=183'),
   '2048': () => import('./2048.js?v=48'), twentyfour: () => import('./twentyfour.js?v=48'),
   lights: () => import('./lights.js?v=48'), fifteen: () => import('./fifteen.js?v=48'),
-  pipes: () => import('./pipes.js?v=48'), nonogram: () => import('./nonogram.js?v=48'),
+  pipes: () => import('./pipes.js?v=48'), nonogram: () => import('./nonogram.js?v=55'),
   link: () => import('./link.js?v=48'), stars: () => import('./stars.js?v=48'), guess: () => import('./guess.js?v=48'),
 };
 

@@ -37,3 +37,20 @@ test('Integer ramp connections also take precedence over a ledge drop',()=>{
   assert.ok(out.some(p=>p.x===3&&p.y===3));
   assert.ok(!out.some(p=>p.x>=2&&p.y===5));
 });
+
+test('Level 64 follows every DOS half-row tread downhill and uphill',()=>{
+  const level=levels[63];
+  const descent=[{x:15,y:2},{x:14,y:2.5},{x:13,y:3},{x:12,y:3.5},{x:11,y:4},{x:10,y:4.5},{x:9,y:5}];
+  assert.deepEqual(pathTo(level,descent[0],descent.at(-1)),descent.slice(1));
+  assert.deepEqual(pathTo(level,descent.at(-1),descent[0]),descent.slice(0,-1).reverse());
+  for(const p of descent.slice(1,-1)){
+    const i=descent.indexOf(p),out=neighbors(level,p);
+    assert.deepEqual(out.sort((a,b)=>a.x-b.x),[descent[i+1],descent[i-1]].sort((a,b)=>a.x-b.x));
+  }
+});
+
+
+test('Level 64 preserves the flat approach beside the bomb before the first step',()=>{
+  const level=levels[63];
+  assert.deepEqual(pathTo(level,{x:7,y:5},{x:10,y:4.5}),[{x:8,y:5},{x:9,y:5},{x:10,y:4.5}]);
+});

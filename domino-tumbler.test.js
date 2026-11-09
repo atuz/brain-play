@@ -26,3 +26,30 @@ test('Level 50 tumbler lands on the bottom platform before continuing to the tri
   assert.deepEqual([land.pieces.find(p=>p.id==='p2').x,land.pieces.find(p=>p.id==='p2').y],[11,11]);
   assert.notEqual(sim.pieces.find(p=>p.id==='p3').state,'upright');
 });
+
+for(const dir of [-1,1])for(const type of ['normal','trigger','ascender','tumbler','splitter'])test(`Tumbler stops after contact with ${type}, direction ${dir}`,()=>{
+  const level={width:13,height:10,rules:'dos',platforms:[[5,0,12]],ladders:[]};
+  const pieces=[{id:'a',type:'tumbler',x:6-dir,y:5},{id:'b',type,x:6,y:5}];
+  const sim=simulate(level,pieces,'a',dir);
+  const stopped=sim.trace.find(f=>f.pieces.find(p=>p.id==='a').state==='flat');
+  assert.ok(stopped);
+  assert.equal(stopped.pieces.find(p=>p.id==='a').x,6-dir);
+  assert.ok(sim.trace.filter(f=>f.time>=stopped.time).every(f=>f.pieces.find(p=>p.id==='a').state==='flat'));
+  assert.equal(stopped.pieces.find(p=>p.id==='b').state,type==='splitter'?'upright':type==='delay'?'waiting':type==='ascender'?'ascending':type==='tumbler'?'rolling':'falling');
+});
+
+for(const dir of [-1,1])for(const type of ['bridge','vanish'])test(`Tumbler continues through ${type}, direction ${dir}`,()=>{
+  const level={width:13,height:10,rules:'dos',platforms:[[5,0,12]],ladders:[]};
+  const sim=simulate(level,[{id:'a',type:'tumbler',x:6-dir,y:5},{id:'b',type,x:6,y:5}],'a',dir);
+  assert.ok(sim.trace.some(f=>{const p=f.pieces.find(p=>p.id==='a');return p.x===6+dir&&p.state==='rolling';}));
+});
+
+for(const dir of [-1,1])test(`Stopper reverses the tumbler instead of stopping it, direction ${dir}`,()=>{
+  const level={width:13,height:10,rules:'dos',platforms:[[5,0,12]],ladders:[]};
+  const sim=simulate(level,[{id:'a',type:'tumbler',x:6-dir,y:5},{id:'b',type:'stopper',x:6,y:5}],'a',dir);
+  const bounced=sim.trace.find(f=>f.effects.some(e=>e.kind==='rebound'));
+  assert.ok(bounced);
+  assert.equal(bounced.pieces.find(p=>p.id==='a').dir,-dir);
+  assert.equal(bounced.pieces.find(p=>p.id==='a').state,'rolling');
+  assert.ok(sim.trace.some(f=>f.pieces.find(p=>p.id==='a').x===6-2*dir));
+});

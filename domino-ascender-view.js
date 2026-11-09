@@ -1,4 +1,4 @@
-import {baseDominoTiming} from './domino-timing.js?v=2';
+import {baseDominoTiming} from './domino-timing.js?v=3';
 // Ascender-only DOM and animation parameters. Ordinary tile classes are not
 // attached here, so edits to their fall/landing CSS cannot animate this tile.
 import {el} from './shared.js?v=48';
