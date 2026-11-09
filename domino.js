@@ -1,22 +1,22 @@
 import {tumblerDropMotion} from './domino-tumbler-motion.js';
-import {dominoContactAngle,tumblerRollTransform,advanceContactMotion} from './domino-contact-motion.js?v=2';
+import {dominoContactAngle,tumblerRollTransform,tumblerRestTransform,advanceContactMotion} from './domino-contact-motion.js?v=5';
 import {dominoSessionOutcome,dominoSessionPieces,recordDominoCompletion} from './domino-outcome.js';
 import {useManualPush,carriedDropTiming} from './domino-actions.js';
-import {dominoTiming} from './domino-timing.js?v=7';
-import {createAscenderNode,renderAscender} from './domino-ascender-view.js?v=7';
+import {dominoTiming} from './domino-timing.js?v=8';
+import {createAscenderNode,renderAscender} from './domino-ascender-view.js?v=8';
 import {startGame} from './game-transition.js?v=48';
 import {gameRuntime} from './game-runtime.js?v=48';
 import {el,button,sound,finish,keyboardAndSwipe} from './shared.js?v=48';
 import {createMotion,motionEnabled} from './motion.js?v=48';
 import {t} from './i18n.js?v=62';
-import {levels,chapters} from './domino-levels.js?v=66';
-import {at,clone,hasFloor,neighbors,pathTo,edit,initialPosition,simulate,createChain,validPosition,walkable,doorBlocked,entryCell,isLedgeDrop} from './domino-engine.js?v=119';
+import {levels,chapters} from './domino-levels.js?v=67';
+import {at,clone,hasFloor,neighbors,pathTo,edit,initialPosition,simulate,createChain,validPosition,walkable,doorBlocked,entryCell,isLedgeDrop} from './domino-engine.js?v=122';
 import {failureSummary,nextGuide} from './domino-guide.js?v=49';
 import {mountCamera} from './domino-camera.js?v=51';
 import {antArtwork,createAntActor} from './domino-actor.js?v=59';
 import {sceneryForLevel,chapterSceneries} from './domino-scenery.js?v=53';
 import {dominoArtwork} from './domino-material.js?v=53';
-import {restingDominoes} from './domino-resting.js?v=48';
+import {restingDominoes} from './domino-resting.js?v=49';
 
 const types={
   normal:['普通牌','碰到下一张牌，继续连锁。',''],
@@ -90,6 +90,15 @@ export function mount(root,ctx){
     rs.face.style.transition='none';
     rs.face.style.transform=rollPose(rs,rs.phase,rs.node);
   }
+  function paintRest(rs){
+    if(!rs.rest)return paintRoll(rs);
+    const {stone,pose}=rs.rest;
+    rs.face.style.transformOrigin='0 0';
+    rs.face.style.transition='transform 140ms ease-out';
+    rs.face.style.transform=tumblerRestTransform({phase:rs.to,baseDir:rs.dir,dir:stone.dir,
+      cellOffset:stone.x-rs.startX,angle:pose.angle,lift:pose.lift,
+      width:rs.node.offsetWidth||40,height:rs.node.offsetHeight||40});
+  }
   function tickRoll(){
     rollRaf=0;
     const now=performance.now();
@@ -97,7 +106,7 @@ export function mount(root,ctx){
       const dt=now-(rv.last||now);rv.last=now;
       const complete=advanceContactMotion(rv,dt);
       paintRoll(rv);
-      if(rv.freezing&&complete){frozenRolls.set(id,{...rv,frozen:true});rollViews.delete(id);}
+      if(rv.freezing&&complete){paintRest(rv);frozenRolls.set(id,{...rv,frozen:true});rollViews.delete(id);}
     }
     if(rollViews.size)rollRaf=requestAnimationFrame(tickRoll);
   }
@@ -367,6 +376,7 @@ export function mount(root,ctx){
       if(stone.crashPile&&!node.querySelector('.dc-rubble'))node.append(el('span',{class:'dc-rubble','aria-hidden':'true'},[el('i'),el('i'),el('i'),el('i')]));
 
       const rolling=stone.type==='tumbler'&&stone.state==='rolling';
+      const pose=resting.get(stone.id);
       let rollView=rollViews.get(stone.id);
       if(rollView&&rollView.startY!==stone.y){
         rollViews.delete(stone.id);rollView=null;
@@ -391,9 +401,17 @@ export function mount(root,ctx){
         rollView.freezing=true;rollView.node=node;rollView.face=faceNode;rollView.last=performance.now();
         startRollLoop();
       }
+      if(stage==='flat'&&stone.type==='tumbler'&&!rollView&&!frozenRolls.has(stone.id)&&Number.isFinite(stone.rollPhase)){
+        frozenRolls.set(stone.id,{node,face:faceNode,startX:stone.rollOriginX,startY:stone.rollOriginY,
+          dir:stone.rollBaseDir,phase:stone.rollPhase,to:stone.rollPhase,frozen:true});
+      }
       const frozen=rolling?null:frozenRolls.get(stone.id);
-      if(rolling||frozen){
-        paintRoll(rolling?rollView:frozen);
+      if(stage==='flat'){
+        const view=frozen||rollView;
+        if(view)view.rest={stone:{...stone},pose:pose.body};
+      }
+      if(rolling||frozen||rollView?.freezing){
+        if(frozen)paintRest(frozen);else paintRoll(rollView);
       }else if(stone.type==='tumbler'){
         faceNode.style.transform='';faceNode.style.transformOrigin='';faceNode.style.transition='';
       }
@@ -408,7 +426,6 @@ export function mount(root,ctx){
       node.classList.toggle('dc-problem',!!problem);
       node.classList.toggle('dc-guide-source',!!guide&&(guide.source?at(stone,guide.source):['push','walk-push'].includes(guide.kind)&&at(stone,guide.target)));
       node.dataset.edge=stone.x===0?'left':stone.x===level.width-1?'right':'';
-      const pose=resting.get(stone.id);
       node.style.zIndex=stage==='impact'?9:impact?10:pose.layer;
       if(pose.body){
         node.style.setProperty('--dc-rest-angle',`${pose.body.angle}deg`);
@@ -658,7 +675,7 @@ export function mount(root,ctx){
       if(state.position.carrying){
         const p=player();
         const carried=state.position.carrying;
-        if(!hasFloor(level,p.x,p.y,liveChain.bridges,liveChain.holes)||(doorBlocked(level,p)&&(carried.type!=='vanish'||at(p,entryCell(level)||{x:-1,y:-1})))||liveChain.stones.some(q=>q.x===p.x&&q.y===p.y&&q.state!=='vanished')||(state.fallen||[]).some(q=>q.x===p.x&&q.y===p.y)){notice='这里不能放牌。';renderText();return;}
+        if(!hasFloor(level,p.x,p.y,liveChain.bridges,liveChain.holes)||(doorBlocked(level,p)&&carried.type!=='vanish')||liveChain.stones.some(q=>q.x===p.x&&q.y===p.y&&q.state!=='vanished')||(state.fallen||[]).some(q=>q.x===p.x&&q.y===p.y)){notice='这里不能放牌。';renderText();return;}
         liveChain.addStone({...carried,...p});
         state.position={...state.position,carrying:null};
       }else{

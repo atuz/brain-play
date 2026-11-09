@@ -19,7 +19,7 @@ test('right-going rows overlap with the upstream tile above the next, independen
   assert.equal(poses.get('last').body.angle, 90);
   for (let i = 0; i < pieces.length - 1; i++) {
     const here = poses.get(pieces[i].id), next = poses.get(pieces[i + 1].id);
-    assert.ok(here.body.angle > 70 && here.body.angle < 90);
+    assert.ok(here.body.angle > 60 && here.body.angle < 90);
     assert.ok(here.layer > next.layer);
     contact(here.body, next.body, 1);
   }

@@ -74,7 +74,7 @@ test('Every level blocks both doorways for normal dominoes',()=>{
     if(level.exit)assert.ok(doorBlocked(level,level.exit),`Level ${level.id}: exit is not blocked`);
   }
 });
-test('A vanisher may fill the exit but never the entrance',()=>{
+test('A vanisher may fill either doorway',()=>{
   const level={width:9,height:7,player:{x:5,y:5},exit:{x:3,y:5},platforms:[[5,0,8]],ladders:[],
     pieces:[{id:'v',type:'vanish',x:1,y:5},{id:'n',type:'normal',x:2,y:5}]};
   const entry=entryCell(level);
@@ -82,7 +82,7 @@ test('A vanisher may fill the exit but never the entrance',()=>{
   const carry=(id)=>{const position=initialPosition(level);position.player={x:level.pieces.find(p=>p.id===id).x,y:5};return edit(level,position,{type:'take'});};
   const vanish=carry('v');assert.ok(vanish);
   const normal=carry('n');assert.ok(normal);
-  assert.equal(edit(level,{...vanish,player:{...entry}},{type:'place'}),null,'vanisher must not fill the entrance');
+  assert.ok(edit(level,{...vanish,player:{...entry}},{type:'place'}),'vanisher may fill the entrance');
   assert.equal(edit(level,{...normal,player:{...level.exit}},{type:'place'}),null,'normal must not fill the exit');
   assert.ok(edit(level,{...vanish,player:{...level.exit}},{type:'place'}),'vanisher may fill the exit');
 });

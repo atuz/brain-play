@@ -5,6 +5,7 @@ export const baseDominoTiming=Object.freeze({beat:200,contact:200,quarter:400,ri
 // falls repeat at 1.37–1.40 s (four intervals average 1.383 s).
 export const dominoTiming=Object.freeze({beat:200,contact:275,quarter:550,rise:410,riseStart:120,delayContact:1380,roll:720});
 export function eventBeatDuration(kind,type,timing=baseDominoTiming){
+  if(kind==='fall-rest')return timing.beat;
   if(kind==='carried-land')return timing.beat;
   if(kind==='reverse-turn'||type==='normal'&&['reverse-hit','normal-reverse-rest'].includes(kind))return timing.quarter;
   if(type==='tumbler'&&kind==='roll')return timing.roll??timing.beat;

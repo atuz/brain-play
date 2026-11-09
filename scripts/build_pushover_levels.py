@@ -57,7 +57,7 @@ def build(level):
     grid = [list(r.ljust(20)[:20]) for r in level["grid"]]
     H, W = 13, 20
     cells = [[False] * W for _ in range(H)]
-    ramp_cells = []
+    stair_cells = set()
     ladders_raw = [[False] * W for _ in range(H)]
     pieces = []
     doors = {}
@@ -77,15 +77,11 @@ def build(level):
                 if y > 0:
                     if x + 1 < W:
                         cells[y - 1][x + 1] = True
-                        ramp_cells.append((x + 1, y - 1))
-                    cells[y - 1][x] = True
-                    ramp_cells.append((x, y - 1))
+                    stair_cells.add((x, y - .5))
             if ch == "\\":
                 if y > 0 and x > 0:
                     cells[y - 1][x - 1] = True
-                    cells[y - 1][x] = True
-                    ramp_cells.append((x - 1, y - 1))
-                    ramp_cells.append((x, y - 1))
+                    stair_cells.add((x, y - .5))
 
     # Ladder and floor are independent terrain. H/V provides climbing only;
     # neighbouring floor must never fill an open ladder cell automatically.
@@ -139,14 +135,11 @@ def build(level):
                 bottom += 1
             ladders.append({"x": x, "from": top, "to": bottom})
 
-    ramps = sorted(set(ramp_cells))
-    # DOS 24's slope has a tread every column, descending half a row.
-    # The coarse source grid encodes each pair with one slash character.
-    if level["level"] == 24:
-        platforms = [[2,15,18],[2.5,14,14],[3,3,5],[3,13,13],
-                     [3.5,12,12],[4,11,11],[4.5,10,10],
-                     [5,2,3],[5,7,9],[5,12,13],[7,4,9],[7,13,16],[9,10,14]]
-        ramps = []
+    # A slash encodes two treads: the far one is a full row higher,
+    # the near one half a row higher. Decode both orientations uniformly.
+    platforms.extend([y,x,x] for x,y in stair_cells)
+    platforms.sort()
+    ramps = []
     entry = doors.get('1')
     return platforms, ladders, pieces, player, exit_, ramps, entry
 

@@ -37,6 +37,10 @@ export function renderAscender(node,piece,{level,selected,guideSource,problem,pr
     return {x:activeEscape.x,y:activeEscape.y};
   }
   if(stage==='upright')delete node.dataset.risen;
+  const upper=level.platforms.find(([y,a,b])=>y===piece.y-1&&piece.x>=a&&piece.x<=b);
+  // Reach the underside during the final rise, before changing the pivot.
+  // Applying this shift only when the swing starts crosses the platform.
+  if(upper)node.style.setProperty('--da-ceiling-shift',`${18-(upper[3]||0)}px`);
   if(face?.style&&stage==='ceiling-escape'&&previous!==stage){
     const dimensions=getComputedStyle(face);
     const width=parseFloat(dimensions.width),height=parseFloat(dimensions.height);
@@ -78,6 +82,7 @@ export function renderAscender(node,piece,{level,selected,guideSource,problem,pr
   node.dataset.inverted=String(!!piece.inverted);
   node.className=`dc-ascender-piece dc-ascender da-${stage}`;
   node.classList.toggle('da-mounted',['ceiling','ceiling-return','ceiling-reversing','ceiling-escape'].includes(stage)||(stage==='ascending'&&node.dataset.risen==='true'));
+  node.classList.toggle('da-contact-rise',stage==='ascending'&&!!upper);
   node.classList.toggle('dc-selected',!!selected);
   node.classList.toggle('dc-guide-source',!!guideSource);
   node.classList.toggle('dc-problem',!!problem);

@@ -77,7 +77,7 @@ test('A new push during an event gap uses the live clock',()=>{
   const pushedAt=chain.time;
   chain.activateStone('b',1);
   while(chain.stones.find(p=>p.id==='b').finish===null)chain.tick();
-  assert.ok(Math.abs(chain.stones.find(p=>p.id==='b').finish-pushedAt-1)<1e-6);
+  assert.ok(Math.abs(chain.stones.find(p=>p.id==='b').finish-pushedAt-1-140/200)<1e-6);
 });
 
 

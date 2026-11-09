@@ -1,4 +1,4 @@
-import {baseDominoTiming,eventBeatDuration} from './domino-timing.js?v=7';
+import {baseDominoTiming,eventBeatDuration} from './domino-timing.js?v=8';
 import {dominoContactPhase,resistsDomino,reboundDuration} from './domino-contact-motion.js?v=2';
 import {dominoOutcome} from './domino-outcome.js';
 import {carriedDropTiming} from './domino-actions.js';
@@ -132,11 +132,7 @@ export function edit(level, position, action) {
   }
   if (action.type==='place') {
     if (!position.carrying || !hasFloor(level,position.player.x,position.player.y) || position.pieces.some(p=>at(p,position.player))) return null;
-    if (doorBlocked(level, position.player)) {
-      const entry = entryCell(level);
-      const atEntry = entry && at(position.player, entry);
-      if (atEntry || position.carrying.type !== 'vanish') return null;
-    }
+    if (doorBlocked(level, position.player) && position.carrying.type !== 'vanish') return null;
     next.pieces.push({...next.carrying,...position.player});next.carrying=null;next.moves++;return next;
   }
   return null;
@@ -154,6 +150,16 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
     const elapsed=(when-time)*eventBeatDuration(kind,find(id)?.type,timing)/timing.beat;
     events.push({kind,id,dir,time:Math.round((time+elapsed)*1e9)/1e9,...extra});
   };
+  function finishFall(piece,fromLanding=false){
+    piece.state='flat';piece.finish=time;
+    if(!['normal','trigger'].includes(piece.type)||(fromLanding&&piece.type!=='normal'))return;
+    // Contact starts the neighbour, while the displayed body still has its
+    // final swing to play. Compare completion at rest for both pivot types.
+    const restMs=fromLanding&&piece.type==='normal'?timing.contact:140;
+    piece.finish=null;
+    piece.restSerial=(piece.restSerial||0)+1;
+    schedule('fall-rest',piece.id,piece.dir,time+restMs/timing.beat,{restSerial:piece.restSerial});
+  }
   const capture=(impacts=[],effects=[])=>trace.push({time,pieces:clone(stones),bridges:clone(bridges),holes:clone(holes),crashed,impacts:clone(impacts),effects:clone(effects)});
   const floor=(x,y)=>hasFloor(level,x,y,bridges)&&!holes.some(h=>h.x===x&&h.y===y);
   let rollSerial=0;
@@ -161,15 +167,16 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
     const x=p.x+dir,target=stones.find(s=>s.id!==p.id&&s.x===x&&s.y===p.y&&s.state!=='vanished');
     const resisting=resistsDomino(target)||target?.type==='delay'&&target.state==='upright';
     const solid=target&&!['exploder','bridge','vanish'].includes(target.type);
+    const contact=resisting||solid;
     const upright=(p.x-p.rollOriginX)*2*p.rollBaseDir;
     const relativeDir=dir*p.rollBaseDir,rollMs=timing.roll??timing.beat;
     p.rollFrom=p.rollPhase;
-    p.rollTo=upright+relativeDir*(resisting?dominoContactPhase:solid||!floor(x,p.y)?1:2);
+    p.rollTo=upright+relativeDir*(contact?dominoContactPhase:!floor(x,p.y)?1:2);
     // Preserve the current contact angle when changing direction. Returning
     // to upright is part of the next travel, never a reset to a new pose.
     const returnMs=reboundDuration(p.rollFrom-upright,timing);
     p.rollReturnDuration=returnMs;p.rollVia=upright;
-    p.rollDuration=resisting?reboundDuration(p.rollTo-p.rollFrom,timing):rollMs+returnMs;
+    p.rollDuration=contact?returnMs+reboundDuration(p.rollTo-upright,timing):rollMs+returnMs;
     p.rollSerial=++rollSerial;
     schedule('roll',p.id,dir,time+p.rollDuration/rollMs);
   }
@@ -260,6 +267,10 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
       if(!p||p.state==='vanished')continue;
       // Ascenders never enter the ordinary fall, landing or rebound handlers.
       if(p?.type==='ascender'){ascenders.handle(event,p,effects);continue;}
+      if(event.kind==='fall-rest'){
+        if(p.state==='flat'&&p.restSerial===event.restSerial&&p.finish===null)p.finish=time;
+        continue;
+      }
       if (event.kind==='drop-tick') continue;
       if (event.kind==='impact-end') {p.state='vanished';continue;}
       if(event.kind==='delay-start'){
@@ -323,7 +334,7 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
             rebound(p,next,dir,effects);
           }
           else if(next.type==='splitter'){crashed=true;next.state='crashed';p.state='crashed';}
-          else {if(next.state==='upright')activate(next,dir);p.state='flat';p.finish=time;}
+          else {if(next.state==='upright')activate(next,dir);finishFall(p,true);}
         } else if(!floor(nx,p.y)){
           const l2=level.platforms.filter(([y,from,to])=>y>p.y&&nx>=from&&nx<=to&&!holes.some(h=>h.x===nx&&h.y===y)).sort((a,b)=>a[0]-b[0])[0];
           if(l2){
@@ -331,8 +342,8 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
             p.state='dropping';p.dropX=nx;p.dropY=l2[0];
             for(let k=1;k<rows;k++)schedule('drop-tick',p.id,dir,time+k);
             schedule('land',p.id,dir,time+rows,{x:nx,y:l2[0]});
-          } else {p.state='flat';p.finish=time;}
-        } else {p.state='flat';p.finish=time;}
+          } else finishFall(p,true);
+        } else finishFall(p,true);
         continue;
       }
       if (event.kind==='reverse-turn') {
@@ -429,7 +440,8 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
       if(p.type==='tumbler'){
         beginRoll(p,event.dir);continue;
       }
-      p.state=p.type==='vanish'?'vanished':'flat';p.finish=time;
+      if(p.type==='vanish'){p.state='vanished';p.finish=time;}
+      else finishFall(p);
       if(p.type==='splitter') {
         for(const dir of [-1,1]) hits.push({x:p.x+dir,y:p.y,dir});
         continue;

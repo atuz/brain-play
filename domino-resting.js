@@ -1,7 +1,7 @@
-// Render geometry only. On the 40px grid the face is 9.6 × 44.8px.
+// Render geometry only. Match the 32%-wide, 100%-high face on the 40px grid.
 // An upstream tile rests on the long edge of the next tile, rather than
 // passing through it or lying flat underneath it. Puzzle states stay intact.
-export const dominoDimensions = Object.freeze({ pitch: 40, length: 44.8, width: 9.6, depth: 2.2 });
+export const dominoDimensions = Object.freeze({ pitch: 40, length: 40, width: 12.8, depth: 2.2 });
 const radians = degrees => degrees * Math.PI / 180;
 const degrees = radians => radians * 180 / Math.PI;
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));

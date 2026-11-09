@@ -54,3 +54,14 @@ test('Level 64 preserves the flat approach beside the bomb before the first step
   const level=levels[63];
   assert.deepEqual(pathTo(level,{x:7,y:5},{x:10,y:4.5}),[{x:8,y:5},{x:9,y:5},{x:10,y:4.5}]);
 });
+
+test('Space 27 has six successive half-row steps instead of three flat pairs',()=>{
+  const level=levels[66];
+  const ascent=[{x:7,y:7},{x:8,y:6.5},{x:9,y:6},{x:10,y:5.5},{x:11,y:5},{x:12,y:4.5},{x:13,y:4}];
+  assert.deepEqual(pathTo(level,ascent[0],ascent.at(-1)),ascent.slice(1));
+  assert.deepEqual(pathTo(level,ascent.at(-1),ascent[0]),ascent.slice(0,-1).reverse());
+  for(let i=1;i<ascent.length-1;i++){
+    assert.deepEqual(neighbors(level,ascent[i]).sort((a,b)=>a.x-b.x),[ascent[i-1],ascent[i+1]]);
+  }
+  assert.deepEqual(level.ramps,[],'no old ramp shortcut may skip a tread');
+});
