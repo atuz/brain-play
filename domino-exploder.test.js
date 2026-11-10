@@ -4,6 +4,19 @@ import {simulate} from './domino-engine.js';
 import {levels} from './domino-levels.js';
 import {dominoTiming} from './domino-timing.js';
 
+for(const dir of [-1,1])test(`A landing tile checks the opened floor when becoming flat, direction ${dir}`,()=>{
+  const level={width:13,height:10,rules:'dos',platforms:[[2,6-dir,6-dir],[4,0,12],[6,0,12]],ladders:[]};
+  const pieces=[{id:'a',type:'normal',x:6-dir,y:2},{id:'bomb',type:'exploder',x:6+dir,y:4},
+    {id:'gate',type:'trigger',x:6+2*dir,y:6}];
+  const sim=simulate(level,pieces,'a',dir,{},dominoTiming);
+  const blast=sim.trace.find(f=>f.effects.some(e=>e.kind==='explode'));
+  const source=blast.pieces.find(p=>p.id==='a');
+  assert.equal(source.state,'dropping');
+  assert.equal(source.finish,null);
+  assert.deepEqual([source.dropX,source.dropY],[6+dir,6]);
+  assert.equal(sim.reason,'clear');
+});
+
 for(const dir of [-1,1])for(const type of ['normal','tumbler'])test(`${type} explodes a contacted bomb immediately and falls through, direction ${dir}`,()=>{
   const level={width:11,height:12,rules:'dos',platforms:[[3,1,9],[7,0,10]],ladders:[]};
   const pieces=[{id:'a',type,x:5-dir,y:3},{id:'bomb',type:'exploder',x:5,y:3}];

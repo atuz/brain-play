@@ -10,6 +10,24 @@ const level={width:12,height:10,rules:'dos',platforms:[[2,3,4],[5,0,11]],ladders
 const drop={id:'carried',type:'normal',x:4,y:2};
 const run=chain=>{while(!chain.done())chain.step();return chain.snapshot();};
 
+test('A released ascender lands upright and only rises after a later push',()=>{
+  const chain=createChain(level,[],{},dominoTiming);
+  chain.dropCarriedStone({...drop,type:'ascender'},{from:{x:4,y:2},to:{x:5,y:5}});
+  const p=run(chain).pieces[0];
+  assert.deepEqual([p.state,p.x,p.y,p.carriedDrop],['upright',5,5,false]);
+  assert.equal(chain.activateStone(p.id,1),true);
+  assert.equal(chain.stones[0].state,'ascending');
+});
+
+test('A released ascender uses the shared splitter landing and is consumed',()=>{
+  const chain=createChain(level,[{id:'split',type:'splitter',x:5,y:5}],{},dominoTiming);
+  chain.dropCarriedStone({...drop,type:'ascender'},{from:{x:4,y:2},to:{x:5,y:5}});
+  const snap=run(chain);
+  assert.equal(snap.crashed,false);
+  assert.equal(snap.pieces.find(p=>p.id==='carried').state,'vanished');
+  assert.equal(snap.pieces.find(p=>p.id==='split').state,'flat');
+});
+
 test('Released brick lands upright on empty floor without consuming the manual push',()=>{
   const state={pushUsed:false},chain=createChain(level,[],{},dominoTiming);
   assert.equal(chain.dropCarriedStone(drop,{from:{x:4,y:2},to:{x:5,y:5}}),true);

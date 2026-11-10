@@ -1,8 +1,8 @@
-import {baseDominoTiming,eventBeatDuration} from './domino-timing.js?v=8';
+import {baseDominoTiming,eventBeatDuration} from './domino-timing.js?v=9';
 import {dominoContactPhase,resistsDomino,reboundDuration} from './domino-contact-motion.js?v=2';
 import {dominoOutcome} from './domino-outcome.js';
 import {carriedDropTiming} from './domino-actions.js';
-import {createAscenderMechanic} from './domino-ascender-engine.js?v=6';
+import {createAscenderMechanic} from './domino-ascender-engine.js?v=10';
 // Independent, discrete JavaScript rules for the original Brain Play domino puzzles.
 // No Domino-Chain/Pushover program, graphics, sounds or levels are included.
 export const TYPES = ['normal', 'stopper', 'tumbler', 'delay', 'splitter', 'exploder', 'bridge', 'vanish', 'trigger', 'ascender'];
@@ -72,15 +72,12 @@ export function neighbors(level, p, bridges = [], holes = []) {
       // A connected tread is supported at a different height. It is not a
       // ledge: neither falling nor sideways drift may bypass that stair.
       if (out.some(q => (q.x-p.x)*dx > 0 && Math.abs(q.y-p.y) <= 1)) continue;
-      // The ant can drift one column while falling, so consider the three
-      // columns around the edge; a fall of more than three rows is fatal.
-      for (const drift of [0, dx, -dx]) {
-        const lx = x + drift;
-        const landing = level.platforms
-          .filter(([y, a, b]) => y > p.y && lx >= a && lx <= b && !holes.some(h => h.x === lx && h.y === y))
-          .sort((a, b) => a[0] - b[0])[0];
-        if (landing && !out.some(q => q.x === lx && q.y === landing[0])) out.push({x: lx, y: landing[0]});
-      }
+      // Step off the edge, then fall vertically. A recessed lower platform
+      // cannot be reached by drifting back underneath the current platform.
+      const landing = level.platforms
+        .filter(([y, a, b]) => y > p.y && x >= a && x <= b && !holes.some(h => h.x === x && h.y === y))
+        .sort((a, b) => a[0] - b[0])[0];
+      if (landing && !out.some(q => q.x === x && q.y === landing[0])) out.push({x, y: landing[0]});
     }
   }
   return out;
@@ -211,6 +208,19 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
   };
   function finishFall(piece,fromLanding=false){
     piece.state='flat';piece.finish=time;
+    if(fromLanding){
+      const x=piece.x+piece.dir;
+      if(!floor(x,piece.y)){
+        const landing=level.platforms.filter(([y,from,to])=>y>piece.y&&x>=from&&x<=to&&!holes.some(h=>h.x===x&&h.y===y)).sort((a,b)=>a[0]-b[0])[0];
+        if(landing){
+          const rows=Math.max(1,landing[0]-piece.y);
+          piece.state='dropping';piece.finish=null;piece.dropX=x;piece.dropY=landing[0];
+          for(let k=1;k<rows;k++)schedule('drop-tick',piece.id,piece.dir,time+k);
+          schedule('land',piece.id,piece.dir,time+rows,{x,y:landing[0]});
+          return;
+        }
+      }
+    }
     if(!['normal','trigger'].includes(piece.type)||(fromLanding&&piece.type!=='normal'))return;
     // Contact starts the neighbour, while the displayed body still has its
     // final swing to play. Compare completion at rest for both pivot types.
@@ -330,8 +340,9 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
     for (const event of batch) {
       const p=find(event.id);
       if(!p||p.state==='vanished')continue;
-      // Ascenders never enter the ordinary fall, landing or rebound handlers.
-      if(p?.type==='ascender'){ascenders.handle(event,p,effects);continue;}
+      // Rising motion is separate; a brick released from the ant still uses
+      // the shared carried landing and impact cleanup.
+      if(p?.type==='ascender'&&!['carried-land','impact-end'].includes(event.kind)){ascenders.handle(event,p,effects);continue;}
       if(event.kind==='fall-rest'){
         if(p.state==='flat'&&p.restSerial===event.restSerial&&p.finish===null)p.finish=time;
         continue;
@@ -407,14 +418,6 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
           }
           else if(next.type==='splitter'){crashed=true;next.state='crashed';p.state='crashed';}
           else {if(next.state==='upright')activate(next,dir);finishFall(p,true);}
-        } else if(!floor(nx,p.y)){
-          const l2=level.platforms.filter(([y,from,to])=>y>p.y&&nx>=from&&nx<=to&&!holes.some(h=>h.x===nx&&h.y===y)).sort((a,b)=>a[0]-b[0])[0];
-          if(l2){
-            const rows=Math.max(1,l2[0]-p.y);
-            p.state='dropping';p.dropX=nx;p.dropY=l2[0];
-            for(let k=1;k<rows;k++)schedule('drop-tick',p.id,dir,time+k);
-            schedule('land',p.id,dir,time+rows,{x:nx,y:l2[0]});
-          } else finishFall(p,true);
         } else finishFall(p,true);
         continue;
       }

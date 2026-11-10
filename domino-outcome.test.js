@@ -8,6 +8,22 @@ import {levels} from './domino-levels.js';
 const expected=[{id:'a',type:'normal'},{id:'v',type:'vanish'},{id:'t',type:'trigger'},{id:'s',type:'stopper'}];
 const complete=()=>expected.map((p,i)=>({...p,state:p.type==='stopper'?'upright':p.type==='vanish'?'vanished':'flat',finish:p.type==='stopper'?null:i+1}));
 
+test('A fallen domino on the exit allows completion in simulation and live play',()=>{
+  const pieces=[{id:'source',type:'normal',x:4,y:5},{id:'trigger',type:'trigger',x:5,y:5}];
+  for(const exit of [{x:4,y:5},{x:5,y:5}]){
+    const level={width:9,height:7,rules:'dos',platforms:[[5,0,8]],ladders:[],pieces,exit};
+    const sim=simulate(level,pieces,'source',1);
+    assert.equal(sim.reason,'clear');
+    const state={position:{pieces:[],carrying:null},completion:{time:sim.trace.at(-1).time,pieces:sim.pieces}};
+    assert.deepEqual(dominoSessionOutcome(level,state),{won:true,reason:'clear',problemIds:[]});
+  }
+  const sim=simulate({width:9,height:7,rules:'dos',platforms:[[5,0,8]],ladders:[],pieces,exit:{x:6,y:5}},pieces,'source',1);
+  assert.equal(sim.won,true);
+  const vanished=[{id:'v',type:'vanish',x:4,y:5,state:'vanished',finish:1},{id:'t',type:'trigger',x:7,y:5,state:'flat',dir:1,finish:2}];
+  assert.equal(dominoOutcome({pieces:vanished,exit:{x:4,y:5}}).won,true);
+  assert.equal(dominoOutcome({pieces:vanished,exit:{x:7,y:4}}).won,true);
+});
+
 test('Only a strictly last trigger opens the door; early and tied finishes fail identically',()=>{
   assert.equal(dominoOutcome({pieces:complete(),expectedPieces:expected}).won,true);
   for(const [finish,reason]of [[1,'early'],[2,'tie']]){

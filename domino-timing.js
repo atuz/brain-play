@@ -3,7 +3,7 @@
 export const baseDominoTiming=Object.freeze({beat:200,contact:200,quarter:400,rise:200,riseStart:200,delayContact:600,roll:200});
 // DOS 26: rolling repeats one tile later in 43/60 s; successive delayed
 // falls repeat at 1.37–1.40 s (four intervals average 1.383 s).
-export const dominoTiming=Object.freeze({beat:200,contact:275,quarter:550,rise:410,riseStart:120,delayContact:1380,roll:720});
+export const dominoTiming=Object.freeze({beat:200,contact:275,quarter:550,rise:410,riseStart:120,delayContact:1380,roll:720,ascenderGapTurn:240});
 export function eventBeatDuration(kind,type,timing=baseDominoTiming){
   if(kind==='fall-rest')return timing.beat;
   if(kind==='carried-land')return timing.beat;

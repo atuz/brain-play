@@ -1,3 +1,17 @@
+# 当前修复：平躺时检查下方支撑
+
+按用户要求，将 topple 中已有的下落检查移入 finishFall：落地后的牌变成 flat 时再次检查倾倒方向的平台；平台已经炸空且有下层落点，则直接使用原来的 drop-tick / land 调度。不修改接触先后、事件类型、渲染、旋转、上升牌或计时。
+
+引擎测试：新增左右两向回归，修改前均失败（flat 未变 dropping），修改后连同原有专项共 222 项通过。旧的同层撞炸弹和直接落到炸弹上的测试也通过。
+
+真实网页：独立 localhost 页面 HTML 68。向右推，抱炸弹上层，等翻滚牌离开上层后才放下炸弹。采样先看到 p4 landing、炸弹 upright；下一段是炸弹 vanished、p4 dropping，随后到 (11,6) 并撞倒开门牌，页面显示“门开了，走进出口”。没有进入出口，不以此声称已逐帧确认所有牌的动画。当前没有改动动画代码。
+
+App 通信模拟：未测。真机：未测。
+
+产物：`/Volumes/SANDISK/Codex/brain-play/bomb-contact-animation/flat-support.json`、`flat-support-*.png`、`flat-support-tests.log`。以下保留之前已撤回尝试的历史记录。
+
+---
+
 # 已撤回：炸弹落地接触修改
 
 用户实测报告动作异常。本次修改及随后将 landing 事件改交 settle 的尝试均已撤回。已将当前 domino-engine.js 与外部保存的本任务开始前副本逐字比较（仅归一化 import 路径），结果完全一致。此前的交互、蚂蚁重力及翻滚牌穿过上升牌等已有改动未撤回。

@@ -3,15 +3,14 @@ import {baseDominoTiming} from './domino-timing.js?v=3';
 // attached here, so edits to their fall/landing CSS cannot animate this tile.
 import {el} from './shared.js?v=48';
 import {dominoArtwork} from './domino-material.js?v=53';
+import {carriedDropTiming} from './domino-actions.js';
 
-// Matrices use a fixed outer corner and an origin at the face's top left.
-// At 90 degrees this exactly matches the mounted top-corner pose. At 180
-// degrees its bounds are one body-height sideways and one thickness down.
+// Continue the existing turn around a fixed pivot at the gap edge. The
+// endpoint is the inverted upright tile one cell forward and one row up.
 export function ascenderEscapePose(width,height,dir,degrees){
   const angle=-dir*degrees*Math.PI/180,c=Math.cos(angle),s=Math.sin(angle);
-  const cornerX=dir>0?0:width;
-  const pivotX=dir>0?width+height:-height,pivotY=width;
-  return `matrix(${c},${s},${-s},${c},${pivotX-c*cornerX+s*height},${pivotY-s*cornerX-c*height})`;
+  const pivotX=(width+dir*height)/2,pivotY=(width-height)/2;
+  return `matrix(${c},${s},${-s},${c},${pivotX*(1-c)-s*pivotY},${pivotY*(1+c)-s*pivotX})`;
 }
 const escapes=new WeakMap();
 
@@ -49,10 +48,10 @@ export function renderAscender(node,piece,{level,selected,guideSource,problem,pr
     face.style.transformOrigin='0 0';face.style.transition='none';
     const to=ascenderEscapePose(width,height,piece.dir||1,180);
     face.style.transform=to;
-    // Interpolating only two matrices moves the pivot: translation must
-    // follow the same circular arc as rotation throughout the quarter-turn.
+    // The upward turn includes the first rising beat. Hold its old anchor
+    // until it finishes; engine events and subsequent contacts keep their clock.
     const keyframes=Array.from({length:91},(_,i)=>({transform:ascenderEscapePose(width,height,piece.dir||1,90+i),offset:i/90}));
-    const animation=face.animate(keyframes,{duration:timing.quarter,easing:'linear',fill:'both'});
+    const animation=face.animate(keyframes,{duration:(timing.ascenderGapTurn??timing.quarter)+timing.rise,easing:'linear',fill:'both'});
     // WAAPI otherwise starts on the next painted frame, while the engine's
     // two beats start now. Keep both clocks aligned through the re-anchor.
     animation.startTime=performance.now();
@@ -69,9 +68,11 @@ export function renderAscender(node,piece,{level,selected,guideSource,problem,pr
     escape?.animation?.cancel();
     node.dataset.risen='true';
     face.style.transformOrigin='';face.style.transition='none';
-    face.style.transform=`translateY(${escape?.width||0}px)`;
-    // The rotation has already moved the body sideways. Snap only its
-    // invisible coordinate anchor, while vertical travel starts at once.
+    face.style.transform='rotate(0deg)';
+    // The turn already moved one cell forward and one row upward. Re-anchor
+    // there without moving the body, then continue the ordinary vertical rise.
+    node.style.transition='none';
+    place?.({x:escape.x+(piece.dir||1),y:escape.y-1});void node.offsetHeight;
     node.style.transition=`top ${timing.rise}ms linear`;
     void face.offsetHeight;
   }else if(face?.style&&stage!=='ascending'&&stage!=='ceiling-escape'){
@@ -99,5 +100,13 @@ export function renderAscender(node,piece,{level,selected,guideSource,problem,pr
   }
   const label=node.querySelector('.dc-problem-label');
   label.hidden=!problem;label.textContent=problemText;
+  if(stage==='dropping'&&piece.carriedDrop){
+    if(previous!=='dropping'){
+      node.style.transition='none';place?.({x:piece.x,y:piece.y});void node.offsetHeight;
+    }
+    const {brickMs}=carriedDropTiming(piece.dropY-piece.y,timing);
+    node.style.transition=`top ${brickMs}ms linear`;
+    return {x:piece.dropX,y:piece.dropY};
+  }
   return {x:piece.x,y:piece.y};
 }
