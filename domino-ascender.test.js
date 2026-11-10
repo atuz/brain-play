@@ -30,6 +30,42 @@ test('Opposing stoppers repeatedly reverse the ascender instead of merely record
   assert.ok(hits.every(f=>f.pieces.find(p=>p.id==='rise').state==='ceiling-return'));
 });
 
+test('A resting ascender climbs again when a bomb opens the ceiling above it',()=>{
+  const level={width:12,height:8,rules:'dos',platforms:[[2,0,11],[4,0,11]],ladders:[]};
+  const run=bx=>{
+    const chain=createChain(level,[{id:'rise',type:'ascender',x:5,y:4},{id:'bomb',type:'exploder',x:bx,y:2}]);
+    chain.activateStone('rise',1);
+    for(let i=0;i<50&&!chain.done();i++)chain.step();
+    const before=chain.snapshot().pieces.find(p=>p.id==='rise');
+    chain.activateStone('bomb',1);
+    for(let i=0;i<60&&!chain.done();i++)chain.step();
+    return {before,after:chain.snapshot().pieces.find(p=>p.id==='rise')};
+  };
+  const opened=run(6);
+  assert.equal(opened.after.state,'vanished');
+  assert.equal(opened.after.x,6);
+  const anchored=run(5);
+  assert.equal(anchored.after.state,'vanished');
+  assert.equal(anchored.after.x,5);
+  const closed=run(8);
+  assert.equal(closed.after.state,'ceiling');
+  assert.equal(closed.after.finish,closed.before.finish);
+});
+
+test('An opening keeps the recorded swing direction for the next ceiling turn',()=>{
+  const level={width:12,height:8,rules:'dos',platforms:[[0,0,11],[2,0,11],[4,0,11]],ladders:[]};
+  const chain=createChain(level,[{id:'rise',type:'ascender',x:5,y:4},{id:'bomb',type:'exploder',x:5,y:2}]);
+  chain.activateStone('rise',1);
+  for(let i=0;i<80&&!chain.done();i++)chain.step();
+  const before=chain.snapshot().pieces.find(p=>p.id==='rise');
+  chain.activateStone('bomb',1);
+  for(let i=0;i<80&&!chain.done();i++)chain.step();
+  const after=chain.snapshot().pieces.find(p=>p.id==='rise');
+  assert.equal(before.dir,1);
+  assert.equal(after.y,1);
+  assert.equal(after.dir,1,'the next turn continues the recorded swing, not the escape travel');
+});
+
 test('A released ascender paints the lower landing coordinate using the shared brick clock',()=>{
   const face={style:{}},places=[];
   const node={dataset:{stage:'upright'},style:{setProperty(){}},classList:{toggle(){}},querySelector:s=>s==='.dc-ascender-face'?face:{}};

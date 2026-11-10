@@ -174,8 +174,6 @@ html[data-motion=off] .dc-signal path{animation:none}@media(prefers-reduced-moti
 .dc-stone[data-edge=left] .dc-problem-label{left:0;transform:none}.dc-stone[data-edge=right] .dc-problem-label{left:auto;right:0;transform:none}
 
 /* Dominoes reach the next tile before it starts falling; their lower edge stays on the floor. */
-.dc-world[data-phase=running] .dc-delay.dc-flat .dc-stone-face{animation:dc-delay-settle 140ms ease-out both}
-@keyframes dc-delay-settle{from{transform:rotate(calc(var(--dc-dir)*43deg))}to{transform:translateY(calc(-1*var(--dc-rest-lift,0px))) rotate(calc(var(--dc-dir)*var(--dc-rest-angle,90deg)))}}
 
 /* A camera keeps pieces readable while a larger stage extends in all directions. */
 .dc-viewport{--dc-sky-top:#f7f1e0;--dc-sky-bottom:#e1e5cc;position:relative;isolation:isolate;overflow:hidden;overflow:clip;width:100%;border:1px solid #e3d7be;border-radius:12px;background:#f3ead4;touch-action:none;user-select:none;-webkit-user-select:none}
@@ -469,8 +467,6 @@ html[data-motion=off] .dc-signal path{animation:none}@media(prefers-reduced-moti
 .dc-stone[data-edge=left] .dc-problem-label{left:0;transform:none}.dc-stone[data-edge=right] .dc-problem-label{left:auto;right:0;transform:none}
 
 /* Dominoes reach the next tile before it starts falling; their lower edge stays on the floor. */
-.dc-world[data-phase=running] .dc-delay.dc-flat .dc-stone-face{animation:dc-delay-settle 140ms ease-out both}
-@keyframes dc-delay-settle{from{transform:rotate(calc(var(--dc-dir)*43deg))}to{transform:translateY(calc(-1*var(--dc-rest-lift,0px))) rotate(calc(var(--dc-dir)*var(--dc-rest-angle,90deg)))}}
 
 /* A camera keeps pieces readable while a larger stage extends in all directions. */
 .dc-viewport{--dc-sky-top:#f7f1e0;--dc-sky-bottom:#e1e5cc;position:relative;isolation:isolate;overflow:hidden;overflow:clip;width:100%;border:1px solid #e3d7be;border-radius:12px;background:#f3ead4;touch-action:none;user-select:none;-webkit-user-select:none}
@@ -642,15 +638,15 @@ html[data-motion=off] .dc-split-half{transition:none}
 
 
 /* Ordinary domino motion restored from v145, scoped to dc-normal only. */
-.dc-stone.dc-normal.dc-landing .dc-stone-face{transform-origin:calc(50% + var(--dc-dir,1)*50%) 100%;animation:dc-normal-land-contact var(--dc-contact-duration,200ms) cubic-bezier(.4,0,.7,1) both}
-.dc-stone.dc-normal[data-normal-inverted="true"] .dc-art{transform:rotate(180deg)}
+.dc-stone:is(.dc-normal,.dc-delay).dc-landing .dc-stone-face{transform-origin:calc(50% + var(--dc-dir,1)*50%) 100%;animation:dc-normal-land-contact var(--dc-contact-duration,200ms) cubic-bezier(.4,0,.7,1) both}
+.dc-stone:is(.dc-normal,.dc-delay)[data-normal-inverted="true"] .dc-art{transform:rotate(180deg)}
 /* Match the initial push: tip to contact around the forward bottom corner.
    Only the following airborne phase continues the turn through 180 degrees. */
 @keyframes dc-normal-land-contact{from{transform:rotate(0deg)}to{transform:rotate(calc(var(--dc-dir)*var(--dc-contact-angle,43deg)))}}
-.dc-stone.dc-normal.dc-flat[data-landed="1"] .dc-stone-face{animation:dc-normal-land-rest var(--dc-contact-duration,200ms) cubic-bezier(.4,0,.7,1) both;transition:none}
+.dc-stone:is(.dc-normal,.dc-delay).dc-flat[data-landed="1"] .dc-stone-face{animation:dc-normal-land-rest var(--dc-contact-duration,200ms) cubic-bezier(.4,0,.7,1) both;transition:none}
 @keyframes dc-normal-land-rest{from{transform:var(--dc-normal-contact-pose,rotate(0deg))}to{transform:translateY(calc(-1*var(--dc-rest-lift,0px))) rotate(calc(var(--dc-dir)*var(--dc-rest-angle,90deg)))}}
-.dc-stone.dc-normal.dc-returning .dc-stone-face{transform:rotate(0deg);transition:none;animation:dc-normal-return-continuous 400ms linear both}
-.dc-stone.dc-normal.dc-reversing .dc-stone-face{transform-origin:calc(50% + var(--dc-dir,1)*50%) 100%;animation:dc-normal-reverse-continuous 400ms linear both;transition:none;transform:rotate(calc(var(--dc-dir,1)*90deg))}
+.dc-stone:is(.dc-normal,.dc-delay).dc-returning .dc-stone-face{transform:rotate(0deg);transition:none;animation:dc-normal-return-continuous 400ms linear both}
+.dc-stone:is(.dc-normal,.dc-delay).dc-reversing .dc-stone-face{transform-origin:calc(50% + var(--dc-dir,1)*50%) 100%;animation:dc-normal-reverse-continuous 400ms linear both;transition:none;transform:rotate(calc(var(--dc-dir,1)*90deg))}
 
 @keyframes dc-normal-return-continuous{from{transform:var(--dc-normal-return-from,rotate(0deg))}to{transform:rotate(0deg)}}
 @keyframes dc-normal-reverse-continuous{from{transform:rotate(0deg)}to{transform:rotate(calc(var(--dc-dir,1)*90deg))}}
@@ -661,10 +657,10 @@ html[data-motion=off] .dc-split-half{transition:none}
 .dc-stone.dc-tumbler[data-tumbler-inverted="true"] .dc-art{transform:rotate(180deg)}
 
 /* Recorded domino timing; scoped so other special tiles keep their clocks. */
-.dc-stone.dc-normal .dc-stone-face{transition-duration:var(--dc-contact-duration,200ms),150ms}
-.dc-stone.dc-normal.dc-dropping .dc-stone-face{animation-duration:var(--dc-drop-duration,320ms)}
-.dc-stone.dc-normal.dc-returning .dc-stone-face{animation-duration:var(--dc-return-duration,400ms)}
-.dc-stone.dc-normal.dc-reversing .dc-stone-face{animation-duration:var(--dc-quarter-duration,400ms)}
+.dc-stone:is(.dc-normal,.dc-delay) .dc-stone-face{transition-duration:var(--dc-contact-duration,200ms),150ms}
+.dc-stone:is(.dc-normal,.dc-delay).dc-dropping .dc-stone-face{animation-duration:var(--dc-drop-duration,320ms)}
+.dc-stone:is(.dc-normal,.dc-delay).dc-returning .dc-stone-face{animation-duration:var(--dc-return-duration,400ms)}
+.dc-stone:is(.dc-normal,.dc-delay).dc-reversing .dc-stone-face{animation-duration:var(--dc-quarter-duration,400ms)}
 
 /* Delay tiles wait upright, then use the ordinary contact/settle motion. */
 .dc-stone.dc-delay.dc-waiting .dc-stone-face{animation:none;transform:rotate(0deg)}

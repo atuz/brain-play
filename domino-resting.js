@@ -15,8 +15,11 @@ export function restingDominoes(pieces) {
     const key = `${piece.id}:${dir}`;
     if (cache.has(key)) return cache.get(key);
     let angle = piece.state === 'falling' ? 43 : ['upright', 'waiting'].includes(piece.state) ? 0 : 90;
+    // A tile that toppled against a stair riser stays leaning on the step
+    // edge instead of lying flat on either level.
+    if (piece.state === 'flat' && Number.isFinite(piece.lean)) angle = piece.lean;
     let depth = 0, supportedBy = null;
-    if (piece.state === 'flat') {
+    if (piece.state === 'flat' && !Number.isFinite(piece.lean)) {
       const next = occupied.get(`${piece.x + dir},${piece.y}`);
       if (next && ['flat', 'falling', 'waiting', 'upright'].includes(next.state)
           && (next.type === 'splitter' || !next.dir || next.dir === dir)) {

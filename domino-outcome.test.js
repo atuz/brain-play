@@ -24,12 +24,12 @@ test('A fallen domino on the exit allows completion in simulation and live play'
   assert.equal(dominoOutcome({pieces:vanished,exit:{x:7,y:4}}).won,true);
 });
 
-test('Only a strictly last trigger opens the door; early and tied finishes fail identically',()=>{
+test('The trigger may tie the last domino, but not fall while the chain is still running',()=>{
   assert.equal(dominoOutcome({pieces:complete(),expectedPieces:expected}).won,true);
-  for(const [finish,reason]of [[1,'early'],[2,'tie']]){
-    const pieces=complete();pieces.find(p=>p.id==='t').finish=finish;
-    assert.equal(dominoOutcome({pieces,expectedPieces:expected}).reason,reason);
-  }
+  const tied=complete();tied.find(p=>p.id==='t').finish=2;
+  assert.equal(dominoOutcome({pieces:tied,expectedPieces:expected}).won,true);
+  const early=complete();early.find(p=>p.id==='t').finish=1;
+  assert.equal(dominoOutcome({pieces:early,expectedPieces:expected}).reason,'early');
 });
 
 test('Held pieces, missing pieces, a dead ant and a broken domino cannot pass',()=>{
@@ -74,11 +74,11 @@ test('Restoring a DOS exit rechecks ordering, carrying and death instead of trus
   }
 });
 
-test('The shared live outcome exactly matches simulation for early, tied and final triggers',()=>{
+test('The shared live outcome exactly matches simulation for early, simultaneous and final triggers',()=>{
   const cases=[
     {reason:'clear',pieces:[{id:'source',type:'normal',x:4,y:5},{id:'trigger',type:'trigger',x:5,y:5}]},
     {reason:'early',pieces:[{id:'source',type:'trigger',x:4,y:5},{id:'normal',type:'normal',x:5,y:5}]},
-    {reason:'tie',platforms:[[1,0,2],[5,0,8]],pieces:[{id:'source',type:'normal',x:2,y:1},
+    {reason:'clear',platforms:[[1,0,2],[5,0,8]],pieces:[{id:'source',type:'normal',x:2,y:1},
       {id:'split',type:'splitter',x:3,y:5},{id:'left',type:'normal',x:2,y:5},{id:'trigger',type:'trigger',x:4,y:5}]},
   ];
   for(const fixture of cases){

@@ -1,9 +1,9 @@
 import {tumblerDropMotion} from './domino-tumbler-motion.js';
 import {dominoContactAngle,tumblerRollTransform,tumblerRestTransform,advanceContactMotion} from './domino-contact-motion.js?v=5';
-import {dominoSessionOutcome,dominoSessionPieces,recordDominoCompletion} from './domino-outcome.js';
+import {dominoSessionOutcome,dominoSessionPieces,recordDominoCompletion} from './domino-outcome.js?v=2';
 import {useManualPush,carriedDropTiming} from './domino-actions.js';
 import {antFallTarget} from './domino-ant-gravity.js';
-import {dominoTiming} from './domino-timing.js?v=9';
+import {dominoTiming} from './domino-timing.js?v=11';
 import {createAscenderNode,renderAscender} from './domino-ascender-view.js?v=14';
 import {startGame} from './game-transition.js?v=48';
 import {gameRuntime} from './game-runtime.js?v=48';
@@ -11,13 +11,13 @@ import {el,button,sound,finish,keyboardAndSwipe} from './shared.js?v=48';
 import {createMotion,motionEnabled} from './motion.js?v=48';
 import {t} from './i18n.js?v=64';
 import {levels,chapters} from './domino-levels.js?v=67';
-import {at,antAt,antPoint,antStepTarget,pushPieceAt,clone,hasFloor,antNeighbors as neighbors,antPathTo as pathTo,edit,initialPosition,simulate,createChain,validPosition,walkable,doorBlocked,entryCell,isLedgeDrop} from './domino-engine.js?v=136';
+import {at,antAt,antPoint,antStepTarget,pushPieceAt,clone,hasFloor,antNeighbors as neighbors,antPathTo as pathTo,edit,initialPosition,simulate,createChain,validPosition,walkable,doorBlocked,entryCell,isLedgeDrop} from './domino-engine.js?v=148';
 import {failureSummary,nextGuide} from './domino-guide.js?v=50';
 import {mountCamera} from './domino-camera.js?v=51';
 import {antArtwork,createAntActor} from './domino-actor.js?v=59';
 import {sceneryForLevel,chapterSceneries} from './domino-scenery.js?v=53';
 import {dominoArtwork} from './domino-material.js?v=53';
-import {restingDominoes} from './domino-resting.js?v=49';
+import {restingDominoes} from './domino-resting.js?v=50';
 
 const types={
   normal:['普通牌','碰到下一张牌，继续连锁。',''],
@@ -289,11 +289,11 @@ export function mount(root,ctx){
       const faceNode=node.querySelector('.dc-stone-face');
       node.style.setProperty('--dc-contact-angle',`${dominoContactAngle}deg`);
       node.style.setProperty('--dc-return-duration',`${stone.returnDuration??dominoTiming.quarter}ms`);
-      const contactMs=['normal','delay'].includes(stone.type)?dominoTiming.contact:dominoTiming.beat;
+      const contactMs=['normal','delay','trigger'].includes(stone.type)?dominoTiming.contact:dominoTiming.beat;
       if(stone.type==='delay'){
         node.style.setProperty('--dc-delay-fall-duration',`${dominoTiming.contact}ms`);
       }
-      if(stone.type==='normal'){
+      if(stone.type==='normal'||stone.type==='delay'){
         node.style.setProperty('--dc-contact-duration',`${contactMs}ms`);
         node.style.setProperty('--dc-quarter-duration',`${dominoTiming.quarter}ms`);
         // A short stair drop must finish its airborne half-turn before landing.
@@ -301,7 +301,7 @@ export function mount(root,ctx){
         node.style.setProperty('--dc-drop-duration',`${Math.min(320*contactMs/dominoTiming.beat,flightMs)}ms`);
       }
       const prevStage=node.dataset.stage||'upright';
-      if(stone.type==='normal'){
+      if(stone.type==='normal'||stone.type==='delay'){
         // Preserve the actual half-turn from the airborne flip across all
         // landing/rebound poses; switching pivots must not reset the artwork.
         if(stage==='upright')node.dataset.normalInverted='false';
@@ -813,7 +813,7 @@ export function mount(root,ctx){
     const pos=clone(chainWalker);
     const remaining=pieces.filter(p=>p.state==='upright');
     const byId=new Map((state.fallen||[]).map(p=>[p.id,p]));
-    for(const p of pieces)if(['flat','crashed','dropping','ceiling'].includes(p.state))byId.set(p.id,{id:p.id,type:p.type,x:p.x,y:p.y,state:p.state,dir:p.dir,...(p.type==='normal'?{normalInverted:stoneNodes.get(p.id)?.dataset.normalInverted==='true'}:{inverted:!!p.inverted})});
+    for(const p of pieces)if(['flat','crashed','dropping','ceiling'].includes(p.state))byId.set(p.id,{id:p.id,type:p.type,x:p.x,y:p.y,state:p.state,dir:p.dir,...(p.type==='normal'||p.type==='delay'?{normalInverted:stoneNodes.get(p.id)?.dataset.normalInverted==='true'}:{inverted:!!p.inverted})});
     state.fallen=[...byId.values()];
     liveChain=null;chainWalker=null;
     state.structures=structures;state.triggerDown=trigDown;

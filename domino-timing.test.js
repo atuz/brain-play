@@ -60,11 +60,14 @@ test('Live tick delay follows partial beats exactly, including shared event boun
   assert.deepEqual(chain.snapshot().pieces,sim.pieces);
 });
 
-test('Unrequested special tile clocks and the trigger fall retain their original timing',()=>{
-  for(const type of ['trigger','vanish','bridge','exploder']){
+test('Unrequested special tile clocks keep their timing; the trigger falls on the ordinary clock',()=>{
+  const run=(type,timing)=>{
     const level={width:8,height:7,rules:'dos',platforms:[[5,0,7]],ladders:[],ramps:[],pieces:[{id:'source',type,x:2,y:5},{id:'stop',type:'stopper',x:6,y:5}]};
-    const original=simulate(level,level.pieces,'source',1);
-    const recorded=simulate(level,level.pieces,'source',1,{},dominoTiming);
-    assert.deepEqual(recorded.trace,original.trace,type);
+    return simulate(level,level.pieces,'source',1,{},timing);
+  };
+  for(const type of ['vanish','bridge','exploder']){
+    assert.deepEqual(run(type,dominoTiming).trace,run(type).trace,type);
   }
+  assert.equal(run('trigger',dominoTiming).pieces.find(p=>p.id==='source').finish,
+    run('normal',dominoTiming).pieces.find(p=>p.id==='source').finish);
 });

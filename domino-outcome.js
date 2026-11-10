@@ -11,7 +11,7 @@ export function dominoOutcome({pieces,expectedPieces=pieces,carrying=null,dead=f
   const trigger=actual.get(expectedPieces.find(p=>p.type==='trigger')?.id);
   const others=required.filter(p=>p.id!==trigger?.id).map(p=>actual.get(p.id));
   const triggerDone=down(trigger)&&Number.isFinite(trigger.finish);
-  const last=triggerDone&&others.every(p=>down(p)&&Number.isFinite(p.finish)&&p.finish<trigger.finish);
+  const last=triggerDone&&others.every(p=>down(p)&&Number.isFinite(p.finish)&&p.finish<=trigger.finish);
   const tied=allDown&&triggerDone&&!last&&others.some(p=>p?.finish===trigger.finish)&&
     others.every(p=>Number.isFinite(p?.finish)&&p.finish<=trigger.finish);
   const broken=crashed||pieces.some(p=>p.state==='crashed');

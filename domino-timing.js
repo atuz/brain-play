@@ -12,5 +12,5 @@ export function eventBeatDuration(kind,type,timing=baseDominoTiming){
   if(type==='delay'&&kind==='delay-start')return timing.delayContact-timing.contact;
   if(type==='delay'&&kind==='settle')return timing.contact;
   if(type==='ascender')return kind==='ascender-rise'?timing.rise:timing.contact;
-  return type==='normal'?timing.contact:timing.beat;
+  return ['normal','trigger','delay'].includes(type)?timing.contact:timing.beat;
 }

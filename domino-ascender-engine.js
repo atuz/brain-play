@@ -115,6 +115,15 @@ export function createAscenderMechanic({level,stones,floor,schedule,activate,get
       restOrRise(p,p.dir||event.dir,time);
       return true;
     }
+    if (event.kind==='ascender-ceiling-gone') {
+      // The platform it was resting under has just been blown open. Keep the
+      // swing direction and re-anchor to the far half, so the shared rise path
+      // lifts the body through the opening without swinging the other way.
+      if(p.state!=='ceiling')return true;
+      if(event.x===p.x)p.x-=p.dir||1;
+      restOrRise(p,p.dir||event.dir,time);
+      return true;
+    }
     return false;
   }
   return {begin,handle};

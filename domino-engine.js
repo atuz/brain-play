@@ -1,8 +1,8 @@
-import {baseDominoTiming,eventBeatDuration} from './domino-timing.js?v=9';
+import {baseDominoTiming,eventBeatDuration} from './domino-timing.js?v=11';
 import {dominoContactPhase,resistsDomino,reboundDuration} from './domino-contact-motion.js?v=2';
-import {dominoOutcome} from './domino-outcome.js';
+import {dominoOutcome} from './domino-outcome.js?v=2';
 import {carriedDropTiming} from './domino-actions.js';
-import {createAscenderMechanic} from './domino-ascender-engine.js?v=10';
+import {createAscenderMechanic} from './domino-ascender-engine.js?v=15';
 // Independent, discrete JavaScript rules for the original Brain Play domino puzzles.
 // No Domino-Chain/Pushover program, graphics, sounds or levels are included.
 export const TYPES = ['normal', 'stopper', 'tumbler', 'delay', 'splitter', 'exploder', 'bridge', 'vanish', 'trigger', 'ascender'];
@@ -211,12 +211,15 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
     if(fromLanding){
       const x=piece.x+piece.dir;
       if(!floor(x,piece.y)){
-        const landing=level.platforms.filter(([y,from,to])=>y>piece.y&&x>=from&&x<=to&&!holes.some(h=>h.x===x&&h.y===y)).sort((a,b)=>a[0]-b[0])[0];
-        if(landing){
-          const rows=Math.max(1,landing[0]-piece.y);
-          piece.state='dropping';piece.finish=null;piece.dropX=x;piece.dropY=landing[0];
+        // A half-row stair riser in the target column: rest leaning on the
+        // step edge instead of dropping past it.
+        if(floor(x,piece.y-.5)){piece.lean=45;return;}
+        const landingY=landingRow(x,piece.y);
+        if(landingY!==undefined){
+          const rows=Math.max(1,landingY-piece.y);
+          piece.state='dropping';piece.finish=null;piece.dropStart=time;piece.dropX=x;piece.dropY=landingY;
           for(let k=1;k<rows;k++)schedule('drop-tick',piece.id,piece.dir,time+k);
-          schedule('land',piece.id,piece.dir,time+rows,{x,y:landing[0]});
+          schedule('land',piece.id,piece.dir,time+rows,{x,y:landingY});
           return;
         }
       }
@@ -231,6 +234,26 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
   }
   const capture=(impacts=[],effects=[])=>trace.push({time,pieces:clone(stones),bridges:clone(bridges),holes:clone(holes),crashed,impacts:clone(impacts),effects:clone(effects)});
   const floor=(x,y)=>hasFloor(level,x,y,bridges)&&!holes.some(h=>h.x===x&&h.y===y);
+  // A landing can be a platform row or a bridge cell; both stop a falling tile.
+  const landingRow=(x,fromY)=>{
+    const rows=level.platforms.filter(([,from,to])=>x>=from&&x<=to).map(([y])=>y);
+    for(const b of bridges)if(b.x===x)rows.push(b.y);
+    return rows.filter(y=>y>fromY&&!holes.some(h=>h.x===x&&h.y===y)).sort((a,b)=>a-b)[0];
+  };
+  // A bridge that appears while a tile is still falling through that column
+  // catches the tile at the bridge row instead of letting it drop past.
+  const catchDroppingOnBridge=(bx,by)=>{
+    for(const q of stones){
+      if(q.state!=='dropping'||q.dropX!==bx||q.dropY<=by||q.y>=by)continue;
+      const rowBeats=eventBeatDuration('land',q.type,timing)/timing.beat;
+      const current=q.dropStart===undefined?q.y:q.y+(time-q.dropStart)/rowBeats;
+      if(current>=by)continue;
+      for(let i=events.length-1;i>=0;i--)if(events[i].id===q.id&&['drop-tick','land'].includes(events[i].kind))events.splice(i,1);
+      const remaining=Math.max(1,by-current);
+      q.dropY=by;
+      schedule('land',q.id,q.dir,time+remaining,{x:bx,y:by});
+    }
+  };
   let rollSerial=0;
   function queueRoll(p,dir){
     const x=p.x+dir,target=stones.find(s=>s.id!==p.id&&s.x===x&&s.y===p.y&&s.state!=='vanished');
@@ -327,6 +350,15 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
       }
       else {q.state='vanished';q.finish=time;}
     }
+    // An ascender resting under a platform may climb again once a bomb opens
+    // that ceiling. Test the whole flat body, not one anchor cell: a lying
+    // ascender covers two cells and the opening can be over either half.
+    for(const q of stones){
+      if(q.type!=='ascender'||q.state!=='ceiling')continue;
+      const dir=q.dir||1,min=Math.min(q.x,q.x+dir),max=Math.max(q.x,q.x+dir);
+      if(hy!==q.y-1||hx<min||hx>max)continue;
+      schedule('ascender-ceiling-gone',q.id,dir,time+1,{x:hx});
+    }
   };
   let rounds=0;
   function step(){
@@ -393,14 +425,14 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
           p.state='flat';p.finish=time;continue;
         }
         if(!floor(x,p.y)){
-          const landing=level.platforms.filter(([y,from,to])=>y>p.y&&x>=from&&x<=to&&!holes.some(h=>h.x===x&&h.y===y)).sort((a,b)=>a[0]-b[0])[0];
-          if(landing){
-            const rows=Math.max(1,landing[0]-p.y);
-            p.state='dropping';p.dropX=x;p.dropY=landing[0];
+          const landingY=landingRow(x,p.y);
+          if(landingY!==undefined){
+            const rows=Math.max(1,landingY-p.y);
+            p.state='dropping';p.dropStart=time;p.dropX=x;p.dropY=landingY;
             // Reserve one beat for the airborne half-turn, then fall upright.
             const beats=Math.max(2,rows);
             for(let k=1;k<beats;k++)schedule('drop-tick',p.id,event.dir,time+k);
-            schedule('land',p.id,event.dir,time+beats,{x,y:landing[0]});
+            schedule('land',p.id,event.dir,time+beats,{x,y:landingY});
           }
           else {p.state='vanished';p.finish=time;}
           continue;
@@ -485,7 +517,7 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
         else if (p.type==='tumbler') {
           beginRoll(p,p.dir||event.dir);
         }
-        else if (p.type==='normal'&&level.rules==='dos') {
+        else if ((p.type==='normal'||p.type==='delay')&&level.rules==='dos') {
           // Ordinary tile landing restored from the v145 source snapshot.
           p.state='landing';
           schedule('topple',p.id,event.dir,time+1);
@@ -526,6 +558,7 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
         // The bridge spans the gap, then the bridge domino vanishes.
         bridges.push({x,y:p.y,dir:event.dir});
         p.state='vanished';p.finish=time;
+        catchDroppingOnBridge(x,p.y);
         continue;
       }
       hits.push({x,y:p.y,dir:event.dir,source:p});
@@ -548,14 +581,16 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
           if(target.dir!==hit.dir){target.state='crashed';crashed=true;}
         }
       } else if (hit.source&&!floor(hit.x,hit.y)&&hit.x>=0&&hit.x<level.width) {
+        // A half-row stair riser in the target column blocks the fall.
+        if(floor(hit.x,hit.y-.5)){hit.source.lean=45;hit.source.state='flat';hit.source.finish=time;continue;}
         // A falling domino can start a lower chain only by landing on a splitter.
-        const landing=level.platforms.filter(([y,from,to])=>y>hit.y&&hit.x>=from&&hit.x<=to&&!holes.some(h=>h.x===hit.x&&h.y===y)).sort((a,b)=>a[0]-b[0])[0];
-        if (landing) {
-          const rows=Math.max(1,landing[0]-hit.y);
-          hit.source.state='dropping';
-          hit.source.dropX=hit.x;hit.source.dropY=landing[0];
+        const landingY=landingRow(hit.x,hit.y);
+        if (landingY!==undefined) {
+          const rows=Math.max(1,landingY-hit.y);
+          hit.source.state='dropping';hit.source.dropStart=time;
+          hit.source.dropX=hit.x;hit.source.dropY=landingY;
           for(let k=1;k<rows;k++)schedule('drop-tick',hit.source.id,hit.dir,time+k);
-          schedule('land',hit.source.id,hit.dir,time+rows,{x:hit.x,y:landing[0]});
+          schedule('land',hit.source.id,hit.dir,time+rows,{x:hit.x,y:landingY});
         }
       }
     }

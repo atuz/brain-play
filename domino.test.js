@@ -86,12 +86,12 @@ test('A vanisher may fill either doorway',()=>{
   assert.equal(edit(level,{...normal,player:{...level.exit}},{type:'place'}),null,'normal must not fill the exit');
   assert.ok(edit(level,{...vanish,player:{...level.exit}},{type:'place'}),'vanisher may fill the exit');
 });
-test('Delay changes which branch finishes last; simultaneous trigger is too early',()=>{
+test('A simultaneous trigger still clears the level; a delay can still finish last',()=>{
   const level={width:9,height:7,platforms:[[1,0,2],[5,0,8]],ladders:[],exit:{x:8,y:5}};
   const pieces=[{id:'a',type:'normal',x:2,y:1},{id:'s',type:'splitter',x:3,y:5},{id:'l',type:'normal',x:2,y:5},{id:'t',type:'trigger',x:4,y:5}];
   const simultaneous=simulate(level,pieces,'a',1);
-  assert.equal(simultaneous.reason,'tie');
-  assert.equal(simulate(level,pieces.slice().reverse(),'a',1).reason,'tie');
+  assert.equal(simultaneous.won,true);
+  assert.equal(simulate(level,pieces.slice().reverse(),'a',1).won,true);
   pieces[3].type='delay';pieces.push({id:'door',type:'trigger',x:5,y:5});
   assert.equal(simulate(level,pieces,'a',1).won,true);
 });
@@ -157,7 +157,7 @@ function followGuide(level,start){
   }
   assert.fail(`Guide did not finish level ${level.id}`);
 }
-test('Screenshot regression: moved upper domino makes the trigger simultaneous; guidance repairs the current layout',()=>{
+test('Screenshot regression: moved upper domino makes the trigger simultaneous, which still clears',()=>{
   const level=levels[3];let position=initialPosition(level);
   for(const transfer of [{from:{x:7,y:5},to:{x:2,y:5}},{from:{x:0,y:1},to:{x:0,y:5}}]){
     position=walk(level,position,transfer.from);position=edit(level,position,{type:'take'});
@@ -165,12 +165,8 @@ test('Screenshot regression: moved upper domino makes the trigger simultaneous; 
   }
   position=walk(level,position,{x:1,y:1});
   const result=simulate(level,position.pieces,'p1',1);
-  assert.equal(result.won,false);assert.equal(result.reason,'tie');
-  assert.deepEqual([...result.problemIds].sort(),['p0','p4']);
-  assert.ok(result.pieces.every(p=>['flat','vanished'].includes(p.state)),'Every visible domino has fallen, so a generic retry message is insufficient');
-  assert.equal(failureSummary(result),'开门牌必须最后一个倒');
-  const repaired=followGuide(level,position);
-  assert.ok(repaired.pieces.some(p=>p.type==='normal'&&p.x===0&&p.y===1));
+  assert.equal(result.won,true);
+  assert.ok(result.pieces.every(p=>['flat','vanished'].includes(p.state)));
 });
 test('Guidance solves every original puzzle and legal scrambled layouts, including carried pieces and swaps',()=>{
   let seed=91823;const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
