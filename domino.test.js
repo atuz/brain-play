@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {levels} from './domino-levels.js';
-import {at,clone,edit,initialPosition,pathTo,simulate,validPosition,doorBlocked,entryCell} from './domino-engine.js';
+import {at,clone,edit,initialPosition,pathTo,antPathTo,pushPieceAt,simulate,validPosition,doorBlocked,entryCell} from './domino-engine.js';
 import {restore} from './domino.js';
 import {dominoEnglish} from './domino-i18n.js';
 import {translate} from './i18n.js';
@@ -145,14 +145,14 @@ function followGuide(level,start){
   for(let i=0;i<Math.max(600,level.width*level.height*4);i++){
     const step=nextGuide(level,position);assert.notEqual(step.kind,'unavailable',`Level ${level.id} needs a guide`);
     if(step.kind==='push'){
-      const piece=position.pieces.find(p=>at(p,position.player));
+      const piece=pushPieceAt(position.pieces,position.player,step.dir);
       const result=simulate(level,position.pieces,piece.id,step.dir);
       assert.equal(result.won,true,`Guided level ${level.id}: ${result.reason}`);
-      assert.ok(pathTo(level,position.player,level.exit,result.bridges));return position;
+      assert.ok(antPathTo(level,position.player,level.exit,result.bridges));return position;
     }
-    const action=step.kind.startsWith('walk')?{type:'walk',to:pathTo(level,position.player,step.kind==='walk-take'||step.kind==='walk-buffer'?step.source:step.target)?.[0]}
+    const action=step.kind.startsWith('walk')?{type:'ant-walk',to:antPathTo(level,position.player,step.kind==='walk-take'||step.kind==='walk-buffer'?step.source:step.target)?.[0]}
       :{type:step.kind==='place'?'place':'take'};
-    assert.ok(action.type!=='walk'||action.to,'The guide must give a reachable next step');
+    assert.ok(action.type!=='ant-walk'||action.to,'The guide must give a reachable next step');
     position=edit(level,position,action);assert.ok(position,`Guided action must be legal: ${JSON.stringify(step)}`);
   }
   assert.fail(`Guide did not finish level ${level.id}`);

@@ -1,4 +1,11 @@
 const messages={
+  "间隙中，← → 只转身；↓ 回到正前方。":["In the gap, ← → turn in place. Press ↓ to return to the front.","間隙中，← → 只轉身；↓ 回到正前方。"],
+  "旁边":["Beside","旁邊"],
+  "站在旁边，只能向相邻的骨牌推倒。":["Beside the dominoes: push an adjacent domino. Press ↓ to return to the front.","站在旁邊，只能向相鄰的骨牌推倒。"],
+  "左右走到正前方搬起；↑ 到旁边推倒，↓ 返回。":["Walk left or right in front to carry. Press ↑ to step beside and push; ↓ to return.","左右走到正前方搬起；↑ 到旁邊推倒，↓ 返回。"],
+  "到骨牌正前方才能搬起或放下。":["Stand directly in front to pick up or put down a domino.","到骨牌正前方才能搬起或放下。"],
+  "站到骨牌旁边才能推倒。":["Step beside the domino to push it.","站到骨牌旁邊才能推倒。"],
+  "摆好了。走到起始牌旁边，再推倒。":["Ready. Step beside the starting domino, then push it.","擺好了。走到起始牌旁邊，再推倒。"],
   "本关只能手推一次，仍可抱牌跳下启动连锁。":["You can push only once per level. Dropping a carried domino can still start a chain.","本關只能手推一次，仍可抱牌跳下啟動連鎖。"],
   "连锁结束：还有骨牌没倒，可以继续走、搬或抱牌跳下。":["The chain has stopped. Some dominoes are still standing; you can walk, carry, or drop a carried domino.","連鎖結束：還有骨牌沒倒，可以繼續走、搬或抱牌跳下。"],
   "蚂蚁多米诺":["Ant Domino","螞蟻多米諾"],

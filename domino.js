@@ -2,16 +2,17 @@ import {tumblerDropMotion} from './domino-tumbler-motion.js';
 import {dominoContactAngle,tumblerRollTransform,tumblerRestTransform,advanceContactMotion} from './domino-contact-motion.js?v=5';
 import {dominoSessionOutcome,dominoSessionPieces,recordDominoCompletion} from './domino-outcome.js';
 import {useManualPush,carriedDropTiming} from './domino-actions.js';
+import {antFallTarget} from './domino-ant-gravity.js';
 import {dominoTiming} from './domino-timing.js?v=8';
 import {createAscenderNode,renderAscender} from './domino-ascender-view.js?v=8';
 import {startGame} from './game-transition.js?v=48';
 import {gameRuntime} from './game-runtime.js?v=48';
 import {el,button,sound,finish,keyboardAndSwipe} from './shared.js?v=48';
 import {createMotion,motionEnabled} from './motion.js?v=48';
-import {t} from './i18n.js?v=62';
+import {t} from './i18n.js?v=64';
 import {levels,chapters} from './domino-levels.js?v=67';
-import {at,clone,hasFloor,neighbors,pathTo,edit,initialPosition,simulate,createChain,validPosition,walkable,doorBlocked,entryCell,isLedgeDrop} from './domino-engine.js?v=122';
-import {failureSummary,nextGuide} from './domino-guide.js?v=49';
+import {at,antAt,antPoint,antStepTarget,pushPieceAt,clone,hasFloor,antNeighbors as neighbors,antPathTo as pathTo,edit,initialPosition,simulate,createChain,validPosition,walkable,doorBlocked,entryCell,isLedgeDrop} from './domino-engine.js?v=131';
+import {failureSummary,nextGuide} from './domino-guide.js?v=50';
 import {mountCamera} from './domino-camera.js?v=51';
 import {antArtwork,createAntActor} from './domino-actor.js?v=59';
 import {sceneryForLevel,chapterSceneries} from './domino-scenery.js?v=53';
@@ -48,14 +49,15 @@ export function restore(saved){
       if(level.rules==='dos'&&restored.phase==='exit'&&!dominoSessionOutcome(level,restored).won)restored.phase='arrange';
       return restored;
     }
-    if(saved.position.carrying||!saved.position.pieces.some(p=>p.id===saved.attempt.id&&at(p,saved.position.player)))return fresh(saved.level);
+    if(saved.position.carrying||!saved.position.pieces.some(p=>p.id===saved.attempt.id&&
+      (saved.position.player.side===1?pushPieceAt(saved.position.pieces,saved.position.player,saved.attempt.dir)?.id===p.id:at(p,saved.position.player))))return fresh(saved.level);
     const result=simulate(level,saved.position.pieces,saved.attempt.id,saved.attempt.dir,saved.structures||{},dominoTiming);
     const won=result.won;
     if(!result.valid||saved.phase==='arrange'||(saved.phase==='failed')===won)return fresh(saved.level);
     if(!Array.isArray(saved.postHistory)||saved.postHistory.length>500)return fresh(saved.level);
     if(won&&(!walkable(level,saved.walker||{},result.bridges,result.holes)||!pathTo(level,saved.position.player,saved.walker,result.bridges,result.holes)))return fresh(saved.level);
     if(!saved.postHistory.every(p=>walkable(level,p,result.bridges,result.holes)))return fresh(saved.level);
-    if(saved.phase==='won'&&!at(saved.walker,level.exit))return fresh(saved.level);
+    if(saved.phase==='won'&&!antAt(saved.walker,level.exit))return fresh(saved.level);
     return clone(saved);
   } catch {return fresh();}
 }
@@ -63,18 +65,12 @@ export function restore(saved){
 export const pageInfo=ctx=>{const i=ctx.load()?.level;return {level:String(Number.isInteger(i)&&i>=0&&i<levels.length?i+1:1)};};
 export function mount(root,ctx){
   root.classList.add('play-domino');
-  let state=restore(ctx.load()),level=levels[state.level],result=null,frame=null,running=false,walking=false,facing=1;
+  let state=restore(ctx.load()),level=levels[state.level],result=null,frame=null,running=false,walking=false,facing=state.facing===-1?-1:1;
   if(state.phase==='exit'&&!result)result={won:true,bridges:state.structures?.bridges||[],holes:state.structures?.holes||[],pieces:level.rules==='dos'?dominoSessionPieces(state):[]};
   let runToken=0,walkToken=0,alive=true,notice='',guideActive=false,guide=null,intro=false,liveChain=null,chainWalker=null;
   const bridgesNow=()=>liveChain?liveChain.bridges:frame?.bridges??result?.bridges??state.structures?.bridges??[];
   const holesNow=()=>liveChain?liveChain.holes:frame?.holes??result?.holes??state.structures?.holes??[];
-  function dropPlayer(p,structures){
-    const holes=structures?.holes||[];
-    if(hasFloor(level,p.x,p.y,structures?.bridges||[],holes))return p;
-    const landing=level.platforms.filter(([y,a,b])=>y>p.y&&p.x>=a&&p.x<=b&&!holes.some(h=>h.x===p.x&&h.y===y)).sort((a,b)=>a[0]-b[0])[0];
-    return landing?{x:p.x,y:landing[0]}:p;
-  }
-  let actor,acting=false,transfer=null,actionToken=0,queuedWalk=null,moveKind='idle',moveDuration=180,antStance=null,ledgeFlight=false;
+  let actor,acting=false,transfer=null,actionToken=0,queuedWalk=null,moveKind='idle',moveDuration=180,ledgeFlight=false,gravityFall=null;
   const timers=new Set(),dialogs=new Set(),motion=createMotion(),stoneNodes=new Map();
   // Tumbler rolling: the block pivots 90 degrees at a time around its own
   // corners (right-bottom -> right-top -> left-top -> left-bottom) and keeps
@@ -115,7 +111,7 @@ export function mount(root,ctx){
   let records=ctx.read('domino:records',{});
   if(!records||typeof records!=='object'||Array.isArray(records))records={};
   const wait=ms=>{const timer=gameRuntime.delay(ms);timers.add(timer);return timer.finished.finally(()=>timers.delete(timer));};
-  function stop(){clearRolls();runToken++;walkToken++;actionToken++;walking=false;running=false;acting=false;intro=false;ledgeFlight=false;liveChain=null;chainWalker=null;transfer=null;queuedWalk=null;moveKind='idle';ant.style.transition='';actor?.cancel();for(const timer of timers)timer.cancel();timers.clear();}
+  function stop(){clearRolls();runToken++;walkToken++;actionToken++;walking=false;running=false;acting=false;intro=false;ledgeFlight=false;gravityFall=null;liveChain=null;chainWalker=null;transfer=null;queuedWalk=null;moveKind='idle';ant.style.transition='';actor?.cancel();for(const timer of timers)timer.cancel();timers.clear();}
   const levelNumber=el('span',{class:'dc-level-number'}),levelName=el('span',{class:'dc-level-name'}),progress=el('span',{class:'dc-progress',title:'已完成关卡'});
   const levelButton=el('button',{type:'button',class:'dc-level-button','aria-label':'选择骨牌关卡',onclick:chooseLevel},[levelNumber,levelName,el('span',{text:'⌄','aria-hidden':'true'})]);
   const hint=button('提示',()=>{guideActive=true;notice='';render();const target=guide?.source||guide?.target;if(target)stageCamera.show(stagePoint(target));},'plain');
@@ -152,13 +148,14 @@ export function mount(root,ctx){
     el('div',{class:'dc-controls'},[pad,actions]),el('div',{class:'dc-tools'},[undo,retry,restart]),status,celebration,legend);
   const stageCamera=mountCamera(viewport,world,{focusPoint:playerFocusPoint,onSwipe:step});
 
-  function save(){ctx.save(state);}
+  function save(){state.facing=facing;ctx.save(state);}
   function player(){return liveChain?chainWalker:(state.attempt?state.walker||state.position.player:state.position.player);}
   function playingPieces(){return frame?.pieces||result?.pieces||state.position.pieces;}
-  function currentPiece(){if(liveChain){const p=player();return liveChain.stones.find(q=>q.x===p.x&&q.y===p.y&&q.state==='upright');}return !state.attempt&&state.position.pieces.find(p=>at(p,state.position.player));}
+  function currentPiece(){if(player().side===1)return null;if(liveChain){const p=player();return liveChain.stones.find(q=>q.x===p.x&&q.y===p.y&&q.state==='upright');}return !state.attempt&&state.position.pieces.find(p=>at(p,state.position.player));}
+  function pushPiece(dir){return !state.attempt&&pushPieceAt(liveChain?liveChain.stones:state.position.pieces,player(),dir);}
   const viewTop=()=>Number.isInteger(level.viewTop)?level.viewTop:(level.ladders.length?0:3),viewRows=()=>level.height-viewTop();
   function stagePoint(p){return {x:(p.x+.5)*40,y:(p.y-viewTop()+.5)*40};}
-  function playerFocusPoint(){const p=stagePoint(player());return {...p,y:p.y-18};}
+  function playerFocusPoint(){const p=stagePoint(antPoint(player()));return {...p,y:p.y-18};}
   function placeNode(node,p){node.style.left=`${p.x/level.width*100}%`;node.style.top=`${(p.y-viewTop())/viewRows()*100}%`;}
   function placeDoorNode(node,p){node.style.left=`${p.x/level.width*100}%`;node.style.top=`${(p.y-.1-viewTop())/viewRows()*100}%`;}
   function renderSurfaces(){
@@ -219,7 +216,6 @@ export function mount(root,ctx){
     render();
   }
   function buildWorld(){
-    antStance=null;
     // A new stage has a different coordinate system. Snap its first frame;
     // only subsequent player/piece moves should interpolate from old positions.
     world.classList.add('dc-reset');
@@ -267,20 +263,11 @@ export function mount(root,ctx){
   function settleStage(){world.scrollTop=world.scrollLeft=0;void world.offsetHeight;world.classList.remove('dc-reset');}
   function renderScene(){
     const p=player(),upright=playingPieces(),fallen=state.fallen||[],visible=[...upright,...fallen.filter(f=>!upright.some(q=>q.id===f.id))],resting=restingDominoes(visible);
-    // Stand in the gap beside the selected domino instead of drawing through it.
-    // Keep the grid position as the interaction target so existing saves still fit.
     const held=state.attempt?null:state.position.carrying||(transfer?.kind==='place'?transfer.piece:null);
-    const beside=!(walking&&moveKind==='climb')&&(held||state.position.pieces.some(q=>at(q,p)))
-      ?[-facing,facing].find(dx=>hasFloor(level,p.x+dx,p.y,bridgesNow(),holesNow())):0;
-    // Removing a fallen tile must not move an otherwise stationary ant.
-    // Choose a new stance when walking to another cell or avoiding a tile.
     if(!ledgeFlight){
-      if(!antStance||!at(antStance,p)||beside||(walking&&moveKind==='climb')){
-        antStance={...p,beside:beside||0};
-      }
-      const visualX=Math.max(.16,Math.min(level.width-1.16,p.x+antStance.beside*.5));
-      if(!intro)placeNode(ant,{x:visualX,y:p.y});
-      actor.update({facing:beside?-beside:facing,held,move:walking?moveKind:'idle',exited:state.phase==='won'});
+      if(!intro)placeNode(ant,antPoint(p));
+      ant.dataset.stance=p.side===1?'side':'front';
+      actor.update({facing,held,move:walking?moveKind:'idle',exited:state.phase==='won'});
     }
     for(const original of level.pieces){
       const stone=visible.find(q=>q.id===original.id),node=stoneNodes.get(original.id);
@@ -293,7 +280,7 @@ export function mount(root,ctx){
       if(stone.type==='ascender'){
         const problem=!running&&state.phase==='failed'&&result?.problemIds?.includes(stone.id);
         const placement=renderAscender(node,stone,{level,timing:dominoTiming,
-          selected:!state.attempt&&at(stone,p),
+          selected:!state.attempt&&p.side!==1&&at(stone,p),
           guideSource:!!guide&&(guide.source?at(stone,guide.source):['push','walk-push'].includes(guide.kind)&&at(stone,guide.target)),
           problem,problemText:t(result?.reason==='tie'?'同刻':'!'),place:p=>placeNode(node,p),
         });
@@ -421,7 +408,7 @@ export function mount(root,ctx){
       node.classList.toggle('dc-stopper-hit',effects.some(event=>event.kind==='rebound'&&event.targetId===stone.id));
       node.classList.toggle('dc-rebounded',effects.some(event=>event.kind==='rebound'&&event.sourceId===stone.id));
       node.classList.toggle('dc-exploding',effects.some(event=>event.kind==='explode'&&event.sourceId===stone.id));
-      node.classList.toggle('dc-selected',!state.attempt&&at(stone,p));
+      node.classList.toggle('dc-selected',!state.attempt&&p.side!==1&&at(stone,p));
       const problem=!running&&state.phase==='failed'&&result?.problemIds?.includes(stone.id);
       node.classList.toggle('dc-problem',!!problem);
       node.classList.toggle('dc-guide-source',!!guide&&(guide.source?at(stone,guide.source):['push','walk-push'].includes(guide.kind)&&at(stone,guide.target)));
@@ -475,13 +462,12 @@ export function mount(root,ctx){
         const cell=el('button',{type:'button',class:'dc-cell dc-bridge-cell','data-x':bridge.x,'data-y':bridge.y,onclick:()=>walkTo(bridge)});placeNode(cell,bridge);tileLayer.append(cell);
       }
     }
-    if(!state.attempt)tileLayer.querySelectorAll('.dc-bridge-cell').forEach(n=>n.remove());
     for(const cell of tileLayer.children){
-      const q={x:Number(cell.dataset.x),y:Number(cell.dataset.y)},stone=visible.find(s=>at(s,q)&&s.state!=='vanished');
-      const word=at(q,p)?'蚂蚁':at(q,level.exit)?'出口':stone?types[stone.type][0]:hasFloor(level,q.x,q.y,bridgesNow(),holesNow())?'地面':'梯子';
-      cell.setAttribute('aria-label',t(`第${q.y+1}行第${q.x+1}列，${t(word)}`));
-      cell.classList.toggle('dc-guide-target',!!guide?.target&&at(q,guide.target));
-      cell.disabled=acting||(running&&level.rules!=='dos')||state.phase==='failed'||state.phase==='won';
+      const q={x:Number(cell.dataset.x),y:Number(cell.dataset.y),...(cell.dataset.side==='1'?{side:1}:{})},stone=q.side?null:visible.find(s=>at(s,q)&&s.state!=='vanished');
+      const word=antAt(q,p)?'蚂蚁':q.side?'旁边':at(q,level.exit)?'出口':stone?types[stone.type][0]:hasFloor(level,q.x,q.y,bridgesNow(),holesNow())?'地面':'梯子';
+      cell.setAttribute('aria-label',t(`第${q.y+1}行第${q.x+1+(q.side?.5:0)}列，${t(word)}`));
+      cell.classList.toggle('dc-guide-target',!!guide?.target&&antAt(q,guide.target));
+      cell.disabled=acting||!!gravityFall||(running&&level.rules!=='dos')||state.phase==='failed'||state.phase==='won';
     }
     door.classList.toggle('dc-door-open',!!result?.won&&!running);
     signal.classList.toggle('is-visible',!running&&(currentPiece()?.type==='trigger'||['exit','won'].includes(state.phase)||!!guide&&!!state.attempt));
@@ -502,7 +488,7 @@ export function mount(root,ctx){
     else if(state.phase==='failed'){badge.textContent='!';instruction.textContent=t(failureSummary(result));}
     else {
       badge.textContent=held?types[held.type][2]||'▮':piece?types[piece.type][2]||'▮':'•';
-      instruction.textContent=t(held?'搬着骨牌，走到空位后放下。':piece?types[piece.type][1]:'点地面走路；点骨牌，再搬起或推倒。');
+      instruction.textContent=t(held?'搬着骨牌，走到空位后放下。':piece?types[piece.type][1]:player().side===1?'间隙中，← → 只转身；↓ 回到正前方。':'左右走到正前方搬起；↑ 到旁边推倒，↓ 返回。');
     }
     badge.className=`dc-badge dc-${held?.type||piece?.type||'normal'}`;
     readout.classList.toggle('dc-readout-error',!running&&state.phase==='failed');
@@ -513,16 +499,16 @@ export function mount(root,ctx){
     pushLeft.classList.toggle('dc-guide-action',guide?.kind==='push'&&guide.dir===-1);
     pushRight.classList.toggle('dc-guide-action',guide?.kind==='push'&&guide.dir===1);
     carry.textContent=t(held?'放下':'搬起');
-    carry.disabled=acting||(running&&level.rules!=='dos')||walking||!!state.attempt||state.phase==='failed'||(!held&&(!piece||piece.type==='trigger'));
-    pushLeft.disabled=pushRight.disabled=acting||(running&&level.rules!=='dos')||walking||!!state.attempt||state.phase==='failed'||state.phase==='won'||!!held||!piece||['splitter','stopper'].includes(piece.type)||(level.rules==='dos'&&state.pushUsed);
-    pushLeft.title=pushRight.title=level.rules==='dos'&&state.pushUsed?t('本关只能手推一次，仍可抱牌跳下启动连锁。'):'';
-    const deltas={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]},p=player(),reachable=neighbors(level,p,bridgesNow(),holesNow());
+    carry.disabled=acting||!!gravityFall||(running&&level.rules!=='dos')||walking||!!state.attempt||state.phase==='failed'||state.phase==='won'||player().side===1||(!held&&(!piece||piece.type==='trigger'));
+    carry.title=player().side===1?t('到骨牌正前方才能搬起或放下。'):'';
+    for(const [node,dir]of [[pushLeft,-1],[pushRight,1]]){
+      const target=pushPiece(dir);
+      node.disabled=acting||!!gravityFall||(running&&level.rules!=='dos')||walking||!!state.attempt||state.phase==='failed'||state.phase==='won'||!!held||!target||['splitter','stopper'].includes(target.type)||(level.rules==='dos'&&state.pushUsed);
+      node.title=level.rules==='dos'&&state.pushUsed?t('本关只能手推一次，仍可抱牌跳下启动连锁。'):player().side!==1?t('站到骨牌旁边才能推倒。'):'';
+    }
     for(const cell of pad.children){
-      const delta=deltas[cell.dataset.direction];
-      const ok=reachable.some(q=>delta[0]
-        ?(q.y===p.y&&q.x===p.x+delta[0])||(Math.abs(q.y-p.y)===.5&&q.x===p.x+delta[0])||(q.y>p.y&&(q.x-p.x)*delta[0]>0)
-        :(q.x===p.x&&q.y===p.y+delta[1])||(Math.abs(q.y-p.y)===.5&&q.x!==p.x&&Math.sign(q.y-p.y)===delta[1])||(q.y===p.y+delta[1]&&q.x!==p.x));
-      cell.disabled=acting||(running&&level.rules!=='dos')||state.phase==='failed'||state.phase==='won'||!ok;
+      const ok=player().side===1&&['left','right'].includes(cell.dataset.direction)||!!stepTarget(cell.dataset.direction);
+      cell.disabled=acting||!!gravityFall||(running&&level.rules!=='dos')||state.phase==='failed'||state.phase==='won'||!ok;
     }
     undo.disabled=!(state.history.length||state.attempt||state.chainBackup);retry.disabled=!state.attempt&&!state.chainBackup;hint.disabled=acting||running||walking||state.phase==='won';levelButton.disabled=acting||running;
     status.textContent=t(notice);status.classList.toggle('dc-error',state.phase==='failed');
@@ -534,7 +520,7 @@ export function mount(root,ctx){
       'walk-take':'走到圈出的{piece}，再点“搬起”；闪亮格是要放的位置。',take:'点“搬起”，把这张{piece}搬到闪亮格。',
       'walk-buffer':'先把圈出的{piece}搬到闪亮空位，暂时腾出位置。','take-buffer':'点“搬起”，先把{piece}搬到闪亮空位暂存。',
       'walk-place':'搬着{piece}走到闪亮空位，再点“放下”。',place:'点“放下”，把{piece}放在这里。',
-      'walk-push':'摆好了。走到圈出的起始牌，不需要把牌接到门口。',
+      'walk-push':'摆好了。走到起始牌旁边，再推倒。',
       push:step.dir===1?'点“推倒 →”。开门牌最后倒下后会远程开门。':'点“← 推倒”。开门牌最后倒下后会远程开门。',
       unavailable:'请重开本关，再查看下一步提示。',
       text:step.text||''})[step.kind];
@@ -553,7 +539,7 @@ export function mount(root,ctx){
   }
   function remember(){state.history.push(clone(state.position));if(state.history.length>100)state.history.shift();}
   function markWon(){
-    if(state.phase!=='exit'||!at(player(),level.exit)||!exitReady())return;
+    if(state.phase!=='exit'||!antAt(player(),level.exit)||!exitReady())return;
     state.phase='won';notice='';
     const moves=state.position.moves+state.postHistory.length;
     ctx.result?.('won',{moves});
@@ -564,32 +550,33 @@ export function mount(root,ctx){
     if(['failed','won'].includes(state.phase)&&!(released&&state.phase==='failed'&&!state.death))return false;
     if(running&&level.rules!=='dos')return false;
     const before=player();
+    if(!neighbors(level,before,bridgesNow(),holesNow()).some(q=>antAt(q,to)))return false;
     if(liveChain){
       const fall=to.y-before.y;
-      if(!neighbors(level,before,liveChain.bridges,liveChain.holes).some(p=>at(p,to)))return false;
+      if(!neighbors(level,before,liveChain.bridges,liveChain.holes).some(p=>antAt(p,to)))return false;
       chainWalker=clone(to);
       if(fall>3){liveChain=null;running=false;chainWalker=null;die();return true;}
     } else if(state.attempt){
-      if(!neighbors(level,before,result.bridges,result.holes).some(p=>at(p,to)))return false;
+      if(!neighbors(level,before,result.bridges,result.holes).some(p=>antAt(p,to)))return false;
       state.postHistory.push(clone(before));if(state.postHistory.length>500)state.postHistory.shift();state.walker=clone(to);
     }else{
       const fall=to.y-state.position.player.y;
-      let next=edit(level,state.position,{type:'walk',to});
-      if(!next&&level.rules==='dos'&&neighbors(level,state.position.player,bridgesNow(),holesNow()).some(p=>at(p,to))){
+      let next=edit(level,state.position,{type:'ant-walk',to});
+      if(!next&&level.rules==='dos'&&neighbors(level,state.position.player,bridgesNow(),holesNow()).some(p=>antAt(p,to))){
         next=clone(state.position);next.player=clone(to);next.moves++;
       }
       if(!next)return false;remember();state.position=next;
       if(fall>3){die();return true;}
     }
-    if(to.x!==before.x)facing=Math.sign(to.x-before.x);
+    if((to.side===1)===(before.side===1)&&antPoint(to).x!==antPoint(before).x)facing=Math.sign(antPoint(to).x-antPoint(before).x);
     // The flight has already reached the lower floor. Commit the logical
     // step without starting a second vertical (ladder) animation.
-    moveKind=landed?'idle':to.y!==before.y?'climb':'walk';moveDuration=landed?0:moveKind==='climb'?220:180;
+    moveKind=landed?'idle':to.y!==before.y?'climb':'walk';moveDuration=landed?0:moveKind==='climb'?220:180*Math.abs(antPoint(to).x-antPoint(before).x);
     ant.style.setProperty('--dc-step-ms',`${moveDuration}ms`);
     stageCamera.resume();notice='';save();render();return true;
   }
   function walkTo(target){
-    if(acting||(running&&level.rules!=='dos')||['failed','won'].includes(state.phase))return;
+    if(acting||gravityFall||(running&&level.rules!=='dos')||['failed','won'].includes(state.phase))return;
     const path=pathTo(level,player(),target,bridgesNow(),holesNow());if(!path){notice='这里走不到，可以找梯子绕行。';renderText();return;}
     if(walking){queuedWalk={target};return;}
     void runWalk(path);
@@ -600,13 +587,13 @@ export function mount(root,ctx){
     while(path.length&&alive&&token===walkToken){
       const to=path[0],before=player(),drop=to.y-before.y;
       const releasing=level.rules==='dos'&&!!state.position.carrying&&isLedgeDrop(level,before,to);
-      if(releasing&&!neighbors(level,before,bridgesNow(),holesNow()).some(p=>at(p,to)))break;
+      if(releasing&&!neighbors(level,before,bridgesNow(),holesNow()).some(p=>antAt(p,to)))break;
       const animatedDrop=(drop>1||releasing)&&motionEnabled();
       if(animatedDrop){
         // Chain ticks still render the dominoes, but the flight owns the
         // ant's position and complete pose until the landing is committed.
         ledgeFlight=true;
-        if(to.x!==before.x)facing=Math.sign(to.x-before.x);
+        if(antPoint(to).x!==antPoint(before).x)facing=Math.sign(antPoint(to).x-antPoint(before).x);
         actor.update({facing,held:state.position.carrying,move:'scared'});
         ant.style.transition='left 140ms ease';
         placeNode(ant,{x:to.x,y:before.y});
@@ -639,36 +626,30 @@ export function mount(root,ctx){
         await carryOrPlace({afterDrop:true});
         if(!alive||token!==walkToken)return;
       }
-      if(state.phase==='exit'&&at(player(),level.exit)){walking=false;queuedWalk=null;moveKind='idle';await enterExit();return;}
+      if(state.phase==='exit'&&antAt(player(),level.exit)){walking=false;queuedWalk=null;moveKind='idle';await enterExit();return;}
       if(queuedWalk){
         const next=queuedWalk;queuedWalk=null;
         if(next.target)path=pathTo(level,player(),next.target,bridgesNow(),holesNow())||[];
-        else {const p=player(),delta=deltas[next.direction];path=[{x:p.x+delta[0],y:p.y+delta[1]}];}
+        else if(turnInGap(next.direction))path=[];
+        else {const to=stepTarget(next.direction);path=to?[to]:[];}
       }
     }
-    if(alive&&token===walkToken){walking=false;moveKind='idle';render();}
+    if(alive&&token===walkToken){walking=false;moveKind='idle';startAntFall();render();}
+  }
+  function stepTarget(direction){return antStepTarget(level,player(),direction,facing,bridgesNow(),holesNow());}
+  function turnInGap(direction){
+    if(player().side!==1||!['left','right'].includes(direction))return false;
+    facing=direction==='left'?-1:1;notice='';save();render();return true;
   }
   function step(direction){
-    if(acting||(running&&level.rules!=='dos')||!deltas[direction]||['failed','won'].includes(state.phase))return;
+    if(acting||gravityFall||(running&&level.rules!=='dos')||!deltas[direction]||['failed','won'].includes(state.phase))return;
+    if(turnInGap(direction))return;
     if(walking){queuedWalk={direction};return;}
-    const delta=deltas[direction],p=player(),opts=neighbors(level,p,bridgesNow(),holesNow()),reach=q=>opts.some(r=>at(r,q));
-    let target={x:p.x+delta[0],y:p.y+delta[1]};
-    if(!reach(target)&&delta[0]){
-      // Half-row stair treads sit diagonally beside the ant; prefer the step,
-      // then a ledge drop.
-      const tread=opts.find(q=>q.x===p.x+delta[0]&&Math.abs(q.y-p.y)===.5);
-      const fall=opts.find(q=>q.y>p.y&&(q.x-p.x)*delta[0]>0);
-      if(tread||fall)target=tread||fall;
-    }
-    if(!reach(target)&&delta[1]){
-      const half=opts.find(q=>q.x!==p.x&&Math.abs(q.y-p.y)===.5&&Math.sign(q.y-p.y)===delta[1]);
-      const stair=opts.find(q=>q.y===p.y+delta[1]&&q.x!==p.x);
-      if(half||stair)target=half||stair;
-    }
-    void runWalk([target]);
+    const target=stepTarget(direction);if(target)void runWalk([target]);
   }
   async function carryOrPlace({afterDrop=false}={}){
-    if(acting||(running&&level.rules!=='dos')||(walking&&!afterDrop)||state.attempt||state.phase==='failed')return;
+    if(acting||gravityFall||(running&&level.rules!=='dos')||(walking&&!afterDrop)||state.attempt||state.phase==='failed')return;
+    if(player().side===1)return;
     if(afterDrop&&!state.position.carrying)return;
     if(!liveChain&&(state.fallen||[]).some(q=>at(q,player()))){notice='这里躺着牌，先换个位置。';renderText();return;}
     if(liveChain){
@@ -691,7 +672,7 @@ export function mount(root,ctx){
     const piece=state.position.carrying||currentPiece(),kind=state.position.carrying?'place':'take';
     const next=edit(level,state.position,{type:kind});
     if(!next){notice='这里不能放牌：需要空的地面，门口那一格也不能放。';renderText();return;}
-    const from=kind==='take'?stoneNodes.get(piece.id)?.querySelector('.dc-stone-face').getBoundingClientRect():null;
+    const from=kind==='take'?stoneNodes.get(piece.id)?.querySelector('.dc-stone-face,.dc-ascender-face')?.getBoundingClientRect():null;
     const token=++actionToken;acting=true;transfer={kind,piece};remember();state.position=next;notice='';refreshCompletedDoor();save();render();
     const complete=kind==='take'?await actor.take(from):await actor.place(()=>{
       const boardStone=stoneNodes.get(piece.id);
@@ -709,13 +690,14 @@ export function mount(root,ctx){
     ant.dataset.dead='true';result=null;frame=null;notice='';save();render();
   }
   async function enterExit(){
-    if(acting||state.phase!=='exit'||!at(player(),level.exit)||!exitReady())return;
+    if(acting||state.phase!=='exit'||!antAt(player(),level.exit)||!exitReady())return;
     const token=++actionToken;acting=true;moveKind='idle';render();
     if(!await actor.enter()||!alive||token!==actionToken)return;
     acting=false;markWon();save();render();
   }
   async function push(dir){
-    const starter=currentPiece();
+    const starter=pushPiece(dir);
+    if(!starter||acting||gravityFall||walking||state.attempt||state.position.carrying||['failed','won'].includes(state.phase))return;
     if(level.rules==='dos'){
       if(!starter||['splitter','stopper'].includes(starter.type)||acting||walking||state.position.carrying)return;
       if(liveChain){
@@ -772,15 +754,52 @@ export function mount(root,ctx){
     if(starting){const token=++runToken;void runLiveChain(token);}
     return true;
   }
+  function startAntFall(){
+    if(!liveChain||gravityFall||ledgeFlight||state.death)return false;
+    const plan=antFallTarget(level,chainWalker,liveChain.snapshot());
+    if(!plan)return false;
+    const fall={...plan,finished:null};gravityFall=fall;ledgeFlight=true;
+    walkToken++;actionToken++;walking=false;acting=false;queuedWalk=null;transfer=null;actor.cancel();
+    const held=state.position.carrying;
+    const released=held&&releaseCarriedBrick(plan.from,plan.to);
+    const leadMs=released?carriedDropTiming(plan.rows,dominoTiming).antLeadMs:0;
+    actor.update({facing,held:state.position.carrying,move:leadMs?'scared':'falling'});
+    const displayed=getComputedStyle(ant);
+    ant.style.transition='none';ant.style.left=displayed.left;ant.style.top=displayed.top;
+    void ant.offsetHeight;
+    fall.finished=(async()=>{
+      if(leadMs)await wait(leadMs);
+      if(!alive||gravityFall!==fall||!liveChain)return;
+      const duration=Math.min(800,Math.max(200,plan.rows*dominoTiming.beat));
+      ant.dataset.stance='front';actor.update({facing,held:state.position.carrying,move:'falling'});
+      ant.style.transition=`left 140ms linear,top ${duration}ms cubic-bezier(.3,0,.8,1),transform 140ms linear`;
+      placeNode(ant,plan.to);
+      await wait(duration);
+      if(!alive||gravityFall!==fall||!liveChain)return;
+      chainWalker=clone(plan.to);gravityFall=null;ledgeFlight=false;ant.style.transition='';moveKind='idle';
+      if(plan.fatal){state.death=true;ant.dataset.dead='true';}
+      else startAntFall();
+      save();render();
+    })();
+    return true;
+  }
   async function runLiveChain(token){
     let deadline=gameRuntime.now();
-    while(liveChain&&!liveChain.done()){
+    while(liveChain){
+      if(state.death)break;
+      if(liveChain.done()){
+        startAntFall();
+        if(gravityFall){await gravityFall.finished;continue;}
+        break;
+      }
       deadline+=liveChain.nextTickBeats*dominoTiming.beat;
       await wait(Math.max(0,deadline-gameRuntime.now()));
       if(!alive||token!==runToken||!liveChain)return;
+      if(state.death)break;
       if(!liveChain.tick())continue;
       frame=liveChain.snapshot();
-      renderScene();
+      startAntFall();
+      renderScene();renderText();
     }
     if(!alive||token!==runToken||!liveChain)return;
     frame=null;running=false;
@@ -791,7 +810,7 @@ export function mount(root,ctx){
     const trigDown=!!state.triggerDown||pieces.some(p=>p.type==='trigger'&&['flat','vanished','ceiling'].includes(p.state));
     state.completion=recordDominoCompletion(state,snap);
     const structures={bridges:snap.bridges,holes:snap.holes};
-    const pos=dropPlayer(chainWalker,structures),fall=pos.y-chainWalker.y;
+    const pos=clone(chainWalker);
     const remaining=pieces.filter(p=>p.state==='upright');
     const byId=new Map((state.fallen||[]).map(p=>[p.id,p]));
     for(const p of pieces)if(['flat','crashed','dropping','ceiling'].includes(p.state))byId.set(p.id,{id:p.id,type:p.type,x:p.x,y:p.y,state:p.state,dir:p.dir,...(p.type==='normal'?{normalInverted:stoneNodes.get(p.id)?.dataset.normalInverted==='true'}:{inverted:!!p.inverted})});
@@ -800,7 +819,6 @@ export function mount(root,ctx){
     state.structures=structures;state.triggerDown=trigDown;
     state.position={...state.position,pieces:remaining,player:pos};
     state.history=[];
-    if(fall>3){die();return;}
     const outcome=dominoSessionOutcome(level,state);
     if(outcome.won){state.phase='exit';result={...snap,...outcome,pieces:state.completion.pieces};notice='';}
     else if(['crash','overflow','early','tie','dead'].includes(outcome.reason)){state.phase='failed';result={...snap,...outcome,pieces:state.completion.pieces};}
@@ -864,6 +882,6 @@ export function mount(root,ctx){
   const detach=keyboardAndSwipe(world,step,{swipe:false});
   if(state.attempt)result=simulate(level,state.position.pieces,state.attempt.id,state.attempt.dir,{},dominoTiming);
   buildWorld();render();settleStage();void playIntro();
-  if(state.phase==='exit'&&at(player(),level.exit))void enterExit();
+  if(state.phase==='exit'&&antAt(player(),level.exit))void enterExit();
   return()=>{alive=false;stop();detach();stageCamera.dispose();window.removeEventListener('keydown',shortcuts);for(const modal of dialogs)modal.close();dialogs.clear();motion.dispose();};
 }

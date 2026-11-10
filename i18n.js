@@ -1,4 +1,4 @@
-import {dominoEnglish,dominoTraditional} from './domino-i18n.js?v=57';
+import {dominoEnglish,dominoTraditional} from './domino-i18n.js?v=59';
 import {pushoverEnglish} from './domino-i18n-pushover.js?v=1';
 import {machineEnglish,machineTraditional} from './machine-i18n.js?v=48';
 import {classicEnglish,classicTraditional} from './classic-i18n.js?v=48';

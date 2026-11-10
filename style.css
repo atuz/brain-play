@@ -676,6 +676,8 @@ html[data-motion=off] .dc-split-half{transition:none}
 .dc-rubble{display:none;position:absolute;left:6%;top:55%;width:88%;height:35%}
 .dc-rubble-pile .dc-rubble{display:block}
 .dc-rubble-pile .dc-stone-face,.dc-rubble-covered .dc-stone-face{opacity:0;animation:none}
+.dc-ant{transition:left var(--dc-step-ms,180ms) linear,top var(--dc-step-ms,180ms) linear,transform 140ms linear}
+.dc-ant[data-stance="side"]{transform:translateY(-6px);z-index:3}
 .dc-rubble i{position:absolute;display:block;width:38%;height:48%;background:#dcb357;border:1px solid #96733c;border-radius:2px;box-shadow:inset 0 2px #f2d28c}
 .dc-rubble i:nth-child(1){left:1%;bottom:0;transform:rotate(-14deg)}
 .dc-rubble i:nth-child(2){left:36%;bottom:0;transform:rotate(12deg)}

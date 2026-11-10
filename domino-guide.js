@@ -1,4 +1,4 @@
-import {at,clone,hasFloor,neighbors} from './domino-engine.js?v=48';
+import {at,antAt,clone,hasFloor,antNeighbors as neighbors} from './domino-engine.js?v=131';
 
 export function failureSummary(result){
   return ({tie:'开门牌必须最后一个倒',
@@ -19,7 +19,7 @@ export function referenceLayout(level){
   return pieces;
 }
 export function nextGuide(level,position){
-  const goal=referenceLayout(level),pieces=position.pieces,key=p=>`${p.x},${p.y}`;
+  const goal=referenceLayout(level),pieces=position.pieces,key=p=>`${p.x},${p.y},${p.side===1?1:0}`;
   const connected=new Set([key(position.player)]),queue=[position.player];
   for(let i=0;i<queue.length;i++)for(const p of neighbors(level,queue[i]))if(!connected.has(key(p))){connected.add(key(p));queue.push(p);}
   const occupied=p=>pieces.some(q=>at(p,q));
@@ -32,20 +32,21 @@ export function nextGuide(level,position){
   if(position.carrying){
     const target=destinations(position.carrying.type)[0]||buffer();
     if(!target)return {kind:'unavailable'};
-    return {kind:at(position.player,target)?'place':'walk-place',type:position.carrying.type,target:{x:target.x,y:target.y}};
+    return {kind:antAt(position.player,target)?'place':'walk-place',type:position.carrying.type,target:{x:target.x,y:target.y}};
   }
   const wrong=pieces.filter(p=>!correct(p)&&p.type!=='trigger');
   if(!level.push)return {kind:'unavailable'};
   if(!wrong.length){
-    const target={x:level.push.x,y:level.push.y};
-    return {kind:at(position.player,target)?'push':'walk-push',target,dir:level.push.dir};
+    const target={x:level.push.x-(level.push.dir>0?1:0),y:level.push.y,side:1};
+    if(!reachable(target))return {kind:'unavailable'};
+    return {kind:antAt(position.player,target)?'push':'walk-push',target,dir:level.push.dir};
   }
   for(const source of wrong){
     const target=destinations(source.type)[0];
-    if(target&&reachable(source))return {kind:at(position.player,source)?'take':'walk-take',type:source.type,source:{x:source.x,y:source.y},target:{x:target.x,y:target.y}};
+    if(target&&reachable(source))return {kind:antAt(position.player,source)?'take':'walk-take',type:source.type,source:{x:source.x,y:source.y},target:{x:target.x,y:target.y}};
   }
   // A cycle such as normal↔delay needs an unused floor tile as temporary storage.
   const source=wrong.find(p=>goal.some(q=>at(p,q))&&reachable(p)),target=buffer();
   if(!source||!target)return {kind:'unavailable'};
-  return {kind:at(position.player,source)?'take-buffer':'walk-buffer',type:source.type,source:{x:source.x,y:source.y},target};
+  return {kind:antAt(position.player,source)?'take-buffer':'walk-buffer',type:source.type,source:{x:source.x,y:source.y},target};
 }

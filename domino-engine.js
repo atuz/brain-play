@@ -15,7 +15,18 @@ export const hasFloor = (level, x, y, bridges = [], holes = []) =>
 const onLadder = (level, x, y) => level.ladders.some(l => l.x === x && y >= l.from && y <= l.to);
 // Rows may be fractional: stair treads are stored half a row apart so a step
 // is one cell long and half a row tall.
-export const walkable = (level, p, bridges = [], holes = []) => Number.isInteger(p.x) && Number.isFinite(p.y) && (hasFloor(level, p.x, p.y, bridges, holes) || onLadder(level, p.x, p.y));
+export const walkable = (level, p, bridges = [], holes = []) => Number.isInteger(p.x) && Number.isFinite(p.y) &&
+  (p.side===1?(hasFloor(level,p.x,p.y,bridges,holes)||p.x===-1)&&
+      (hasFloor(level,p.x+1,p.y,bridges,holes)||p.x===level.width-1)
+    :(p.side===undefined||p.side===0)&&(hasFloor(level,p.x,p.y,bridges,holes)||onLadder(level,p.x,p.y)));
+
+export const antPoint=p=>({x:p.x+(p.side===1 ? .5 : 0),y:p.y});
+export const antAt=(a,b)=>at(a,b)&&(a.side===1)===(b.side===1);
+export function pushPieceAt(pieces,player,dir){
+  if(player.side!==1||![-1,1].includes(dir))return null;
+  return pieces.find(p=>p.x===player.x+(dir===1?1:0)&&p.y===player.y&&
+    (p.state===undefined||p.state==='upright')&&!['stopper','splitter'].includes(p.type))||null;
+}
 export function neighbors(level, p, bridges = [], holes = []) {
   const out = [];
   for (const dx of [-1, 1]) {
@@ -103,6 +114,53 @@ export function pathTo(level, start, target, bridges = [], holes = []) {
   }
   return null;
 }
+
+// The ant has a front lane for carrying and a gap lane for pushing.
+// Walking stays in front. A gap is a fixed pushing stop; leave it to walk.
+export function antNeighbors(level,p,bridges=[],holes=[]){
+  if(!walkable(level,p,bridges,holes))return [];
+  if(p.side===1)return [{x:p.x,y:p.y},{x:p.x+1,y:p.y}]
+    .filter(q=>walkable(level,q,bridges,holes));
+  return [...neighbors(level,p,bridges,holes),...[{x:p.x-1,y:p.y,side:1},{x:p.x,y:p.y,side:1}]
+    .filter(q=>walkable(level,q,bridges,holes))];
+}
+
+export function antPathTo(level,start,target,bridges=[],holes=[]){
+  if(!walkable(level,start,bridges,holes)||!walkable(level,target,bridges,holes))return null;
+  const key=p=>`${p.x},${p.y},${p.side===1?1:0}`,queue=[start],previous=new Map([[key(start),null]]);
+  for(let i=0;i<queue.length;i++){
+    const p=queue[i];
+    if(antAt(p,target)){
+      const path=[];let cursor=p;
+      while(previous.get(key(cursor))){path.push(cursor);cursor=previous.get(key(cursor));}
+      return path.reverse();
+    }
+    for(const q of antNeighbors(level,p,bridges,holes)){
+      if(level.rules==='dos'&&q.y-p.y>3)continue;
+      if(!previous.has(key(q))){previous.set(key(q),p);queue.push(q);}
+    }
+  }
+  return null;
+}
+
+export function antStepTarget(level,p,direction,facing=1,bridges=[],holes=[]){
+  const delta=({up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]})[direction];if(!delta)return null;
+  const opts=antNeighbors(level,p,bridges,holes);
+  if(delta[0]){
+    if(p.side===1)return null;
+    const ahead=q=>(antPoint(q).x-antPoint(p).x)*delta[0]>0;
+    const lane=opts.filter(q=>(q.side===1)===(p.side===1));
+    return lane.find(q=>q.y===p.y&&ahead(q))||lane.find(q=>Math.abs(q.y-p.y)===.5&&ahead(q))||lane.find(q=>q.y>p.y&&ahead(q))||null;
+  }
+  if(p.side===1)return direction==='down'?opts.find(q=>q.side!==1&&q.x===p.x+(facing>0?1:0))||null:null;
+  const climb=opts.find(q=>q.side!==1&&q.x===p.x&&q.y===p.y+delta[1])||opts.find(q=>q.side!==1&&Math.abs(q.y-p.y)===.5&&Math.sign(q.y-p.y)===delta[1])||opts.find(q=>q.side!==1&&q.y===p.y+delta[1]&&q.x!==p.x)||null;
+  if(direction==='up'){
+    if(climb)return climb;
+    const gap=opts.find(q=>q.side===1&&q.x===p.x-(facing>0?1:0));
+    if(gap)return gap;
+  }
+  return climb;
+}
 export function entryCell(level) {
   if (level.entry && Number.isInteger(level.entry.x)) return {x: level.entry.x, y: level.player.y};
   return [{x: level.player.x - 1, y: level.player.y}, {x: level.player.x + 1, y: level.player.y}].find(q => hasFloor(level, q.x, q.y)) || null;
@@ -120,20 +178,21 @@ export function initialPosition(level) {
 }
 export function edit(level, position, action) {
   const next=clone(position);
-  if (action.type==='walk') {
-    if (!neighbors(level,position.player).some(p=>at(p,action.to))) return null;
+  if (action.type==='walk'||action.type==='ant-walk') {
+    const options=action.type==='ant-walk'?antNeighbors(level,position.player):neighbors(level,position.player);
+    if (!options.some(p=>antAt(p,action.to))) return null;
     next.player=clone(action.to);next.moves++;return next;
   }
   if (action.type==='take') {
-    if (position.carrying) return null;
+    if (position.carrying||position.player.side===1) return null;
     const piece=next.pieces.find(p=>at(p,position.player));
     if (!piece || piece.type==='trigger') return null;
     next.carrying=piece;next.pieces=next.pieces.filter(p=>p.id!==piece.id);next.moves++;return next;
   }
   if (action.type==='place') {
-    if (!position.carrying || !hasFloor(level,position.player.x,position.player.y) || position.pieces.some(p=>at(p,position.player))) return null;
+    if (position.player.side===1||!position.carrying || !hasFloor(level,position.player.x,position.player.y) || position.pieces.some(p=>at(p,position.player))) return null;
     if (doorBlocked(level, position.player) && position.carrying.type !== 'vanish') return null;
-    next.pieces.push({...next.carrying,...position.player});next.carrying=null;next.moves++;return next;
+    next.pieces.push({...next.carrying,x:position.player.x,y:position.player.y});next.carrying=null;next.moves++;return next;
   }
   return null;
 }
@@ -166,7 +225,7 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
   function queueRoll(p,dir){
     const x=p.x+dir,target=stones.find(s=>s.id!==p.id&&s.x===x&&s.y===p.y&&s.state!=='vanished');
     const resisting=resistsDomino(target)||target?.type==='delay'&&target.state==='upright';
-    const solid=target&&!['exploder','bridge','vanish'].includes(target.type);
+    const solid=target&&!['exploder','bridge','vanish','ascender'].includes(target.type);
     const contact=resisting||solid;
     const upright=(p.x-p.rollOriginX)*2*p.rollBaseDir;
     const relativeDir=dir*p.rollBaseDir,rollMs=timing.roll??timing.beat;
@@ -178,6 +237,12 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
     p.rollReturnDuration=returnMs;p.rollVia=upright;
     p.rollDuration=contact?returnMs+reboundDuration(p.rollTo-upright,timing):rollMs+returnMs;
     p.rollSerial=++rollSerial;
+    if(target?.type==='ascender'&&target.state==='upright'){
+      // Touch the ascender during the existing roll, without shortening or
+      // restarting that roll. It rises clear while the tumbler keeps moving.
+      const hitMs=returnMs+rollMs*dominoContactPhase/2;
+      schedule('roll-ascender-hit',p.id,dir,time+hitMs/timing.beat,{targetId:target.id,rollSerial:p.rollSerial});
+    }
     schedule('roll',p.id,dir,time+p.rollDuration/rollMs);
   }
   function beginRoll(p,dir){
@@ -279,6 +344,13 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
         }
         continue;
       }
+      if(event.kind==='roll-ascender-hit'){
+        if(p.state==='rolling'&&p.rollSerial===event.rollSerial&&p.dir===event.dir){
+          const target=find(event.targetId);
+          if(target?.type==='ascender'&&target.x===p.x+event.dir&&target.y===p.y&&target.state==='upright')activate(target,event.dir);
+        }
+        continue;
+      }
       if (event.kind==='roll') {
         if(p.state!=='rolling')continue;
         p.rollPhase=p.rollTo;
@@ -304,7 +376,7 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
             rebound(p,target,event.dir,effects);
             continue;
           }
-          if(level.rules==='dos'&&['exploder','bridge','vanish'].includes(target.type)){
+          if(target.type==='ascender'||level.rules==='dos'&&['exploder','bridge','vanish'].includes(target.type)){
             p.x=x;queueRoll(p,event.dir);continue;
           }
           p.state='flat';p.finish=time;continue;
