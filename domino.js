@@ -1,6 +1,6 @@
 import {tumblerDropMotion} from './domino-tumbler-motion.js';
 import {dominoContactAngle,tumblerRollTransform,tumblerRestTransform,advanceContactMotion} from './domino-contact-motion.js?v=5';
-import {dominoSessionOutcome,dominoSessionPieces,recordDominoCompletion} from './domino-outcome.js?v=2';
+import {dominoSessionOutcome,dominoSessionPieces,recordDominoCompletion} from './domino-outcome.js?v=3';
 import {useManualPush,carriedDropTiming} from './domino-actions.js';
 import {antFallTarget} from './domino-ant-gravity.js';
 import {dominoTiming} from './domino-timing.js?v=11';
@@ -10,14 +10,14 @@ import {gameRuntime} from './game-runtime.js?v=48';
 import {el,button,sound,finish,keyboardAndSwipe} from './shared.js?v=48';
 import {createMotion,motionEnabled} from './motion.js?v=48';
 import {t} from './i18n.js?v=64';
-import {levels,chapters} from './domino-levels.js?v=67';
-import {at,antAt,antPoint,antStepTarget,pushPieceAt,clone,hasFloor,antNeighbors as neighbors,antPathTo as pathTo,edit,initialPosition,simulate,createChain,validPosition,walkable,doorBlocked,entryCell,isLedgeDrop} from './domino-engine.js?v=148';
+import {levels,chapters} from './domino-levels.js?v=68';
+import {at,antAt,antPoint,antStepTarget,pushPieceAt,clone,hasFloor,antNeighbors as neighbors,antPathTo as pathTo,edit,initialPosition,simulate,createChain,validPosition,walkable,doorBlocked,entryCell,isLedgeDrop} from './domino-engine.js?v=156';
 import {failureSummary,nextGuide} from './domino-guide.js?v=50';
 import {mountCamera} from './domino-camera.js?v=51';
 import {antArtwork,createAntActor} from './domino-actor.js?v=59';
 import {sceneryForLevel,chapterSceneries} from './domino-scenery.js?v=53';
 import {dominoArtwork} from './domino-material.js?v=53';
-import {restingDominoes} from './domino-resting.js?v=50';
+import {restingDominoes} from './domino-resting.js?v=52';
 
 const types={
   normal:['普通牌','碰到下一张牌，继续连锁。',''],
@@ -262,7 +262,11 @@ export function mount(root,ctx){
   }
   function settleStage(){world.scrollTop=world.scrollLeft=0;void world.offsetHeight;world.classList.remove('dc-reset');}
   function renderScene(){
-    const p=player(),upright=playingPieces(),fallen=state.fallen||[],visible=[...upright,...fallen.filter(f=>!upright.some(q=>q.id===f.id))],resting=restingDominoes(visible);
+    const p=player(),upright=playingPieces(),fallen=state.fallen||[];
+    const finishes=new Map((state.completion?.pieces||[]).map(q=>[q.id,q.finish]));
+    const visible=[...upright,...fallen.filter(f=>!upright.some(q=>q.id===f.id))]
+      .map(q=>q.finish==null&&finishes.has(q.id)?{...q,finish:finishes.get(q.id)}:q);
+    const resting=restingDominoes(visible);
     const held=state.attempt?null:state.position.carrying||(transfer?.kind==='place'?transfer.piece:null);
     if(!ledgeFlight){
       if(!intro)placeNode(ant,antPoint(p));
@@ -742,7 +746,9 @@ export function mount(root,ctx){
   function newLiveChain(){
     const offset=state.completion?.time||0;
     const settledPieces=dominoSessionPieces(state).filter(p=>p.state!=='upright').map(p=>({...p,finish:Number.isFinite(p.finish)?p.finish-offset:null}));
-    return createChain(level,state.position.pieces,{...state.structures,settledPieces},dominoTiming);
+    // Live play has no step budget: a rolling tile may bounce between stoppers
+    // indefinitely, and the player has to move one away. Stalling is not a loss.
+    return createChain(level,state.position.pieces,{...state.structures,settledPieces},dominoTiming,{maxSteps:Infinity});
   }
   function releaseCarriedBrick(from,to){
     const piece=state.position.carrying;if(!piece)return false;

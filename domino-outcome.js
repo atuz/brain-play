@@ -12,10 +12,15 @@ export function dominoOutcome({pieces,expectedPieces=pieces,carrying=null,dead=f
   const others=required.filter(p=>p.id!==trigger?.id).map(p=>actual.get(p.id));
   const triggerDone=down(trigger)&&Number.isFinite(trigger.finish);
   const last=triggerDone&&others.every(p=>down(p)&&Number.isFinite(p.finish)&&p.finish<=trigger.finish);
+  // A bridge tile knocked over by the trigger itself vanishes a fraction of a
+  // beat later; that still counts as the trigger falling last.
+  const late=others.filter(p=>down(p)&&Number.isFinite(p.finish)&&p.finish>trigger?.finish);
+  const bridgeTail=triggerDone&&late.length===1&&late[0].type==='bridge'&&late[0].hitBy===trigger?.id&&
+    others.every(p=>p===late[0]||(down(p)&&Number.isFinite(p.finish)&&p.finish<=trigger.finish));
   const tied=allDown&&triggerDone&&!last&&others.some(p=>p?.finish===trigger.finish)&&
     others.every(p=>Number.isFinite(p?.finish)&&p.finish<=trigger.finish);
   const broken=crashed||pieces.some(p=>p.state==='crashed');
-  const reason=broken?'crash':overflow?'overflow':dead?'dead':carrying?'carrying':!allDown?'remaining':!last?(tied?'tie':'early'):'clear';
+  const reason=broken?'crash':overflow?'overflow':dead?'dead':carrying?'carrying':!allDown?'remaining':(last||bridgeTail)?'clear':(tied?'tie':'early');
   const problemIds=reason==='crash'?pieces.filter(p=>p.state==='crashed').map(p=>p.id)
     :reason==='carrying'?[carrying.id]
     :reason==='remaining'?required.filter(p=>!resolved(p)).map(p=>p.id)
