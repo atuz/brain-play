@@ -1,31 +1,38 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createChain,initialPosition} from './domino-engine.js';
+import {createChain,initialPosition,isLedgeDrop} from './domino-engine.js';
 import {dominoTiming} from './domino-timing.js';
 import {useManualPush,carriedDropTiming} from './domino-actions.js';
 import {restore} from './domino.js';
 import {levels} from './domino-levels.js';
 
-const level={width:12,height:10,rules:'dos',platforms:[[2,3,4],[5,0,11]],ladders:[]};
+const level={width:12,height:10,rules:'dos',platforms:[[2,3,4],[3,5,5],[5,0,11]],ladders:[]};
 const drop={id:'carried',type:'normal',x:4,y:2};
 const run=chain=>{while(!chain.done())chain.step();return chain.snapshot();};
 
-test('A released ascender lands upright and only rises after a later push',()=>{
+test('A released ascender flies up from the release height and hangs vertically',()=>{
   const chain=createChain(level,[],{},dominoTiming);
-  chain.dropCarriedStone({...drop,type:'ascender'},{from:{x:4,y:2},to:{x:5,y:5}});
+  chain.dropCarriedStone({...drop,type:'ascender'},{from:{x:4,y:4},to:{x:5,y:5}});
   const p=run(chain).pieces[0];
-  assert.deepEqual([p.state,p.x,p.y,p.carriedDrop],['upright',5,5,false]);
-  assert.equal(chain.activateStone(p.id,1),true);
-  assert.equal(chain.stones[0].state,'ascending');
+  assert.deepEqual([p.state,p.x,p.y,p.ceilingAngle],['ceiling',5,4,0]);
+  assert.equal(Number.isFinite(p.finish),true);
+  assert.equal(chain.activateStone(p.id,1),false,'a hanging riser is no longer upright');
 });
 
-test('A released ascender uses the shared splitter landing and is consumed',()=>{
+test('Carrying a brick up or down a ladder is not a ledge drop',()=>{
+  const ladder={width:20,height:13,rules:'dos',platforms:[[3,0,10],[6,0,10]],ladders:[{x:5,from:2,to:10}],ramps:[]};
+  assert.equal(isLedgeDrop(ladder,{x:5,y:3},{x:5,y:8}),false);
+  assert.equal(isLedgeDrop(ladder,{x:5,y:8},{x:5,y:3}),false);
+  assert.equal(isLedgeDrop(ladder,{x:7,y:3},{x:7,y:6}),true);
+});
+
+test('A released ascender never lands, so it cannot touch a splitter',()=>{
   const chain=createChain(level,[{id:'split',type:'splitter',x:5,y:5}],{},dominoTiming);
   chain.dropCarriedStone({...drop,type:'ascender'},{from:{x:4,y:2},to:{x:5,y:5}});
   const snap=run(chain);
   assert.equal(snap.crashed,false);
+  assert.equal(snap.pieces.find(p=>p.id==='split').state,'upright');
   assert.equal(snap.pieces.find(p=>p.id==='carried').state,'vanished');
-  assert.equal(snap.pieces.find(p=>p.id==='split').state,'flat');
 });
 
 test('Released brick lands upright on empty floor without consuming the manual push',()=>{
@@ -80,4 +87,30 @@ test('Restoring a session preserves the spent manual push',()=>{
   const saved={version:1,level:65,position:initialPosition(levels[65]),history:[],attempt:null,phase:'arrange',pushUsed:true};
   assert.equal(restore(saved).pushUsed,true);
   assert.equal(restore({...saved,pushUsed:false}).pushUsed,false);
+});
+
+test('Dropping a carried tile into a vertical riser breaks both',()=>{
+  const level={width:10,height:8,rules:'dos',ladders:[],platforms:[[2,5,5],[3,3,4],[5,5,5]]};
+  const chain=createChain(level,[],{},dominoTiming);
+  chain.dropCarriedStone({id:'r',type:'ascender'},{from:{x:4,y:3},to:{x:5,y:5}});
+  while(!chain.done())chain.step();
+  assert.equal(chain.stones.find(p=>p.id==='r').ceilingAngle,0,'the riser hangs vertically');
+  chain.dropCarriedStone({id:'n',type:'normal'},{from:{x:4,y:3},to:{x:5,y:5}});
+  while(!chain.done())chain.step();
+  const snap=chain.snapshot();
+  assert.equal(snap.crashed,true);
+  assert.deepEqual(snap.pieces.map(p=>[p.id,p.state,p.x,p.y]),[['r','crashed',5,5],['n','crashed',5,5]]);
+});
+
+test('Dropping a carried tile under a vertical riser breaks both',()=>{
+  const level={width:10,height:8,rules:'dos',ladders:[],platforms:[[2,5,5],[4,4,4],[6,5,5]]};
+  const chain=createChain(level,[],{},dominoTiming);
+  chain.dropCarriedStone({id:'r',type:'ascender'},{from:{x:4,y:3},to:{x:5,y:6}});
+  while(!chain.done())chain.step();
+  assert.equal(chain.stones.find(p=>p.id==='r').ceilingAngle,0,'the riser hangs vertically');
+  chain.dropCarriedStone({id:'n',type:'normal'},{from:{x:4,y:4},to:{x:5,y:6}});
+  while(!chain.done())chain.step();
+  const snap=chain.snapshot();
+  assert.equal(snap.crashed,true);
+  assert.deepEqual(snap.pieces.map(p=>[p.id,p.state,p.x,p.y]).sort(),[['n','crashed',5,6],['r','crashed',5,6]]);
 });

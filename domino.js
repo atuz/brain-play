@@ -1,6 +1,6 @@
 import {tumblerDropMotion} from './domino-tumbler-motion.js';
 import {dominoContactAngle,tumblerRollTransform,tumblerRestTransform,advanceContactMotion} from './domino-contact-motion.js?v=5';
-import {dominoSessionOutcome,dominoSessionPieces,recordDominoCompletion} from './domino-outcome.js?v=3';
+import {dominoSessionOutcome,dominoSessionPieces,recordDominoCompletion} from './domino-outcome.js?v=4';
 import {useManualPush,carriedDropTiming} from './domino-actions.js';
 import {antFallTarget} from './domino-ant-gravity.js';
 import {dominoTiming} from './domino-timing.js?v=11';
@@ -9,10 +9,10 @@ import {startGame} from './game-transition.js?v=48';
 import {gameRuntime} from './game-runtime.js?v=48';
 import {el,button,sound,finish,keyboardAndSwipe} from './shared.js?v=48';
 import {createMotion,motionEnabled} from './motion.js?v=48';
-import {t} from './i18n.js?v=64';
-import {levels,chapters} from './domino-levels.js?v=68';
-import {at,antAt,antPoint,antStepTarget,pushPieceAt,clone,hasFloor,antNeighbors as neighbors,antPathTo as pathTo,edit,initialPosition,simulate,createChain,validPosition,walkable,doorBlocked,entryCell,isLedgeDrop} from './domino-engine.js?v=156';
-import {failureSummary,nextGuide} from './domino-guide.js?v=50';
+import {t} from './i18n.js?v=65';
+import {levels,chapters} from './domino-levels.js?v=72';
+import {at,antAt,antPoint,antStepTarget,pushPieceAt,clone,hasFloor,antNeighbors as neighbors,antPathTo as pathTo,edit,initialPosition,simulate,createChain,validPosition,walkable,doorBlocked,entryCell,isLedgeDrop} from './domino-engine.js?v=168';
+import {failureSummary,nextGuide} from './domino-guide.js?v=51';
 import {mountCamera} from './domino-camera.js?v=51';
 import {antArtwork,createAntActor} from './domino-actor.js?v=59';
 import {sceneryForLevel,chapterSceneries} from './domino-scenery.js?v=53';
@@ -214,6 +214,26 @@ export function mount(root,ctx){
     ant.style.transition='';intro=false;acting=false;
     entryDoor.classList.remove('dc-door-open');
     render();
+    await settleSpawnFall();
+  }
+  // The doorway can sit above the next platform. Once the ant steps out of
+  // the door it falls, exactly like it does when walking off a ledge.
+  async function settleSpawnFall(){
+    if(!alive||state.death||state.phase!=='arrange'||state.attempt||liveChain)return;
+    const plan=antFallTarget(level,state.position.player,{bridges:bridgesNow(),holes:holesNow()});
+    if(!plan)return;
+    if(plan.fatal){die();return;}
+    const token=++walkToken;
+    walking=true;acting=true;moveKind='falling';gravityFall=plan;
+    const duration=Math.min(800,Math.max(200,plan.rows*dominoTiming.beat));
+    actor.update({facing,held:state.position.carrying,move:'falling'});
+    ant.style.transition=`top ${duration}ms cubic-bezier(.3,0,.8,1)`;
+    placeNode(ant,plan.to);
+    await wait(duration);
+    if(!alive||token!==walkToken)return;
+    ant.style.transition='';walking=false;acting=false;moveKind='idle';gravityFall=null;
+    state.position={...state.position,player:clone(plan.to)};
+    notice='';save();render();
   }
   function buildWorld(){
     // A new stage has a different coordinate system. Snap its first frame;
@@ -280,7 +300,9 @@ export function mount(root,ctx){
       node.style.visibility=transferring?'hidden':'';
       node.style.transition=transferring?'none':'';
       node.style.opacity=transferring?'0':'';
-      const stage=stone.state||'upright';
+      // A tile that leaves the board keeps a playing node and drops towards
+      // the row below the level, so the motion matches a normal fall.
+      const stage=stone.fallOut?'dropping':stone.state||'upright';
       if(stone.type==='ascender'){
         const problem=!running&&state.phase==='failed'&&result?.problemIds?.includes(stone.id);
         const placement=renderAscender(node,stone,{level,timing:dominoTiming,
@@ -819,7 +841,9 @@ export function mount(root,ctx){
     const pos=clone(chainWalker);
     const remaining=pieces.filter(p=>p.state==='upright');
     const byId=new Map((state.fallen||[]).map(p=>[p.id,p]));
-    for(const p of pieces)if(['flat','crashed','dropping','ceiling'].includes(p.state))byId.set(p.id,{id:p.id,type:p.type,x:p.x,y:p.y,state:p.state,dir:p.dir,...(p.type==='normal'||p.type==='delay'?{normalInverted:stoneNodes.get(p.id)?.dataset.normalInverted==='true'}:{inverted:!!p.inverted})});
+    for(const p of pieces)if(['flat','crashed','dropping','ceiling'].includes(p.state))byId.set(p.id,{id:p.id,type:p.type,x:p.x,y:p.y,state:p.state,dir:p.dir,
+      ...(p.type==='ascender'?{ceilingAngle:p.ceilingAngle,ceilingTravel:p.ceilingTravel,passiveRise:p.passiveRise}:{}),
+      ...(p.type==='normal'||p.type==='delay'?{normalInverted:stoneNodes.get(p.id)?.dataset.normalInverted==='true'}:{inverted:!!p.inverted})});
     state.fallen=[...byId.values()];
     liveChain=null;chainWalker=null;
     state.structures=structures;state.triggerDown=trigDown;

@@ -39,7 +39,9 @@ for(const dir of [-1,1])test(`Two ordinary landings retain v145 event timing, di
     const next=sim.trace.find(f=>f.time>land.time&&f.pieces[0].state!=='landing');
     assert.equal(next.time-land.time,1);
   }
-  assert.equal(sim.pieces[0].state,'flat');
+  // The last pedestal is one cell wide: the tile tips into the void below
+  // and leaves the board instead of hanging in the air.
+  assert.equal(sim.pieces[0].state,'vanished');
 });
 
 

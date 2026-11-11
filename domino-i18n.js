@@ -153,7 +153,7 @@ const messages={
   "不能搬动；最后倒下时远程开门，和门不必相邻。":["Cannot be moved. Opens the door remotely when it falls last; it need not be next to the door.","不能搬動；最後倒下時遠端開門，和門不必相鄰。"],
   "开门牌必须最后一个倒":["The door trigger must fall last.","開門牌必須最後一個倒"],
   "还有骨牌没倒，已在棋盘上标出。":["Some dominoes are still standing. They are marked on the board.","還有骨牌沒倒，已在棋盤上標出。"],
-  "标出的骨牌撞坏了，落下的牌需要分叉牌接住。":["The marked dominoes crashed. A falling domino needs a splitter to catch it.","標出的骨牌撞壞了，落下的牌需要分叉牌接住。"],
+  "标出的骨牌撞坏了。":["The marked dominoes crashed.","標出的骨牌撞壞了。"],
   "先点“回到摆放”，保留安排后继续下一步提示。":["Tap Back to setup to keep your arrangement and see the next hint.","先點「回到擺放」，保留安排後繼續下一步提示。"],
   "开门牌已远程打开门。点标出的出口，蚂蚁走进去才过关。":["The trigger has opened the distant door. Tap the marked door and walk through to win.","開門牌已遠端打開門。點標出的出口，螞蟻走進去才過關。"],
   "走到圈出的{piece}，再点“搬起”；闪亮格是要放的位置。":["Walk to the outlined {piece}, then tap Pick up. The highlighted tile is its destination.","走到圈出的{piece}，再點「搬起」；閃亮格是要放的位置。"],

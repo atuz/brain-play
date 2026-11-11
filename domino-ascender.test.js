@@ -206,3 +206,19 @@ test('Ascender poses use their own node classes and motion variables',()=>{
   assert.equal(properties.get('--da-angle'),'43deg');
   assert.equal(properties.get('--da-duration'),'200ms');
 });
+
+test('A bridge spanning under a hanging ascender knocks it loose',()=>{
+  const level={width:10,height:8,rules:'dos',ladders:[],platforms:[[2,4,5],[4,0,4],[4,6,6],[5,5,5]]};
+  const chain=createChain(level,[{id:'b',type:'bridge',x:6,y:4},{id:'n',type:'normal',x:4,y:4}],{},dominoTiming);
+  chain.dropCarriedStone({id:'r',type:'ascender'},{from:{x:4,y:3},to:{x:5,y:5}});
+  while(!chain.done())chain.step();
+  assert.equal(chain.stones.find(p=>p.id==='r').state,'ceiling');
+  chain.activateStone('b',-1);
+  while(!chain.done())chain.step();
+  const r=chain.stones.find(p=>p.id==='r');
+  assert.ok(chain.bridges.some(b=>b.x===5&&b.y===4),'the gap is bridged');
+  assert.equal(r.ceilingAngle,90,'the hanging riser swings over');
+  assert.equal(r.passiveRise,false);
+  assert.ok(Number.isFinite(r.finish));
+  assert.equal(chain.stones.find(p=>p.id==='n').state,'flat','the neighbour still falls');
+});

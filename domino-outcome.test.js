@@ -92,3 +92,13 @@ test('The shared live outcome exactly matches simulation for early, simultaneous
     assert.deepEqual(dominoSessionOutcome(level,state),{won:sim.won,reason:sim.reason,problemIds:sim.problemIds});
   }
 });
+
+test('Only a vanished bridge tile may finish after the trigger',()=>{
+  const base=[{id:'a',type:'normal',state:'flat',finish:1},{id:'t',type:'trigger',state:'flat',finish:2}];
+  const vanished=[...base,{id:'b',type:'bridge',state:'vanished',finish:2.3,hitBy:'t'}];
+  const flat=[...base,{id:'b',type:'bridge',state:'flat',finish:2.3,hitBy:'t'}];
+  assert.equal(dominoOutcome({pieces:vanished,expectedPieces:vanished}).won,true);
+  const lost=dominoOutcome({pieces:flat,expectedPieces:flat});
+  assert.equal(lost.won,false);
+  assert.equal(lost.reason,'early');
+});

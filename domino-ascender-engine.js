@@ -23,9 +23,28 @@ export function createAscenderMechanic({level,stones,floor,schedule,activate,get
       schedule('ascender-resume',piece.id,dir,time+gapTurn/timing.contact);
     }else piece.finish=time;
   }
-  function begin(piece,dir) {
+  // The ordinary ceiling swing: schedule the pivot contact and every
+  // neighbour the body overlaps while it tips over. The hanging state is the
+  // same pose held at angle 0, so a knock can start this identical swing.
+  function startCeilingSwing(p,dir,time){
+    const target=stones.find(s=>s.id!==p.id&&s.x===p.x+dir&&[p.y,p.y+1].includes(s.y)&&resists(s));
+    const contact=target?ceilingContactAngle(level,p,target,dir):null;
+    p.state='ceiling';p.dir=dir;
+    p.ceilingAngle=contact??90;
+    p.ceilingTravel=contact!==null?timing.contact:swingDuration(p,dir);
+    schedule('ascender-contact',p.id,dir,time+p.ceilingTravel/timing.contact);
+    // A non-stopper is activated on first overlap; the ascender keeps playing
+    // the same swing through horizontal without changing direction.
+    for(const other of stones){
+      if(other.id===p.id||other.type==='stopper'||other.state==='vanished'||other.x!==p.x+dir||![p.y,p.y+1].includes(other.y))continue;
+      const angle=ceilingContactAngle(level,p,other,dir);
+      if(angle===null||(contact!==null&&angle>=contact))continue;
+      schedule('ascender-forward-hit',p.id,dir,time+angle/90*p.ceilingTravel/timing.contact,{targetId:other.id});
+    }
+  }
+  function begin(piece,dir,passive=false) {
     if(piece?.type!=='ascender')return false;
-    piece.dir=dir;piece.state='ascending';
+    piece.dir=dir;piece.state='ascending';piece.passiveRise=!!passive;
     schedule('ascender-rise',piece.id,dir,getTime()+timing.riseStart/timing.rise);
     return true;
   }
@@ -48,20 +67,13 @@ export function createAscenderMechanic({level,stones,floor,schedule,activate,get
       const ceiling=above>=0&&floor(p.x,above);
       if(above<0){p.state='vanished';p.finish=time;return true;}
       if(ceiling){
-        const target=stones.find(s=>s.id!==p.id&&s.x===p.x+event.dir&&[p.y,p.y+1].includes(s.y)&&resists(s));
-        const contact=target?ceilingContactAngle(level,p,target,event.dir):null;
-        p.state='ceiling';p.dir=event.dir;
-        p.ceilingAngle=contact??90;
-        p.ceilingTravel=contact!==null?timing.contact:swingDuration(p,event.dir);
-        schedule('ascender-contact',p.id,event.dir,time+p.ceilingTravel/timing.contact);
-        // A non-stopper is activated on first overlap; the ascender keeps
-        // playing the same swing through horizontal without changing direction.
-        for(const other of stones){
-          if(other.id===p.id||other.type==='stopper'||other.state==='vanished'||other.x!==p.x+event.dir||![p.y,p.y+1].includes(other.y))continue;
-          const angle=ceilingContactAngle(level,p,other,event.dir);
-          if(angle===null||(contact!==null&&angle>=contact))continue;
-          schedule('ascender-forward-hit',p.id,event.dir,time+angle/90*p.ceilingTravel/timing.contact,{targetId:other.id});
+        if(p.passiveRise){
+          // Dropped from the ant's hands: it climbs straight up and hangs
+          // vertically under the platform instead of toppling sideways.
+          p.state='ceiling';p.dir=event.dir;p.ceilingAngle=0;p.finish=time;
+          return true;
         }
+        startCeilingSwing(p,event.dir,time);
         return true;
       }
       p.y=above;schedule('ascender-rise',p.id,event.dir,time+1);return true;
@@ -126,5 +138,13 @@ export function createAscenderMechanic({level,stones,floor,schedule,activate,get
     }
     return false;
   }
-  return {begin,handle};
+  // A bridge landing under a hanging riser knocks it loose: the riser swings
+  // over in the collision direction instead of staying vertical.
+  function nudge(piece,dir){
+    if(piece?.type!=='ascender'||piece.state!=='ceiling'||!piece.passiveRise)return false;
+    piece.passiveRise=false;
+    startCeilingSwing(piece,dir||piece.dir||1,getTime());
+    return true;
+  }
+  return {begin,handle,nudge};
 }

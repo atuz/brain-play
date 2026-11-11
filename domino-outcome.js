@@ -15,7 +15,7 @@ export function dominoOutcome({pieces,expectedPieces=pieces,carrying=null,dead=f
   // A bridge tile knocked over by the trigger itself vanishes a fraction of a
   // beat later; that still counts as the trigger falling last.
   const late=others.filter(p=>down(p)&&Number.isFinite(p.finish)&&p.finish>trigger?.finish);
-  const bridgeTail=triggerDone&&late.length===1&&late[0].type==='bridge'&&late[0].hitBy===trigger?.id&&
+  const bridgeTail=triggerDone&&late.length===1&&late[0].type==='bridge'&&late[0].state==='vanished'&&late[0].hitBy===trigger?.id&&
     others.every(p=>p===late[0]||(down(p)&&Number.isFinite(p.finish)&&p.finish<=trigger.finish));
   const tied=allDown&&triggerDone&&!last&&others.some(p=>p?.finish===trigger.finish)&&
     others.every(p=>Number.isFinite(p?.finish)&&p.finish<=trigger.finish);

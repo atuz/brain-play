@@ -4,7 +4,7 @@ export function failureSummary(result){
   return ({tie:'开门牌必须最后一个倒',
     early:'开门牌必须最后一个倒',
     remaining:'还有骨牌没倒，已在棋盘上标出。',
-    crash:'标出的骨牌撞坏了，落下的牌需要分叉牌接住。',
+    crash:'标出的骨牌撞坏了。',
   })[result?.reason]||'连锁没有完成，再调整一下。';
 }
 // This is a route toward a verified reference arrangement, not a shortest-path

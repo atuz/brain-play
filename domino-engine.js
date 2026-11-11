@@ -1,8 +1,8 @@
 import {baseDominoTiming,eventBeatDuration} from './domino-timing.js?v=11';
 import {dominoContactPhase,resistsDomino,reboundDuration} from './domino-contact-motion.js?v=2';
-import {dominoOutcome} from './domino-outcome.js?v=3';
+import {dominoOutcome} from './domino-outcome.js?v=4';
 import {carriedDropTiming} from './domino-actions.js';
-import {createAscenderMechanic} from './domino-ascender-engine.js?v=15';
+import {createAscenderMechanic} from './domino-ascender-engine.js?v=18';
 // Independent, discrete JavaScript rules for the original Brain Play domino puzzles.
 // No Domino-Chain/Pushover program, graphics, sounds or levels are included.
 export const TYPES = ['normal', 'stopper', 'tumbler', 'delay', 'splitter', 'exploder', 'bridge', 'vanish', 'trigger', 'ascender'];
@@ -164,7 +164,7 @@ export function entryCell(level) {
 }
 export function doorBlocked(level, p) {
   const cells = [];
-  const push = (x, y) => { if (Number.isInteger(x) && Number.isInteger(y)) cells.push({x, y}); };
+  const push = (x, y) => { if (Number.isFinite(x) && Number.isFinite(y)) cells.push({x, y}); };
   if (level.exit) push(level.exit.x, level.exit.y);
   const spawn = entryCell(level);
   if (spawn) push(spawn.x, spawn.y);
@@ -206,6 +206,33 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
     const elapsed=(when-time)*eventBeatDuration(kind,find(id)?.type,timing)/timing.beat;
     events.push({kind,id,dir,time:Math.round((time+elapsed)*1e9)/1e9,...extra});
   };
+  // A tile that tips over an edge with nothing below leaves the board. It
+  // counts as vanished at once; a short tail event keeps the live chain alive
+  // long enough for the flip-and-drop animation to play.
+  const fallOut=(p,dir)=>{
+    // Rules-wise it is gone at once, but the board still plays the ordinary
+    // drop animation towards a row just below the level.
+    p.state='vanished';p.finish=time;p.fallOut=true;
+    p.dropX=p.x+dir;p.dropY=level.height+1;
+    schedule('fall-out-end',p.id,dir,time+3);
+  };
+  // A tile whose swing carries it past the platform edge keeps falling: it
+  // drops to the next platform, or leaves the board when there is none.
+  const dropOverEdge=(p,dir)=>{
+    const x=p.x+dir;
+    if(x<0||x>=level.width||floor(x,p.y))return false;
+    if(floor(x,p.y-.5)){p.lean=45;p.state='flat';p.finish=time;return true;}
+    const landingY=landingRow(x,p.y);
+    if(landingY!==undefined){
+      const rows=Math.max(1,landingY-p.y);
+      p.state='dropping';p.finish=null;p.dropStart=time;p.dropX=x;p.dropY=landingY;
+      for(let k=1;k<rows;k++)schedule('drop-tick',p.id,dir,time+k);
+      schedule('land',p.id,dir,time+rows,{x,y:landingY});
+      return true;
+    }
+    fallOut(p,dir);
+    return true;
+  };
   function finishFall(piece,fromLanding=false){
     piece.state='flat';piece.finish=time;
     if(fromLanding){
@@ -222,6 +249,8 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
           schedule('land',piece.id,piece.dir,time+rows,{x,y:landingY});
           return;
         }
+        fallOut(piece,piece.dir);
+        return;
       }
     }
     if(!['normal','trigger'].includes(piece.type)||(fromLanding&&piece.type!=='normal'))return;
@@ -420,7 +449,7 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
         if(p.state!=='rolling')continue;
         p.rollPhase=p.rollTo;
         const x=p.x+event.dir;
-        if(x<0||x>=level.width){p.state='vanished';p.finish=time;continue;}
+        if(x<0||x>=level.width){fallOut(p,event.dir);continue;}
         const target=rollTarget(p,event.dir,x);
         if(target){
           if(target.type==='stopper'){
@@ -456,7 +485,7 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
             for(let k=1;k<beats;k++)schedule('drop-tick',p.id,event.dir,time+k);
             schedule('land',p.id,event.dir,time+beats,{x,y:landingY});
           }
-          else {p.state='vanished';p.finish=time;}
+          else fallOut(p,event.dir);
           continue;
         }
         p.x=x;queueRoll(p,event.dir);continue;
@@ -493,7 +522,7 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
         const back=stones.find(s=>s.id!==p.id&&s.x===p.x+(p.dir||event.dir)&&s.y===p.y&&s.state!=='vanished');
         if(back&&back.type==='stopper')effects.push({kind:'rebound',sourceId:p.id,targetId:back.id});
         else if(back&&back.state==='upright')activate(back,p.dir||event.dir,false,p.id);
-        if(p.type!=='normal'){p.state='flat';p.finish=time;}
+        if(p.type!=='normal'&&!dropOverEdge(p,p.dir||event.dir)){p.state='flat';p.finish=time;}
         continue;
       }
       if (event.kind==='normal-reverse-rest') {
@@ -509,7 +538,12 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
         if(p.type==='vanish'&&event.kind==='land'){p.state='vanished';continue;}
         if(event.kind==='carried-land'){
           p.carriedDrop=false;
-          if(!target){p.state='upright';p.dir=0;p.finish=null;continue;}
+          if(!target){
+            // A released riser climbs out of the ant's hands; a placed one
+            // stays upright.
+            if(p.type==='ascender'){p.finish=null;ascenders.begin(p,event.dir,true);continue;}
+            p.state='upright';p.dir=0;p.finish=null;continue;
+          }
           if(target.type!=='splitter'||target.state!=='upright'){
             crashed=true;p.state='crashed';p.crashPile=true;
             target.state='crashed';target.crashCovered=true;continue;
@@ -584,6 +618,9 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
         bridges.push({x,y:p.y,dir:event.dir});
         p.state='vanished';p.finish=time;
         catchDroppingOnBridge(x,p.y);
+        // A riser hanging right above the new bridge is knocked loose.
+        const above=stones.find(s=>s.type==='ascender'&&s.x===x&&s.y===p.y-1&&s.state==='ceiling');
+        if(above)ascenders.nudge(above,event.dir);
         continue;
       }
       hits.push({x,y:p.y,dir:event.dir,source:p});
@@ -617,6 +654,8 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
           for(let k=1;k<rows;k++)schedule('drop-tick',hit.source.id,hit.dir,time+k);
           schedule('land',hit.source.id,hit.dir,time+rows,{x:hit.x,y:landingY});
         }
+        // Same rule as a rolling tile: nothing below means it leaves the level.
+        else fallOut(hit.source,hit.dir);
       }
     }
     capture(impacts,effects);
@@ -631,6 +670,25 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
     addStone(piece){stones.push({...clone(piece),state:'upright',dir:0,finish:null,dropX:undefined,dropY:undefined});},
     dropCarriedStone(piece,{from,to,dir=1}){
       if(crashed||overflow||find(piece.id)||to.y<=from.y||!floor(to.x,to.y))return false;
+      // Dropping into a vertical riser: the two bodies meet in the gap and
+      // both fall to the landing platform as broken rubble.
+      const riser=stones.find(s=>s.type==='ascender'&&s.x===to.x&&(s.y===from.y||s.y===from.y-1)&&
+        s.state==='ceiling'&&!s.ceilingAngle);
+      if(riser){
+        stones.push({...clone(piece),x:to.x,y:to.y,state:'crashed',dir,finish:time,crashCovered:true});
+        riser.x=to.x;riser.y=to.y;riser.state='crashed';riser.crashPile=true;
+        riser.passiveRise=false;riser.finish=time;
+        crashed=true;
+        return true;
+      }
+      if(piece.type==='ascender'){
+        // A riser released over a ledge never lands: it starts climbing from
+        // the ant's height and hangs under the ceiling above.
+        const p={...clone(piece),x:to.x,y:from.y,state:'upright',dir:0,finish:null};
+        stones.push(p);
+        ascenders.begin(p,dir,true);
+        return true;
+      }
       stones.push({...clone(piece),x:to.x,y:from.y,state:'dropping',dir,finish:null,
         dropX:to.x,dropY:to.y,carriedDrop:true});
       schedule('carried-land',piece.id,dir,time+carriedDropTiming(to.y-from.y,timing).brickMs/timing.beat,{x:to.x,y:to.y});
