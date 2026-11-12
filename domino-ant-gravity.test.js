@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {antFallTarget} from './domino-ant-gravity.js';
-import {createChain} from './domino-engine.js';
+import {createChain,neighbors,pathTo} from './domino-engine.js';
 import {levels} from './domino-levels.js';
 import {dominoTiming} from './domino-timing.js';
 
@@ -42,4 +42,13 @@ test('A bridge or ladder supports the ant without creating an extra fall',()=>{
   assert.equal(antFallTarget(gap,{x:5,y:5},{bridges:[{x:5,y:5}]}),null);
   const ladder={...gap,ladders:[{x:5,from:3,to:7}]};
   assert.equal(antFallTarget(ladder,{x:5,y:5}),null);
+});
+
+test('Stepping off a ledge above a bridge lands on the bridge, not far below',()=>{
+  const level={width:20,height:13,rules:'dos',ladders:[],platforms:[[5,3,5],[9,7,8],[11,3,18]]};
+  const bridges=[{x:6,y:7,dir:1}];
+  assert.deepEqual(neighbors(level,{x:5,y:5},bridges,[]).filter(q=>q.x===6),[{x:6,y:7}]);
+  assert.equal(pathTo(level,{x:5,y:5},{x:6,y:7},bridges,[])?.[0].y,7);
+  // The same step without the bridge would fall four rows or more.
+  assert.deepEqual(neighbors(level,{x:5,y:5},[],[]).filter(q=>q.x===6),[{x:6,y:11}]);
 });

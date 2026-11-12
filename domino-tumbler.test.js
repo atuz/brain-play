@@ -34,13 +34,37 @@ for(const dir of [-1,1])for(const type of ['normal','trigger','tumbler','splitte
   const stopped=sim.trace.find(f=>f.pieces.find(p=>p.id==='a').state==='flat');
   assert.ok(stopped);
   assert.equal(stopped.pieces.find(p=>p.id==='a').x,6-dir);
-  assert.ok(sim.trace.filter(f=>f.time>=stopped.time).every(f=>f.pieces.find(p=>p.id==='a').state==='flat'));
+  // A roller waiting behind another roller follows it once that cell is free.
+  if(type==='tumbler')assert.ok(sim.trace.some(f=>f.time>stopped.time&&f.pieces.find(p=>p.id==='a').state==='rolling'),'follows the vacated cell');
+  else assert.ok(sim.trace.filter(f=>f.time>=stopped.time).every(f=>f.pieces.find(p=>p.id==='a').state==='flat'));
   assert.equal(stopped.pieces.find(p=>p.id==='b').state,type==='splitter'?'upright':type==='delay'?'waiting':type==='ascender'?'ascending':type==='tumbler'?'rolling':'falling');
 });
 
-for(const dir of [-1,1])for(const type of ['bridge','vanish','ascender'])test(`Tumbler continues through ${type}, direction ${dir}`,()=>{
+for(const dir of [-1,1])for(const type of ['vanish','ascender'])test(`Tumbler continues through ${type}, direction ${dir}`,()=>{
   const level={width:13,height:10,rules:'dos',platforms:[[5,0,12]],ladders:[]};
   const sim=simulate(level,[{id:'a',type:'tumbler',x:6-dir,y:5},{id:'b',type,x:6,y:5}],'a',dir);
+  assert.ok(sim.trace.some(f=>{const p=f.pieces.find(p=>p.id==='a');return p.x===6+dir&&p.state==='rolling';}));
+});
+
+for(const dir of [-1,1])test(`A bridge on solid ground topples like a normal tile, direction ${dir}`,()=>{
+  const level={width:13,height:10,rules:'dos',platforms:[[5,0,12]],ladders:[]};
+  const sim=simulate(level,[{id:'a',type:'tumbler',x:6-dir,y:5},{id:'b',type:'bridge',x:6,y:5}],'a',dir);
+  const roller=sim.trace.find(f=>f.pieces.find(p=>p.id==='a').state==='flat');
+  assert.ok(roller);
+  assert.equal(roller.pieces.find(p=>p.id==='a').x,6-dir,'the roller stops instead of passing through');
+  assert.equal(sim.bridges.length,0,'no bridge is built without a gap');
+  const bridgeStates=new Set(sim.trace.map(f=>f.pieces.find(p=>p.id==='b').state));
+  assert.ok(bridgeStates.has('falling'),'the bridge topples like an ordinary domino');
+  assert.ok(!bridgeStates.has('crashed'),'the bridge does not crash together with the roller');
+});
+
+for(const dir of [-1,1])test(`A bridge over a one-cell gap still lets the tumbler through, direction ${dir}`,()=>{
+  // The gap sits in the bridge's falling direction.
+  const near=dir===1?6:4,far=dir===1?8:6;
+  const level={width:13,height:10,rules:'dos',platforms:[[5,0,near],[5,far,12]],ladders:[]};
+  const sim=simulate(level,[{id:'a',type:'tumbler',x:6-dir,y:5},{id:'b',type:'bridge',x:6,y:5}],'a',dir);
+  assert.deepEqual(sim.bridges.map(b=>[b.x,b.y]),[[6+dir,5]],'the bridge spans the gap');
+  assert.equal(sim.pieces.find(p=>p.id==='b').state,'vanished');
   assert.ok(sim.trace.some(f=>{const p=f.pieces.find(p=>p.id==='a');return p.x===6+dir&&p.state==='rolling';}));
 });
 

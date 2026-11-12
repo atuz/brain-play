@@ -1,4 +1,4 @@
-import {at,antAt,clone,hasFloor,antNeighbors as neighbors} from './domino-engine.js?v=136';
+import {at,antAt,clone,hasFloor,antNeighbors as neighbors} from './domino-engine.js?v=177';
 
 export function failureSummary(result){
   return ({tie:'开门牌必须最后一个倒',

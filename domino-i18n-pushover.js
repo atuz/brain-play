@@ -193,11 +193,11 @@ export const pushoverEnglish = {
   '东方 97':'Japanese 97',
   '准备时间长，但难度不高；触发器后面可以放架桥砖，只要它倒下时补上缺口，触发器仍算最后倒。':'You must create a run of Tumblers that can fall off a platform!',
   '东方 98':'Japanese 98',
-  '准备最久的一关；几乎都要重摆，还要规划蚂蚁最短路线；链反应近一分钟；推完只需移开一个阻挡砖。':'You\'ve got some running to do!',
+  '最上面的梯子一开始只到一半，开门后才会伸到平台；开门后沿它爬上去出门。其余照旧：推完只需移开一个阻挡砖。':'The top ladder starts short; it reaches the platform only after the door opens. Then climb it to the exit. Otherwise unchanged: move one blocker after the push.',
   '东方 99':'Japanese 99',
   '推前几块、推后更多；新机制：只能上不能下的梯子。':'Use a drop! There is a way to make it work with a push, but I can\'t find it!',
   '东方 100':'Japanese 100',
   '全游戏最难；很多砖是误导性的，解法不用它们；下层要先用爆炸砖炸开地板才能进入。':'Tumbler, Normal, Bridger, Tumbler, put remaining Tumbler in place and push!',
   '希腊 101':'Greek 101',
-  '推之前要按顺序销毁很多砖；最后一次 Quavers。':'You\'re in the dark!',
+  '全黄/昏暗关：所有砖颜色都一样，只能靠行为辨认（阻挡砖推不倒、延迟砖延迟倒、分裂砖不能站到推动位、上升砖会升、触发器不能搬）。按图摆好再推，推完不用再动。':'You\'re in the dark!',
 };

@@ -2,17 +2,17 @@ import {tumblerDropMotion} from './domino-tumbler-motion.js';
 import {dominoContactAngle,tumblerRollTransform,tumblerRestTransform,advanceContactMotion} from './domino-contact-motion.js?v=5';
 import {dominoSessionOutcome,dominoSessionPieces,recordDominoCompletion} from './domino-outcome.js?v=4';
 import {useManualPush,carriedDropTiming} from './domino-actions.js';
-import {antFallTarget} from './domino-ant-gravity.js';
+import {antFallTarget} from './domino-ant-gravity.js?v=2';
 import {dominoTiming} from './domino-timing.js?v=11';
 import {createAscenderNode,renderAscender} from './domino-ascender-view.js?v=14';
 import {startGame} from './game-transition.js?v=48';
 import {gameRuntime} from './game-runtime.js?v=48';
 import {el,button,sound,finish,keyboardAndSwipe} from './shared.js?v=48';
 import {createMotion,motionEnabled} from './motion.js?v=48';
-import {t} from './i18n.js?v=65';
-import {levels,chapters} from './domino-levels.js?v=72';
-import {at,antAt,antPoint,antStepTarget,pushPieceAt,clone,hasFloor,antNeighbors as neighbors,antPathTo as pathTo,edit,initialPosition,simulate,createChain,validPosition,walkable,doorBlocked,entryCell,isLedgeDrop} from './domino-engine.js?v=168';
-import {failureSummary,nextGuide} from './domino-guide.js?v=51';
+import {t} from './i18n.js?v=67';
+import {levels,chapters} from './domino-levels.js?v=76';
+import {at,antAt,antPoint,antStepTarget,pushPieceAt,clone,hasFloor,antNeighbors as neighbors,antPathTo as pathTo,edit,initialPosition,simulate,createChain,validPosition,walkable,doorBlocked,entryCell,isLedgeDrop} from './domino-engine.js?v=177';
+import {failureSummary,nextGuide} from './domino-guide.js?v=52';
 import {mountCamera} from './domino-camera.js?v=51';
 import {antArtwork,createAntActor} from './domino-actor.js?v=59';
 import {sceneryForLevel,chapterSceneries} from './domino-scenery.js?v=53';
@@ -32,11 +32,16 @@ const types={
   ascender:['上升牌','被碰倒后竖着升到上方平台底部，再以顶部为支点按推倒方向翻倒。','↑'],
 };
 
+// A ladder may start shortened (closedTo) until the doorway opens.
+const ladderReady=state=>['exit','won'].includes(state?.phase);
+const withLadders=(level,open)=>level.ladders.some(l=>Number.isFinite(l.closedTo))
+  ?{...level,ladders:level.ladders.map(l=>Number.isFinite(l.closedTo)&&!open?{...l,to:l.closedTo}:l)}
+  :level;
 function fresh(index=0){return {version:1,level:index,position:initialPosition(levels[index]),history:[],attempt:null,phase:'arrange',death:false,walker:null,postHistory:[],fallen:[],structures:{bridges:[],holes:[]},triggerDown:false,completion:null,pushUsed:false};}
 export function restore(saved){
   try {
     if(saved?.version!==1||!Number.isInteger(saved.level)||!levels[saved.level])return fresh();
-    const level=levels[saved.level];
+    const level=withLadders(levels[saved.level],ladderReady(saved));
     const context={resolvedPieces:[...(saved.completion?.pieces||[]),...(saved.fallen||[])],bridges:saved.structures?.bridges||[],holes:saved.structures?.holes||[]};
     if(!validPosition(level,saved.position,context)||!Array.isArray(saved.history)||saved.history.length>100||!saved.history.every(p=>validPosition(level,p,context)))return fresh(saved.level);
     if(!['arrange','failed','exit','won'].includes(saved.phase))return fresh(saved.level);
@@ -65,7 +70,11 @@ export function restore(saved){
 export const pageInfo=ctx=>{const i=ctx.load()?.level;return {level:String(Number.isInteger(i)&&i>=0&&i<levels.length?i+1:1)};};
 export function mount(root,ctx){
   root.classList.add('play-domino');
-  let state=restore(ctx.load()),level=levels[state.level],result=null,frame=null,running=false,walking=false,facing=state.facing===-1?-1:1;
+  // Levels 1-40 are the rebuilt teaching set; the game now only offers the
+  // 101 original Pushover levels (HTML 41-141).
+  const firstVisible=40;
+  let state=restore(ctx.load()),level=withLadders(levels[state.level],ladderReady(state)),result=null,frame=null,running=false,walking=false,facing=state.facing===-1?-1:1;
+  const syncLadders=()=>{const next=withLadders(levels[state.level],ladderReady(state));if(next!==level)level=next;};
   if(state.phase==='exit'&&!result)result={won:true,bridges:state.structures?.bridges||[],holes:state.structures?.holes||[],pieces:level.rules==='dos'?dominoSessionPieces(state):[]};
   let runToken=0,walkToken=0,alive=true,notice='',guideActive=false,guide=null,intro=false,liveChain=null,chainWalker=null;
   const bridgesNow=()=>liveChain?liveChain.bridges:frame?.bridges??result?.bridges??state.structures?.bridges??[];
@@ -114,7 +123,6 @@ export function mount(root,ctx){
   function stop(){clearRolls();runToken++;walkToken++;actionToken++;walking=false;running=false;acting=false;intro=false;ledgeFlight=false;gravityFall=null;liveChain=null;chainWalker=null;transfer=null;queuedWalk=null;moveKind='idle';ant.style.transition='';actor?.cancel();for(const timer of timers)timer.cancel();timers.clear();}
   const levelNumber=el('span',{class:'dc-level-number'}),levelName=el('span',{class:'dc-level-name'}),progress=el('span',{class:'dc-progress',title:'已完成关卡'});
   const levelButton=el('button',{type:'button',class:'dc-level-button','aria-label':'选择骨牌关卡',onclick:chooseLevel},[levelNumber,levelName,el('span',{text:'⌄','aria-hidden':'true'})]);
-  const hint=button('提示',()=>{guideActive=true;notice='';render();const target=guide?.source||guide?.target;if(target)stageCamera.show(stagePoint(target));},'plain');
   const viewport=el('div',{class:'dc-viewport'});
   const world=el('div',{class:'dc-world','aria-label':'骨牌棋盘'});
   const scenery=el('div',{class:'dc-scenery','aria-hidden':'true'}),surfaces=el('div',{class:'dc-surfaces','aria-hidden':'true'}),tileLayer=el('div',{class:'dc-tiles'}),stones=el('div',{class:'dc-stones','aria-hidden':'true'});
@@ -135,7 +143,7 @@ export function mount(root,ctx){
   const undo=button('撤销',undoAction,'plain'),retry=button('回到摆放',retryAction,'plain');
   const restart=button('重开',()=>motion.confirmRestart(state.history.length>0||!!state.attempt||!!state.chainBackup,()=>loadLevel(state.level,'restart')),'plain');
   const status=el('p',{class:'dc-status','aria-live':'polite'});
-  const next=button('下一关',()=>loadLevel((state.level+1)%levels.length,'next'));
+  const next=button('下一关',()=>loadLevel(state.level>=levels.length-1?firstVisible:state.level+1,'next'));
   const celebration=el('section',{class:'dc-complete',hidden:'hidden'},[el('span',{text:'✓','aria-hidden':'true'}),el('h2',{text:'连锁完成！'}),next]);
   const legend=el('details',{class:'dc-legend'},[el('summary',{text:'骨牌图鉴'})]);
   const legendItems=el('div',{class:'dc-legend-items'});
@@ -144,7 +152,7 @@ export function mount(root,ctx){
     legendItems.append(el('div',{class:'dc-legend-item'},[sample,el('div',{},[el('strong',{text:name}),el('p',{text:description})])]));
   }
   legend.append(legendItems);
-  root.append(el('div',{class:'game-toolbar dc-toolbar'},[levelButton,el('div',{class:'dc-toolbar-right'},[progress,hint])]),viewport,readout,guideBox,
+  root.append(el('div',{class:'game-toolbar dc-toolbar'},[levelButton,el('div',{class:'dc-toolbar-right'},[progress])]),viewport,readout,guideBox,
     el('div',{class:'dc-controls'},[pad,actions]),el('div',{class:'dc-tools'},[undo,retry,restart]),status,celebration,legend);
   const stageCamera=mountCamera(viewport,world,{focusPoint:playerFocusPoint,onSwipe:step});
 
@@ -241,6 +249,9 @@ export function mount(root,ctx){
     world.classList.add('dc-reset');
     world.style.setProperty('--dc-cols',level.width);world.style.setProperty('--dc-rows',viewRows());
     world.style.aspectRatio=`${level.width}/${viewRows()}`;
+    // Level 101 is the original all-yellow/dim stage: every domino shares one
+    // look, so its type has to be recognised from behaviour alone.
+    root.classList.toggle('dc-mono',!!level.mono);
     const landscape=sceneryForLevel(level);
     viewport.dataset.scene=landscape.kind;
     viewport.dataset.evening=String(landscape.evening);
@@ -506,20 +517,21 @@ export function mount(root,ctx){
   function renderText(){
     const piece=currentPiece(),held=state.position.carrying;
     levelNumber.textContent=String(state.level+1).padStart(2,'0');levelName.textContent=t(level.name);
-    progress.textContent=`${Object.keys(records).filter(k=>levels[Number(k)]&&Number.isSafeInteger(records[k])).length}/${levels.length}`;
+    const visible=levels.map((_,i)=>i).filter(i=>i>=firstVisible);
+    progress.textContent=`${visible.filter(i=>Number.isSafeInteger(records[i])).length}/${visible.length}`;
     if(running){badge.textContent='↝';instruction.textContent=t(level.rules==='dos'&&!state.pushUsed?'连锁进行中…可以继续走或推。':'连锁进行中…');}
     else if(state.phase==='exit'){badge.textContent='↗';instruction.textContent=t('门开了，走进出口！');}
     else if(state.phase==='won'){badge.textContent='✓';instruction.textContent=t('连锁完成！');}
     else if(state.death){badge.textContent='☠';instruction.textContent=t('蚂蚁摔死了：落差太大，点“重开”重试。');}
     else if(state.phase==='failed'){badge.textContent='!';instruction.textContent=t(failureSummary(result));}
     else {
-      badge.textContent=held?types[held.type][2]||'▮':piece?types[piece.type][2]||'▮':'•';
-      instruction.textContent=t(held?'搬着骨牌，走到空位后放下。':piece?types[piece.type][1]:player().side===1?'间隙中，← → 只转身；↓ 回到正前方。':'左右走到正前方搬起；↑ 到旁边推倒，↓ 返回。');
+      const silent=!!level.mono;
+      badge.textContent=held?(silent?'▮':types[held.type][2]||'▮'):piece?(silent?'▮':types[piece.type][2]||'▮'):'•';
+      instruction.textContent=t(held?'搬着骨牌，走到空位后放下。':piece?(silent?'左右走到正前方搬起；↑ 到旁边推倒，↓ 返回。':types[piece.type][1]):player().side===1?'间隙中，← → 只转身；↓ 回到正前方。':'左右走到正前方搬起；↑ 到旁边推倒，↓ 返回。');
     }
     badge.className=`dc-badge dc-${held?.type||piece?.type||'normal'}`;
     readout.classList.toggle('dc-readout-error',!running&&state.phase==='failed');
     guideBox.hidden=!guide;guideTextNode.textContent=guide?guideText(guide):'';
-    hint.setAttribute('aria-pressed',String(guideActive));
     carry.classList.toggle('dc-guide-action',!!guide&&['take','take-buffer','place'].includes(guide.kind));
     retry.classList.toggle('dc-guide-action',guide?.kind==='retry');
     pushLeft.classList.toggle('dc-guide-action',guide?.kind==='push'&&guide.dir===-1);
@@ -536,7 +548,7 @@ export function mount(root,ctx){
       const ok=player().side===1&&['left','right'].includes(cell.dataset.direction)||!!stepTarget(cell.dataset.direction);
       cell.disabled=acting||!!gravityFall||(running&&level.rules!=='dos')||state.phase==='failed'||state.phase==='won'||!ok;
     }
-    undo.disabled=!(state.history.length||state.attempt||state.chainBackup);retry.disabled=!state.attempt&&!state.chainBackup;hint.disabled=acting||running||walking||state.phase==='won';levelButton.disabled=acting||running;
+    undo.disabled=!(state.history.length||state.attempt||state.chainBackup);retry.disabled=!state.attempt&&!state.chainBackup;levelButton.disabled=acting||running;
     status.textContent=t(notice);status.classList.toggle('dc-error',state.phase==='failed');
     celebration.hidden=state.phase!=='won';
     next.textContent=t(state.level===levels.length-1?'再玩一轮':'下一关');
@@ -854,7 +866,7 @@ export function mount(root,ctx){
     else if(['crash','overflow','early','tie','dead'].includes(outcome.reason)){state.phase='failed';result={...snap,...outcome,pieces:state.completion.pieces};}
     else if(outcome.reason==='carrying'){state.phase='arrange';result=null;notice='搬着骨牌，走到空位后放下。';}
     else {state.phase='arrange';result=null;notice=state.pushUsed?'连锁结束：还有骨牌没倒，可以继续走、搬或抱牌跳下。':'连锁结束：还有骨牌没倒，可以继续走、搬或推。';}
-    save();render();if(outcome.won)sound(true);
+    syncLadders();save();render();if(outcome.won)sound(true);
   }
   function exitReady(){
     return !state.death&&!state.position.carrying&&(level.rules==='dos'?dominoSessionOutcome(level,state).won:!!result?.won);
@@ -864,6 +876,7 @@ export function mount(root,ctx){
     const outcome=dominoSessionOutcome(level,state);
     if(outcome.won){state.phase='exit';result={...state.completion,...outcome,pieces:dominoSessionPieces(state),bridges:bridgesNow(),holes:holesNow()};}
     else if(state.phase==='exit'){state.phase='arrange';result=null;}
+    syncLadders();
   }
   function retryAction(notify=true){
     if(!state.attempt&&!state.chainBackup)return;stop();
@@ -875,7 +888,7 @@ export function mount(root,ctx){
         state.pushUsed=typeof b.pushUsed==='boolean'?b.pushUsed:!!b.completion;
         state.chainBackup=null;
       }
-      state.attempt=null;state.walker=null;state.postHistory=[];state.phase='arrange';state.death=false;result=null;frame=null;notice='';save();render();
+      state.attempt=null;state.walker=null;state.postHistory=[];state.phase='arrange';state.death=false;result=null;frame=null;notice='';syncLadders();save();render();
     };
     return notify?startGame(ctx,'restart',reset,{level:String(state.level+1)}):reset();
   }
@@ -885,18 +898,19 @@ export function mount(root,ctx){
       if(!running&&state.postHistory.length){stop();state.walker=state.postHistory.pop();state.phase='exit';notice='';save();render();return;}
       retryAction(false);return;
     }
-    if(state.history.length){stop();state.position=state.history.pop();state.phase='arrange';state.death=false;ant.dataset.dead='false';notice='';refreshCompletedDoor();save();render();}
+    if(state.history.length){stop();state.position=state.history.pop();state.phase='arrange';state.death=false;ant.dataset.dead='false';notice='';refreshCompletedDoor();syncLadders();save();render();}
   }
-  function loadLevel(index,reason='select'){stop();return startGame(ctx,reason,()=>{state=fresh(index);level=levels[index];result=null;frame=null;notice='';guideActive=false;facing=1;buildWorld();save();render();settleStage();void playIntro();void motion.play(viewport,[{opacity:.25,transform:'translateY(6px)'},{opacity:1,transform:'translateY(0)'}],280);},{level:String(index+1)});}
+  function loadLevel(index,reason='select'){stop();return startGame(ctx,reason,()=>{state=fresh(index);level=withLadders(levels[index],false);result=null;frame=null;notice='';guideActive=false;facing=1;buildWorld();save();render();settleStage();void playIntro();void motion.play(viewport,[{opacity:.25,transform:'translateY(6px)'},{opacity:1,transform:'translateY(0)'}],280);},{level:String(index+1)});}
   function chooseLevel(){
     const modal=el('dialog',{class:'app-dialog dc-level-dialog','aria-label':'选择骨牌关卡'});
     const close=()=>modal.close();
     modal.append(el('div',{class:'dialog-header'},[el('h2',{text:'关卡'}),el('button',{class:'app-icon',type:'button',text:'×','aria-label':'关闭',onclick:close})]));
     chapters.forEach((chapter,chapterIndex)=>{
       const grid=el('div',{class:'dc-level-grid'});
-      levels.forEach((item,index)=>{if(item.chapter!==chapterIndex)return;grid.append(el('button',{type:'button',class:`dc-level-option${index===state.level?' active':''}`,'aria-label':`${t(`第 ${index+1} 关`)} ${t(item.name)}`,onclick:()=>{
+      levels.forEach((item,index)=>{if(index<firstVisible||item.chapter!==chapterIndex)return;grid.append(el('button',{type:'button',class:`dc-level-option${index===state.level?' active':''}`,'aria-label':`${t(`第 ${index+1} 关`)} ${t(item.name)}`,onclick:()=>{
         close();motion.confirmRestart(state.phase!=='won'&&(state.history.length>0||!!state.attempt),()=>loadLevel(index));
-      }},[el('span',{text:`${index+1}${Number.isSafeInteger(records[index])?' ✓':''}`}),el('small',{text:item.name}),...(chapterIndex?[el('small',{class:'dc-level-size',text:`${item.width}×${item.height}`})]:[])]));});
+      }},[el('span',{text:`${index+1}${Number.isSafeInteger(records[index])?' ✓':''}`})]));});
+      if(!grid.childElementCount)return;
       modal.append(el('h3',{class:'dc-chapter-title'},[
         el('span',{text:chapter}),el('span',{class:'dc-chapter-scene',text:chapterSceneries[chapterIndex].label}),
       ]),grid);

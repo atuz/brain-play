@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {levels} from './domino-levels.js';
-import {at,clone,edit,initialPosition,pathTo,antPathTo,pushPieceAt,simulate,validPosition,doorBlocked,entryCell} from './domino-engine.js';
+import {at,clone,edit,initialPosition,pathTo,antPathTo,neighbors,pushPieceAt,simulate,validPosition,doorBlocked,entryCell} from './domino-engine.js';
 import {restore} from './domino.js';
 import {dominoEnglish} from './domino-i18n.js';
 import {translate} from './i18n.js';
@@ -182,4 +182,26 @@ test('Guidance solves every original puzzle and legal scrambled layouts, includi
       followGuide(level,position);
     }
   }
+});
+
+test('Level 98: the top ladder only reaches the platform after the door opens',()=>{
+  const level=levels.find(l=>l.passcode==='09215');
+  const short={...level,ladders:level.ladders.map(l=>Number.isFinite(l.closedTo)?{...l,to:l.closedTo}:l)};
+  assert.equal(short.ladders.find(l=>l.x===10).to,3);
+  assert.deepEqual(neighbors(short,{x:10,y:6}).filter(p=>p.x===10&&p.y===5),[]);
+  assert.equal(pathTo(short,{x:10,y:6},{x:10,y:1}),null);
+  assert.ok(neighbors(level,{x:10,y:6}).some(p=>p.x===10&&p.y===5));
+  assert.ok(pathTo(level,{x:10,y:6},{x:10,y:1}));
+});
+
+test('Level 101 is the original all-yellow stage with the dark hint',()=>{
+  const level=levels[140];
+  assert.equal(level.name,'希腊 101');
+  assert.equal(level.mono,true);
+  assert.equal(level.chapter,15,'the finale lives in the last chapter, so it is listed last');
+  assert.deepEqual(levels.filter(l=>l.chapter===15).map(l=>l.name),['希腊 101']);
+  assert.ok(level.hint.startsWith('全黄/昏暗关：所有砖颜色都一样'));
+  assert.equal(translate(level.hint,'en'),"You're in the dark!");
+  assert.equal(level.pieces.length,21);
+  assert.ok(new Set(level.pieces.map(p=>p.type)).size>1,'many types hide behind the same look');
 });

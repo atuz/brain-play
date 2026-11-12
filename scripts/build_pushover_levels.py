@@ -218,7 +218,9 @@ def main():
             "dos": dos,
             "source": src["level"],
             "name": f'{THEME_ZH.get(theme, theme)} {dos:02d}',
-            "chapter": THEME_CHAPTER.get(theme, 6),
+            # The remake's extra final level is the dark stage and lives in
+            # the last chapter so it also appears last in the level picker.
+            "chapter": 15 if dos == 101 else THEME_CHAPTER.get(theme, 6),
             "theme": theme,
             "passcode": patches.get(dos, ""),
             "dosMode": True,

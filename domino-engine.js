@@ -2,7 +2,7 @@ import {baseDominoTiming,eventBeatDuration} from './domino-timing.js?v=11';
 import {dominoContactPhase,resistsDomino,reboundDuration} from './domino-contact-motion.js?v=2';
 import {dominoOutcome} from './domino-outcome.js?v=4';
 import {carriedDropTiming} from './domino-actions.js';
-import {createAscenderMechanic} from './domino-ascender-engine.js?v=18';
+import {createAscenderMechanic} from './domino-ascender-engine.js?v=20';
 // Independent, discrete JavaScript rules for the original Brain Play domino puzzles.
 // No Domino-Chain/Pushover program, graphics, sounds or levels are included.
 export const TYPES = ['normal', 'stopper', 'tumbler', 'delay', 'splitter', 'exploder', 'bridge', 'vanish', 'trigger', 'ascender'];
@@ -74,8 +74,10 @@ export function neighbors(level, p, bridges = [], holes = []) {
       if (out.some(q => (q.x-p.x)*dx > 0 && Math.abs(q.y-p.y) <= 1)) continue;
       // Step off the edge, then fall vertically. A recessed lower platform
       // cannot be reached by drifting back underneath the current platform.
-      const landing = level.platforms
-        .filter(([y, a, b]) => y > p.y && x >= a && x <= b && !holes.some(h => h.x === x && h.y === y))
+      // A bridge is a floor too: stepping off a ledge above one must land on
+      // the bridge instead of falling past it to a lower platform.
+      const landing = [...level.platforms, ...bridges.map(b => [b.y, b.x, b.x])]
+        .filter(([y, a, b]) => y > p.y && x >= a && x <= b && hasFloor(level, x, y, bridges, holes))
         .sort((a, b) => a[0] - b[0])[0];
       if (landing && !out.some(q => q.x === x && q.y === landing[0])) out.push({x, y: landing[0]});
     }
@@ -233,6 +235,18 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
     fallOut(p,dir);
     return true;
   };
+  // A bridge that is toppling after a drop must still span a one-cell gap.
+  function spanBridge(piece,dir){
+    const x=piece.x+dir;
+    if(piece.type!=='bridge'||piece.state==='vanished'||floor(x,piece.y)||
+      x<0||x>=level.width||!floor(x+dir,piece.y))return false;
+    bridges.push({x,y:piece.y,dir});
+    piece.state='vanished';piece.finish=time;
+    catchDroppingOnBridge(x,piece.y);
+    const above=stones.find(s=>s.type==='ascender'&&s.x===x&&s.y===piece.y-1&&s.state==='ceiling');
+    if(above)ascenders.nudge(above,dir);
+    return true;
+  }
   function finishFall(piece,fromLanding=false){
     piece.state='flat';piece.finish=time;
     if(fromLanding){
@@ -293,20 +307,27 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
     return stones.find(s=>s.id!==p.id&&s.y===y&&s.state!=='vanished'&&
       (s.x===x||(s.state==='flat'&&s.x+(s.dir||0)===x)));
   };
-  function queueRoll(p,dir){
+  // A bridge only lets a roller pass while it will actually span a gap; on
+  // solid ground it is an ordinary domino that has to be knocked over.
+  const bridgeSpans=(p,dir)=>{const x=p.x+dir;return !floor(x,p.y)&&x+dir>=0&&x+dir<level.width&&floor(x+dir,p.y);};
+  function queueRoll(p,dir,resume=false){
     const x=p.x+dir,target=rollTarget(p,dir,x);
     const resisting=resistsDomino(target)||target?.type==='delay'&&target.state==='upright';
-    const solid=target&&!['exploder','bridge','vanish','ascender'].includes(target.type);
+    const passThrough=target&&(['exploder','vanish','ascender'].includes(target.type)||
+      target.type==='bridge'&&target.state==='upright'&&bridgeSpans(target,dir));
+    const solid=target&&!passThrough;
     const contact=resisting||solid;
     const upright=(p.x-p.rollOriginX)*2*p.rollBaseDir;
     const relativeDir=dir*p.rollBaseDir,rollMs=timing.roll??timing.beat;
-    p.rollFrom=p.rollPhase;
+    // A resumed roller first lies flat on the vacated cell (its support is
+    // gone), then rolls on from there. It must never swing back up to the old
+    // pressed angle.
+    p.rollFrom=resume?upright+relativeDir:p.rollPhase;
     p.rollTo=upright+relativeDir*(contact?dominoContactPhase:!floor(x,p.y)?1:2);
-    // Preserve the current contact angle when changing direction. Returning
-    // to upright is part of the next travel, never a reset to a new pose.
-    const returnMs=reboundDuration(p.rollFrom-upright,timing);
-    p.rollReturnDuration=returnMs;p.rollVia=upright;
-    p.rollDuration=contact?returnMs+reboundDuration(p.rollTo-upright,timing):rollMs+returnMs;
+    const returnMs=resume?0:reboundDuration(p.rollFrom-upright,timing);
+    p.rollReturnDuration=returnMs;p.rollVia=resume?p.rollFrom:upright;
+    p.rollDuration=contact?returnMs+reboundDuration(p.rollTo-upright,timing)
+      :resume?Math.max(1,rollMs*Math.abs(p.rollTo-p.rollFrom)/2):rollMs+returnMs;
     p.rollSerial=++rollSerial;
     if(target?.type==='ascender'&&target.state==='upright'){
       // Touch the ascender during the existing roll, without shortening or
@@ -316,9 +337,12 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
     }
     schedule('roll',p.id,dir,time+p.rollDuration/rollMs);
   }
-  function beginRoll(p,dir){
-    p.dir=dir;p.state='rolling';p.rollOriginX=p.x;p.rollOriginY=p.y;
-    p.rollBaseDir=dir;p.rollPhase=0;queueRoll(p,dir);
+  function beginRoll(p,dir,resume=false){
+    p.dir=dir;p.state='rolling';p.resumeRoll=0;
+    // A resumed roller keeps its original pivot and the pose it was pressed
+    // in, so it continues rolling from that angle instead of snapping upright.
+    if(!resume){p.rollOriginX=p.x;p.rollOriginY=p.y;p.rollBaseDir=dir;p.rollPhase=0;}
+    queueRoll(p,dir,resume);
   }
   function rebound(source,target,dir,effects){
     if(!source){effects.push({kind:'rebound',targetId:target.id});return;}
@@ -360,7 +384,9 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
     }
     piece.dir=dir;
     if(piece.type==='delay'){
-      piece.state='waiting';schedule('delay-start',piece.id,dir,time+1);return;
+      piece.state='waiting';
+      piece.delayStart=time+eventBeatDuration('delay-start','delay',timing)/timing.beat;
+      schedule('delay-start',piece.id,dir,time+1);return;
     }
     piece.state='falling';schedule('settle',piece.id,dir,time+1);
   };
@@ -459,7 +485,7 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
           if(target.type==='splitter'){
             // A side contact cannot activate a splitter; the tumbler stops.
             if(level.rules!=='dos'){crashed=true;target.state='crashed';p.state='crashed';}
-            else {p.state='flat';p.finish=time;}
+            else {p.state='flat';p.finish=time;p.resumeRoll=event.dir;}
             continue;
           }
           if(target.state==='upright')activate(target,event.dir,false,p.id);
@@ -470,10 +496,13 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
             rebound(p,target,event.dir,effects);
             continue;
           }
-          if(target.type==='ascender'||level.rules==='dos'&&['exploder','bridge','vanish'].includes(target.type)){
+          if(target.type==='ascender'||level.rules==='dos'&&['exploder','vanish'].includes(target.type)||
+            level.rules==='dos'&&target.type==='bridge'&&target.state==='upright'&&bridgeSpans(target,event.dir)){
             p.x=x;queueRoll(p,event.dir);continue;
           }
-          p.state='flat';p.finish=time;continue;
+          // Stopped against a body: remember the direction so the roller can
+          // continue once that body has moved away.
+          p.state='flat';p.finish=time;p.resumeRoll=event.dir;continue;
         }
         if(!floor(x,p.y)){
           const landingY=landingRow(x,p.y);
@@ -501,7 +530,7 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
           }
           else if(next.type==='splitter'){crashed=true;next.state='crashed';p.state='crashed';}
           else {if(next.state==='upright')activate(next,dir,false,p.id);finishFall(p,true);}
-        } else finishFall(p,true);
+        } else if(!spanBridge(p,dir)) finishFall(p,true);
         continue;
       }
       if (event.kind==='reverse-turn') {
@@ -612,17 +641,9 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
         for(const dir of [-1,1]) hits.push({x:p.x+dir,y:p.y,dir});
         continue;
       }
-      let x=p.x+event.dir;
-      if (p.type==='bridge'&&!floor(x,p.y)&&x>=0&&x<level.width&&floor(x+event.dir,p.y)) {
-        // The bridge spans the gap, then the bridge domino vanishes.
-        bridges.push({x,y:p.y,dir:event.dir});
-        p.state='vanished';p.finish=time;
-        catchDroppingOnBridge(x,p.y);
-        // A riser hanging right above the new bridge is knocked loose.
-        const above=stones.find(s=>s.type==='ascender'&&s.x===x&&s.y===p.y-1&&s.state==='ceiling');
-        if(above)ascenders.nudge(above,event.dir);
-        continue;
-      }
+      // The bridge spans the gap, then the bridge domino vanishes.
+      if(spanBridge(p,event.dir))continue;
+      const x=p.x+event.dir;
       hits.push({x,y:p.y,dir:event.dir,source:p});
     }
     // First finish every domino for this tick, then deliver all impacts.
@@ -657,6 +678,18 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
         // Same rule as a rolling tile: nothing below means it leaves the level.
         else fallOut(hit.source,hit.dir);
       }
+    }
+    // A queue of rollers unravels one after another: a stopped roller rolls
+    // again as soon as the cell it was pressing against is free.
+    for(const p of stones){
+      if(p.type!=='tumbler'||p.state!=='flat'||!p.resumeRoll)continue;
+      const dir=p.resumeRoll,x=p.x+dir;
+      if(!floor(x,p.y))continue;
+      const blocked=stones.some(s=>s.id!==p.id&&s.y===p.y&&s.state!=='vanished'&&
+        (s.x===x||(s.state==='flat'&&s.x+(s.dir||0)===x)));
+      if(blocked)continue;
+      p.resumeRoll=0;
+      beginRoll(p,dir,true);
     }
     capture(impacts,effects);
     collisionEffects=null;

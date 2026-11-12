@@ -4,9 +4,20 @@ import {ceilingContactAngle} from './domino-ascender-contact.js';
 import {resistsDomino} from './domino-contact-motion.js?v=2';
 
 export function createAscenderMechanic({level,stones,floor,schedule,activate,getTime,timing=baseDominoTiming}) {
-  const resists=piece=>piece&&(resistsDomino(piece)||piece.type==='delay'&&piece.state==='upright');
+  // A delay that is about to start moving no longer blocks: the last hit in
+  // the original game lands just as its timer expires, so the riser lies flat.
+  const delayGrace=0.1;
+  const resists=piece=>{
+    if(!piece)return false;
+    if(piece.type==='delay'&&piece.state==='waiting'&&Number.isFinite(piece.delayStart)&&
+      getTime()>=piece.delayStart-delayGrace)return false;
+    return resistsDomino(piece)||piece.type==='delay'&&piece.state==='upright';
+  };
   const gapTurn=timing.ascenderGapTurn??timing.quarter;
-  const swingDuration=(piece,dir)=>floor(piece.x+dir,piece.y-1)?timing.quarter:gapTurn;
+  // Half-row stair treads count as ceilings too: the body must not pass
+  // through a short step while rising.
+  const ceilingAbove=(piece,y)=>floor(piece.x,y-1)||floor(piece.x,y-0.5);
+  const swingDuration=(piece,dir)=>floor(piece.x+dir,piece.y-1)||floor(piece.x+dir,piece.y-0.5)?timing.quarter:gapTurn;
   function rebound(piece,target,dir,time,effects){
     effects.push({kind:'rebound',sourceId:piece.id,targetId:target.id});
     piece.finish=null;piece.state='ceiling-return';
@@ -16,7 +27,7 @@ export function createAscenderMechanic({level,stones,floor,schedule,activate,get
     // Once horizontal, the centre of the body lies in the next cell.
     // A ceiling over the old upright cell alone cannot hold it there.
     const nextX=piece.x+dir;
-    if(!floor(nextX,piece.y-1)){
+    if(!floor(nextX,piece.y-1)&&!floor(nextX,piece.y-0.5)){
       piece.finish=null;piece.state='ceiling-escape';
       // Continue through horizontal, rotating another quarter-turn around
       // the outer corner before re-anchoring the now vertical body.
@@ -64,7 +75,7 @@ export function createAscenderMechanic({level,stones,floor,schedule,activate,get
       // above is a platform its top touches the underside; it then topples
       // in the push direction and stays flat under the ceiling.
       const above=p.y-1;
-      const ceiling=above>=0&&floor(p.x,above);
+      const ceiling=above>=0&&ceilingAbove(p,p.y);
       if(above<0){p.state='vanished';p.finish=time;return true;}
       if(ceiling){
         if(p.passiveRise){

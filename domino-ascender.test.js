@@ -222,3 +222,34 @@ test('A bridge spanning under a hanging ascender knocks it loose',()=>{
   assert.ok(Number.isFinite(r.finish));
   assert.equal(chain.stones.find(p=>p.id==='n').state,'flat','the neighbour still falls');
 });
+
+test('A riser stops under a half-row stair tread instead of passing through',()=>{
+  const level={width:10,height:10,rules:'dos',ladders:[],platforms:[[6.5,5,5]]};
+  const chain=createChain(level,[{id:'a',type:'ascender',x:5,y:7}],{},dominoTiming);
+  chain.activateStone('a',1);
+  let crossed=false,sawCeiling=false;
+  while(!chain.done()){
+    chain.step();const p=chain.stones[0];
+    if(p.x===5&&p.y<7)crossed=true;
+    if(p.state==='ceiling'&&p.x===5&&p.y===7)sawCeiling=true;
+  }
+  assert.equal(crossed,false,'the body must not cross the half tread');
+  assert.equal(sawCeiling,true,'it stops under the tread first');
+});
+
+test('A delay in the last moment before its fall no longer blocks the riser',()=>{
+  const level=levels.find(l=>l.passcode==='09215');
+  const chain=createChain(level,level.pieces,{},dominoTiming);
+  chain.activateStone('p21',1);
+  let delayStart=null,lateRebound=false;
+  while(!chain.done()){
+    chain.step();const s=chain.snapshot();const d=s.pieces.find(p=>p.id==='p12');
+    if(Number.isFinite(d?.delayStart))delayStart=d.delayStart;
+    for(const e of chain.trace.at(-1).effects||[])
+      if(e.kind==='rebound'&&e.targetId==='p12'&&Number.isFinite(delayStart)&&s.time>delayStart-0.1)lateRebound=true;
+  }
+  assert.equal(lateRebound,false,'the riser does not bounce off a delay that is already leaving');
+  const a=chain.stones.find(p=>p.id==='p21');
+  assert.equal(a.state,'ceiling');
+  assert.ok(Number.isFinite(a.finish));
+});
