@@ -22,3 +22,17 @@ test('A bridge dropped onto solid ground simply lies flat',()=>{
   assert.equal(sim.pieces.find(p=>p.id==='b').state,'flat');
   assert.equal(sim.pieces.find(p=>p.id==='b').y,9);
 });
+
+// A bridge knocked into a stopper swings back the other way. The return swing
+// must still connect a one-cell gap instead of just lying down or dropping.
+for(const dir of [-1,1])test(`A rebounding bridge spans the gap behind it, direction ${dir}`,()=>{
+  const level=dir===1
+    ?{width:8,height:10,rules:'dos',ladders:[],platforms:[[5,0,0],[5,2,5]]}
+    :{width:10,height:10,rules:'dos',ladders:[],platforms:[[5,2,5],[5,7,9]]};
+  const pieces=dir===1
+    ?[{id:'b',type:'bridge',x:2,y:5},{id:'s',type:'stopper',x:3,y:5}]
+    :[{id:'b',type:'bridge',x:5,y:5},{id:'s',type:'stopper',x:4,y:5}];
+  const sim=simulate(level,pieces,'b',dir);
+  assert.deepEqual(sim.bridges.map(b=>[b.x,b.y]),[[dir===1?1:6,5]],'the return swing bridges the gap');
+  assert.equal(sim.pieces.find(p=>p.id==='b').state,'vanished');
+});

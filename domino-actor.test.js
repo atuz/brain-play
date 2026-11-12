@@ -10,7 +10,7 @@ function fixture(t,reduced=false){
   const parts=new Map();
   const node={dataset:{},style:{setProperty(){}},querySelector(selector){
     if(!parts.has(selector))parts.set(selector,{
-      dataset:{},setAttribute(){},ownerSVGElement:{getScreenCTM:()=>null},
+      dataset:{},style:{},setAttribute(){},ownerSVGElement:{getScreenCTM:()=>null},
       animate(){
         let resolve,reject;
         const animation={finished:new Promise((ok,no)=>{resolve=ok;reject=no;}),finish:()=>resolve(),cancel:()=>reject(new Error('cancelled'))};

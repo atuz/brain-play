@@ -548,10 +548,14 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
           hits.push({x:p.x+event.dir,y:p.y,dir:event.dir,source:p});
           continue;
         }
-        const back=stones.find(s=>s.id!==p.id&&s.x===p.x+(p.dir||event.dir)&&s.y===p.y&&s.state!=='vanished');
+        const dir=p.dir||event.dir;
+        const back=stones.find(s=>s.id!==p.id&&s.x===p.x+dir&&s.y===p.y&&s.state!=='vanished');
         if(back&&back.type==='stopper')effects.push({kind:'rebound',sourceId:p.id,targetId:back.id});
-        else if(back&&back.state==='upright')activate(back,p.dir||event.dir,false,p.id);
-        if(p.type!=='normal'&&!dropOverEdge(p,p.dir||event.dir)){p.state='flat';p.finish=time;}
+        else if(back&&back.state==='upright')activate(back,dir,false,p.id);
+        // A bridge that rebounded off a stopper must still connect a gap on
+        // the return swing instead of simply lying down (or dropping away).
+        if(spanBridge(p,dir))continue;
+        if(p.type!=='normal'&&!dropOverEdge(p,dir)){p.state='flat';p.finish=time;}
         continue;
       }
       if (event.kind==='normal-reverse-rest') {

@@ -2,17 +2,17 @@ import {tumblerDropMotion} from './domino-tumbler-motion.js';
 import {dominoContactAngle,tumblerRollTransform,tumblerRestTransform,advanceContactMotion} from './domino-contact-motion.js?v=5';
 import {dominoSessionOutcome,dominoSessionPieces,recordDominoCompletion} from './domino-outcome.js?v=4';
 import {useManualPush,carriedDropTiming} from './domino-actions.js';
-import {antFallTarget} from './domino-ant-gravity.js?v=2';
+import {antFallTarget} from './domino-ant-gravity.js?v=4';
 import {dominoTiming} from './domino-timing.js?v=11';
 import {createAscenderNode,renderAscender} from './domino-ascender-view.js?v=14';
 import {startGame} from './game-transition.js?v=48';
 import {gameRuntime} from './game-runtime.js?v=48';
 import {el,button,sound,finish,keyboardAndSwipe} from './shared.js?v=48';
 import {createMotion,motionEnabled} from './motion.js?v=48';
-import {t} from './i18n.js?v=67';
+import {t} from './i18n.js?v=69';
 import {levels,chapters} from './domino-levels.js?v=76';
-import {at,antAt,antPoint,antStepTarget,pushPieceAt,clone,hasFloor,antNeighbors as neighbors,antPathTo as pathTo,edit,initialPosition,simulate,createChain,validPosition,walkable,doorBlocked,entryCell,isLedgeDrop} from './domino-engine.js?v=177';
-import {failureSummary,nextGuide} from './domino-guide.js?v=52';
+import {at,antAt,antPoint,antStepTarget,pushPieceAt,clone,hasFloor,antNeighbors as neighbors,antPathTo as pathTo,edit,initialPosition,simulate,createChain,validPosition,walkable,doorBlocked,entryCell,isLedgeDrop} from './domino-engine.js?v=179';
+import {failureSummary,nextGuide} from './domino-guide.js?v=54';
 import {mountCamera} from './domino-camera.js?v=51';
 import {antArtwork,createAntActor} from './domino-actor.js?v=59';
 import {sceneryForLevel,chapterSceneries} from './domino-scenery.js?v=53';
@@ -138,7 +138,7 @@ export function mount(root,ctx){
   const pad=el('div',{class:'direction-pad dc-pad','aria-label':'方向控制'});
   for(const [dir,label,arrow]of [['up','向上','↑'],['left','向左','←'],['down','向下','↓'],['right','向右','→']])pad.append(el('button',{type:'button',text:arrow,'aria-label':label,'data-direction':dir,onclick:()=>step(dir)}));
   const carry=button('搬起',carryOrPlace,'dc-carry');
-  const pushLeft=button('← 推倒',()=>push(-1),'dc-push'),pushRight=button('推倒 →',()=>push(1),'dc-push');
+  const pushLeft=button('← 推倒',()=>pushFromFront(-1),'dc-push'),pushRight=button('推倒 →',()=>pushFromFront(1),'dc-push');
   const actions=el('div',{class:'dc-action-pad'},[carry,el('div',{class:'dc-push-row'},[pushLeft,pushRight])]);
   const undo=button('撤销',undoAction,'plain'),retry=button('回到摆放',retryAction,'plain');
   const restart=button('重开',()=>motion.confirmRestart(state.history.length>0||!!state.attempt||!!state.chainBackup,()=>loadLevel(state.level,'restart')),'plain');
@@ -161,6 +161,29 @@ export function mount(root,ctx){
   function playingPieces(){return frame?.pieces||result?.pieces||state.position.pieces;}
   function currentPiece(){if(player().side===1)return null;if(liveChain){const p=player();return liveChain.stones.find(q=>q.x===p.x&&q.y===p.y&&q.state==='upright');}return !state.attempt&&state.position.pieces.find(p=>at(p,state.position.player));}
   function pushPiece(dir){return !state.attempt&&pushPieceAt(liveChain?liveChain.stones:state.position.pieces,player(),dir);}
+  // The push buttons also work while the ant stands in front of a domino.
+  // Clicking one walks the ant into the gap beside that domino first.
+  function pushPlan(dir){
+    if(state.attempt)return null;
+    const pieces=liveChain?liveChain.stones:state.position.pieces,p=player();
+    if(p.side===1){
+      const piece=pushPieceAt(pieces,p,dir);
+      return piece?{piece,gap:null}:null;
+    }
+    const pushable=q=>q&&(q.state===undefined||q.state==='upright')&&!['stopper','splitter'].includes(q.type);
+    const atCell=x=>pieces.find(q=>q.x===x&&q.y===p.y&&q.state!=='vanished');
+    // Prefer the domino the ant is standing in front of, then the one next
+    // to it in the push direction.
+    const candidates=dir===1
+      ?[{gap:{x:p.x-1,y:p.y,side:1},piece:atCell(p.x)},{gap:{x:p.x,y:p.y,side:1},piece:atCell(p.x+1)}]
+      :[{gap:{x:p.x,y:p.y,side:1},piece:atCell(p.x)},{gap:{x:p.x-1,y:p.y,side:1},piece:atCell(p.x-1)}];
+    for(const candidate of candidates){
+      if(!pushable(candidate.piece))continue;
+      if(!walkable(level,candidate.gap,bridgesNow(),holesNow()))continue;
+      return candidate;
+    }
+    return null;
+  }
   const viewTop=()=>Number.isInteger(level.viewTop)?level.viewTop:(level.ladders.length?0:3),viewRows=()=>level.height-viewTop();
   function stagePoint(p){return {x:(p.x+.5)*40,y:(p.y-viewTop()+.5)*40};}
   function playerFocusPoint(){const p=stagePoint(antPoint(player()));return {...p,y:p.y-18};}
@@ -527,7 +550,7 @@ export function mount(root,ctx){
     else {
       const silent=!!level.mono;
       badge.textContent=held?(silent?'▮':types[held.type][2]||'▮'):piece?(silent?'▮':types[piece.type][2]||'▮'):'•';
-      instruction.textContent=t(held?'搬着骨牌，走到空位后放下。':piece?(silent?'左右走到正前方搬起；↑ 到旁边推倒，↓ 返回。':types[piece.type][1]):player().side===1?'间隙中，← → 只转身；↓ 回到正前方。':'左右走到正前方搬起；↑ 到旁边推倒，↓ 返回。');
+      instruction.textContent=t(held?'搬着骨牌，走到空位后放下。':piece?(silent?'左右走到正前方搬起；点“推倒”会自动走到旁边，推完再走回来。':types[piece.type][1]):player().side===1?'间隙中，← → 只转身；↓ 回到正前方。':'左右走到正前方搬起；点“推倒”会自动走到旁边，推完再走回来。');
     }
     badge.className=`dc-badge dc-${held?.type||piece?.type||'normal'}`;
     readout.classList.toggle('dc-readout-error',!running&&state.phase==='failed');
@@ -540,9 +563,9 @@ export function mount(root,ctx){
     carry.disabled=acting||!!gravityFall||(running&&level.rules!=='dos')||walking||!!state.attempt||state.phase==='failed'||state.phase==='won'||player().side===1||(!held&&(!piece||piece.type==='trigger'));
     carry.title=player().side===1?t('到骨牌正前方才能搬起或放下。'):'';
     for(const [node,dir]of [[pushLeft,-1],[pushRight,1]]){
-      const target=pushPiece(dir);
+      const target=pushPlan(dir)?.piece;
       node.disabled=acting||!!gravityFall||(running&&level.rules!=='dos')||walking||!!state.attempt||state.phase==='failed'||state.phase==='won'||!!held||!target||['splitter','stopper'].includes(target.type)||(level.rules==='dos'&&state.pushUsed);
-      node.title=level.rules==='dos'&&state.pushUsed?t('本关只能手推一次，仍可抱牌跳下启动连锁。'):player().side!==1?t('站到骨牌旁边才能推倒。'):'';
+      node.title=level.rules==='dos'&&state.pushUsed?t('本关只能手推一次，仍可抱牌跳下启动连锁。'):player().side!==1?t('点“推倒”，蚂蚁会自动走到旁边推倒，再走回来。'):'';
     }
     for(const cell of pad.children){
       const ok=player().side===1&&['left','right'].includes(cell.dataset.direction)||!!stepTarget(cell.dataset.direction);
@@ -674,7 +697,12 @@ export function mount(root,ctx){
     }
     if(alive&&token===walkToken){walking=false;moveKind='idle';startAntFall();render();}
   }
-  function stepTarget(direction){return antStepTarget(level,player(),direction,facing,bridgesNow(),holesNow());}
+  function stepTarget(direction){
+    const target=antStepTarget(level,player(),direction,facing,bridgesNow(),holesNow());
+    // The ant only enters the half-cell pushing gap through the Push buttons.
+    if(direction==='up'&&target?.side===1)return null;
+    return target;
+  }
   function turnInGap(direction){
     if(player().side!==1||!['left','right'].includes(direction))return false;
     facing=direction==='left'?-1:1;notice='';save();render();return true;
@@ -732,6 +760,30 @@ export function mount(root,ctx){
     const token=++actionToken;acting=true;moveKind='idle';render();
     if(!await actor.enter()||!alive||token!==actionToken)return;
     acting=false;markWon();save();render();
+  }
+  // One tap: if the ant is standing in front of the domino, step into the
+  // gap on the side the push needs, then push from there.
+  // After pushing, step back to the normal walking lane on the side away from
+  // the falling row.
+  function stepOutOfGap(dir,gap){
+    const to=dir===1?{x:gap.x,y:gap.y}:{x:gap.x+1,y:gap.y};
+    if(!walkable(level,to,bridgesNow(),holesNow()))return;
+    void runWalk([to]);
+  }
+  function pushFromFront(dir){
+    if(acting||gravityFall||walking||state.attempt||state.position.carrying||['failed','won'].includes(state.phase))return;
+    if(player().side===1){
+      const gap={x:player().x,y:player().y};
+      push(dir);stepOutOfGap(dir,gap);return;
+    }
+    const plan=pushPlan(dir);
+    if(!plan||!plan.gap)return;
+    facing=dir;notice='';save();
+    void (async()=>{
+      await runWalk([plan.gap]);
+      if(!(alive&&!walking&&!acting&&!state.attempt&&player().side===1))return;
+      push(dir);stepOutOfGap(dir,plan.gap);
+    })();
   }
   async function push(dir){
     const starter=pushPiece(dir);
