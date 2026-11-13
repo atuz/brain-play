@@ -3,7 +3,7 @@ import {dominoContactAngle,tumblerRollTransform,tumblerRestTransform,advanceCont
 import {dominoSessionOutcome,dominoSessionPieces,recordDominoCompletion} from './domino-outcome.js?v=4';
 import {useManualPush,carriedDropTiming} from './domino-actions.js';
 import {antFallTarget} from './domino-ant-gravity.js?v=7';
-import {dosFrameTiming as dominoTiming} from './domino-timing.js?v=18';
+import {dosFrameTiming as dominoTiming} from './domino-timing.js?v=19';
 import {createAscenderNode,renderAscender} from './domino-ascender-view.js?v=14';
 import {startGame} from './game-transition.js?v=48';
 import {gameRuntime} from './game-runtime.js?v=48';
@@ -11,7 +11,7 @@ import {el,button,sound,finish,keyboardAndSwipe} from './shared.js?v=48';
 import {createMotion,motionEnabled} from './motion.js?v=48';
 import {t} from './i18n.js?v=69';
 import {levels,chapters} from './domino-levels.js?v=79';
-import {at,antAt,antPoint,antStepTarget,pushPieceAt,clone,hasFloor,antNeighbors as neighbors,antPathTo as pathTo,edit,initialPosition,simulate,createChain,validPosition,walkable,doorBlocked,entryCell,isLedgeDrop} from './domino-engine.js?v=196';
+import {at,antAt,antPoint,antStepTarget,pushPieceAt,clone,hasFloor,antNeighbors as neighbors,antPathTo as pathTo,edit,initialPosition,simulate,createChain,validPosition,walkable,doorBlocked,entryCell,isLedgeDrop} from './domino-engine.js?v=197';
 import {failureSummary,nextGuide} from './domino-guide.js?v=57';
 import {mountCamera} from './domino-camera.js?v=51';
 import {antArtwork,createAntActor} from './domino-actor.js?v=59';

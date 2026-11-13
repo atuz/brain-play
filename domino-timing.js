@@ -14,6 +14,11 @@ export const dosFrameTiming=Object.freeze({
   beat: 200,                 // internal clock unit for event scheduling
   frame: FRAME,              // one DOS animation frame
   contact: 5 * FRAME,        // 277.8  push the next domino (state 13)
+  // The original engine scans the level left to right. A domino that is
+  // pushed to the right is reached again in the same frame and takes one
+  // extra animation step, so right-going chains link every four frames
+  // while left-going chains link every five.
+  chainRight: 4 * FRAME,     // 222.2  right-going chain link
   quarter: 10 * FRAME,       // 555.6  reverse swing
   flat: 7 * FRAME,           // 388.9  upright -> fully flat (state 15)
   // The riser climbs one level row in four frames; the first row takes five

@@ -32,3 +32,19 @@ test('DOS timing: a drop takes 3n-1 frames for n level rows',()=>{
     assert.ok(Math.abs(ms(land)-ms(drop)-family*T.frame)<1e-6,`${rows} rows`);
   }
 });
+
+test('DOS timing: right-going chains link every 4 frames, left-going every 5',()=>{
+  const level={width:14,height:8,rules:'dos',platforms:[[5,0,13]],ladders:[]};
+  const start=sim=>id=>ms(sim.trace.find(f=>f.pieces.find(p=>p.id===id).state==='falling'));
+  const pieces=[0,1,2,3,4,5].map(i=>({id:'p'+i,type:'normal',x:3+i,y:5}));
+  const right=simulate(level,pieces,'p0',1,{},T);
+  const rt=start(right);
+  assert.ok(Math.abs(rt('p1')-rt('p0')-T.contact)<1e-6,'first link waits five frames');
+  assert.ok(Math.abs(rt('p2')-rt('p1')-T.chainRight)<1e-6,'right chain links four frames');
+  assert.ok(Math.abs(rt('p3')-rt('p2')-T.chainRight)<1e-6,'right chain stays at four frames');
+  const left=simulate(level,pieces,'p5',-1,{},T);
+  const lt=start(left);
+  assert.ok(Math.abs(lt('p4')-lt('p5')-T.contact)<1e-6,'first link waits five frames');
+  assert.ok(Math.abs(lt('p3')-lt('p4')-T.contact)<1e-6,'left chain links five frames');
+  assert.ok(Math.abs(lt('p2')-lt('p3')-T.contact)<1e-6,'left chain stays at five frames');
+});

@@ -171,7 +171,7 @@ const mounts = {
   atom: () => import('./atom.js?v=48'),
   laser: () => import('./laser.js?v=48'),
   machine: () => import('./machine.js?v=48'),
-  domino: () => import('./domino.js?v=298'),
+  domino: () => import('./domino.js?v=299'),
   '2048': () => import('./2048.js?v=48'), twentyfour: () => import('./twentyfour.js?v=48'),
   lights: () => import('./lights.js?v=48'), fifteen: () => import('./fifteen.js?v=48'),
   pipes: () => import('./pipes.js?v=48'), nonogram: () => import('./nonogram.js?v=55'),

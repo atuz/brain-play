@@ -1,4 +1,4 @@
-import {baseDominoTiming,eventBeatDuration} from './domino-timing.js?v=18';
+import {baseDominoTiming,eventBeatDuration} from './domino-timing.js?v=19';
 import {dominoContactPhase,resistsDomino,reboundDuration} from './domino-contact-motion.js?v=2';
 import {dominoOutcome} from './domino-outcome.js?v=4';
 import {carriedDropTiming} from './domino-actions.js';
@@ -414,7 +414,12 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
       piece.delayStart=time+eventBeatDuration('delay-start','delay',timing)/timing.beat;
       schedule('delay-start',piece.id,dir,time+1);return;
     }
-    piece.state='falling';schedule('settle',piece.id,dir,time+1);
+    piece.state='falling';
+    // A domino knocked over to the right is processed again in the same
+    // frame that pushed it and gains one step; one pushed to the left has
+    // already been passed by the frame scan and waits.
+    const linkMs=dir===1&&!fromAbove&&sourceId&&timing.chainRight?timing.chainRight:timing.contact;
+    schedule('settle',piece.id,dir,time+linkMs/timing.contact);
   };
   const ascenders=createAscenderMechanic({level,stones,floor,schedule,activate,getTime:()=>time,timing});
   // An exploder tears a hole in the floor under itself.  It does not knock
@@ -695,7 +700,7 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
       if(p.type==='vanish'){p.state='vanished';p.finish=time;}
       else finishFall(p);
       if(p.type==='splitter') {
-        for(const dir of [-1,1]) hits.push({x:p.x+dir,y:p.y,dir});
+        for(const dir of [-1,1]) hits.push({x:p.x+dir,y:p.y,dir,sourceId:p.id});
         continue;
       }
       // The bridge spans the gap, then the bridge domino vanishes.
