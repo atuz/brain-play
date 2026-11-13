@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {simulate} from './domino-engine.js';
 import {levels} from './domino-levels.js';
-import {dominoTiming} from './domino-timing.js';
+import {dominoTiming,dosFrameTiming} from './domino-timing.js';
+import {dominoContactPhase} from './domino-contact-motion.js';
 
 for(const dir of [-1,1])test(`A landing tile checks the opened floor when becoming flat, direction ${dir}`,()=>{
   const level={width:13,height:10,rules:'dos',platforms:[[2,6-dir,6-dir],[4,0,12],[6,0,12]],ladders:[]};
@@ -23,7 +24,8 @@ for(const dir of [-1,1])for(const type of ['normal','tumbler'])test(`${type} exp
   const sim=simulate(level,pieces,'a',dir,{},dominoTiming);
   const blast=sim.trace.find(f=>f.effects.some(e=>e.kind==='explode'));
   assert.ok(blast);
-  assert.ok(Math.abs(blast.time*200-(type==='normal'?275:dominoTiming.roll))<1e-6,'explode on the contact beat');
+  const contactMs=type==='normal'?dominoTiming.contact:dominoContactPhase*dominoTiming.quarter;
+  assert.ok(Math.abs(blast.time*200-contactMs)<1e-6,'explode on the contact beat');
   assert.equal(blast.pieces.find(p=>p.id==='bomb').state,'vanished');
   assert.deepEqual(blast.holes,[{x:5,y:3}]);
   const source=blast.pieces.find(p=>p.id==='a');
@@ -52,4 +54,20 @@ test('Level 64 tumbler drops through the moved bomb hole without hitting the til
   assert.equal(blast.pieces.find(p=>p.id==='p0').dropX,8);
   assert.equal(blast.pieces.find(p=>p.id==='p0').dropY,7);
   assert.equal(sim.pieces.find(p=>p.id==='p3').state,'upright','the tumbler must not skip over the hole to the neighbouring normal tile');
+});
+
+for(const dir of [-1,1])test(`A tumbler starts the bomb at contact without rolling into its cell, direction ${dir}`,()=>{
+  const level={width:11,height:12,rules:'dos',platforms:[[3,1,9],[7,0,10]],ladders:[]};
+  const pieces=[{id:'a',type:'tumbler',x:5-dir,y:3},{id:'bomb',type:'exploder',x:5,y:3}];
+  const sim=simulate(level,pieces,'a',dir,{},dosFrameTiming);
+  const fuse=sim.trace.find(f=>f.pieces.find(p=>p.id==='bomb').state==='exploding');
+  assert.ok(fuse,'the fuse starts at contact');
+  const roller=fuse.pieces.find(p=>p.id==='a');
+  assert.equal(roller.x,5-dir,'the roller is still outside the bomb cell');
+  assert.equal(roller.state,'flat');
+  assert.ok(Math.abs(fuse.time*dosFrameTiming.beat-dominoContactPhase*dosFrameTiming.quarter)<1e-6);
+  const blast=sim.trace.find(f=>f.effects.some(e=>e.kind==='explode'));
+  assert.ok(blast.time>fuse.time,'the bomb explodes after its six-frame fuse');
+  assert.ok(sim.trace.filter(f=>f.time<=blast.time).every(f=>f.pieces.find(p=>p.id==='a').x===5-dir),'no extra turn into the bomb cell');
+  assert.equal(blast.pieces.find(p=>p.id==='a').state,'dropping');
 });

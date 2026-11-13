@@ -229,7 +229,7 @@ export const pushoverDefinitions = [
     player:{x:5,y:10},
     entry:{x:5,y:9},
     exit:{x:6,y:10},
-    platforms:[[4,11,12],[6,8,11],[6,13,15],[7,4,7],[8,10,13],[10,2,10],[11,10,16]],
+    platforms:[[4,11,12],[6,8,11],[6,13,15],[7,4,7],[8,10,13],[10,3,10],[11,11,16]],
     ladders:[{x:11,from:8,to:11}],ramps:[],
     pieces:[{type:'normal',x:8,y:6},{type:'normal',x:9,y:6},{type:'normal',x:10,y:6},{type:'normal',x:11,y:6},{type:'stopper',x:13,y:6},{type:'trigger',x:5,y:7},{type:'normal',x:6,y:7},{type:'ascender',x:12,y:8},{type:'tumbler',x:13,y:8},{type:'delay',x:7,y:10},{type:'normal',x:9,y:10},{type:'ascender',x:13,y:11}],
   },

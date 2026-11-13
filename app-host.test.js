@@ -86,6 +86,8 @@ test('move events, corrupt game names and accidental save fields cannot become a
 test('level descriptors match restored numbered levels, sandbox and all six merge variants',()=>{
   for(const mode of ['classic','fibonacci'])for(const size of [3,4,5])assert.deepEqual(mergePage({read:()=>({size,mode})}),{level:'round',variant:`${mode}:${size}`});
   assert.deepEqual(dominoPage({load:()=>({level:35})}),{level:'36'});
+  assert.deepEqual(dominoPage({load:()=>({level:40})}),{level:'1'});
+  assert.deepEqual(dominoPage({load:()=>({level:60})}),{level:'21'});
   assert.deepEqual(nonogramPage({load:()=>({level:7})}),{level:'8'});
   assert.deepEqual(machinePage({load:()=>({version:1,level:4})}),{level:'5'});
   assert.deepEqual(machinePage({load:()=>({version:1,free:true})}),{level:'sandbox'});

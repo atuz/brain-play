@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {simulate} from './domino-engine.js';
 import {levels} from './domino-levels.js';
 import {dominoContactPhase} from './domino-contact-motion.js';
+import {dosFrameTiming} from './domino-timing.js';
 
 test('Level 49 retains airborne landing, then transmits the reverse chain and reaches the splitter',()=>{
   const level=levels[48],pieces=structuredClone(level.pieces);
@@ -77,4 +78,19 @@ test('Reverse contact at an edge starts an ordinary drop without a stale rest in
   const land=sim.trace.find(f=>f.pieces[0].state==='landing');
   assert.equal(land.time-drop.time,4);
   assert.equal(land.pieces[0].y,7);
+});
+
+test('A tile falling onto a splitter vanishes when its bottom touches the splitter top',()=>{
+  const level={width:9,height:10,rules:'dos',ladders:[],platforms:[[2,0,2],[4,0,8]]};
+  const pieces=[{id:'a',type:'normal',x:2,y:2},{id:'s',type:'splitter',x:3,y:4}];
+  const sim=simulate(level,pieces,'a',1,{},dosFrameTiming);
+  const drop=sim.trace.find(f=>f.pieces.find(p=>p.id==='a').state==='dropping');
+  const vanish=sim.trace.find(f=>f.pieces.find(p=>p.id==='a').state==='vanished');
+  const split=sim.trace.find(f=>f.pieces.find(p=>p.id==='s').state==='falling');
+  assert.ok(drop&&vanish&&split);
+  assert.equal(vanish.time,split.time,'the split starts at the touch, not later');
+  assert.equal(vanish.pieces.find(p=>p.id==='a').y,3,'the upper tile is one row above the splitter');
+  const ms=(vanish.time-drop.time)*dosFrameTiming.beat;
+  assert.ok(Math.abs(ms-3*dosFrameTiming.frame)<1e-6,'the touch happens halfway down a five-frame two-row drop');
+  assert.ok(!sim.trace.some(f=>f.pieces.find(p=>p.id==='a').state==='impact'),'the upper tile is consumed at once');
 });

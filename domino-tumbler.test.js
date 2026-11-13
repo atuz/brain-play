@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {simulate} from './domino-engine.js';
+import {restingDominoes} from './domino-resting.js';
 import {levels} from './domino-levels.js';
 
 for(const dir of [-1,1])for(const rows of [1,6])test(`Tumbler turns, falls fully, then rolls: ${rows} rows, direction ${dir}`,()=>{
@@ -66,6 +67,28 @@ for(const dir of [-1,1])test(`A bridge over a one-cell gap still lets the tumble
   assert.deepEqual(sim.bridges.map(b=>[b.x,b.y]),[[6+dir,5]],'the bridge spans the gap');
   assert.equal(sim.pieces.find(p=>p.id==='b').state,'vanished');
   assert.ok(sim.trace.some(f=>{const p=f.pieces.find(p=>p.id==='a');return p.x===6+dir&&p.state==='rolling';}));
+});
+
+for(const dir of [-1,1])test(`A gap-spanning bridge is pushed at contact before the tumbler lies flat, direction ${dir}`,()=>{
+  // The roller must not complete its turn through the still-upright bridge.
+  const near=dir===1?6:4,far=dir===1?8:6;
+  const level={width:13,height:10,rules:'dos',platforms:[[5,0,near],[5,far,12]],ladders:[]};
+  const sim=simulate(level,[{id:'a',type:'tumbler',x:6-dir,y:5},{id:'b',type:'bridge',x:6,y:5}],'a',dir);
+  const hit=sim.trace.find(f=>f.pieces.find(p=>p.id==='b').state==='falling');
+  assert.ok(hit,'the bridge starts to fall');
+  const roller=hit.pieces.find(p=>p.id==='a');
+  assert.ok(roller&&Math.abs(roller.rollPhase)<1,'the roller leans on the upright bridge instead of rolling flat through it');
+});
+
+for(const dir of [-1,1])test(`A stopped tumbler settles onto the tile it knocked flat, direction ${dir}`,()=>{
+  const level={width:13,height:10,rules:'dos',platforms:[[5,0,12]],ladders:[]};
+  const sim=simulate(level,[{id:'a',type:'tumbler',x:6-dir,y:5},{id:'b',type:'normal',x:6,y:5}],'a',dir);
+  const roller=sim.pieces.find(p=>p.id==='a');
+  assert.equal(roller.state,'flat');
+  assert.equal(roller.lean,undefined,'the contact-angle pin is released');
+  const pose=restingDominoes(sim.pieces).get('a').body;
+  assert.equal(pose.supportedBy,'b','it leans on the fallen tile');
+  assert.ok(pose.angle>43,'it lies further over than the pressed angle');
 });
 
 for(const dir of [-1,1])test(`Stopper reverses the tumbler instead of stopping it, direction ${dir}`,()=>{

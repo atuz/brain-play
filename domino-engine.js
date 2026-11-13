@@ -1,8 +1,8 @@
-import {baseDominoTiming,eventBeatDuration} from './domino-timing.js?v=11';
+import {baseDominoTiming,eventBeatDuration} from './domino-timing.js?v=18';
 import {dominoContactPhase,resistsDomino,reboundDuration} from './domino-contact-motion.js?v=2';
 import {dominoOutcome} from './domino-outcome.js?v=4';
 import {carriedDropTiming} from './domino-actions.js';
-import {createAscenderMechanic} from './domino-ascender-engine.js?v=20';
+import {createAscenderMechanic} from './domino-ascender-engine.js?v=24';
 // Independent, discrete JavaScript rules for the original Brain Play domino puzzles.
 // No Domino-Chain/Pushover program, graphics, sounds or levels are included.
 export const TYPES = ['normal', 'stopper', 'tumbler', 'delay', 'splitter', 'exploder', 'bridge', 'vanish', 'trigger', 'ascender'];
@@ -216,7 +216,8 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
     // drop animation towards a row just below the level.
     p.state='vanished';p.finish=time;p.fallOut=true;
     p.dropX=p.x+dir;p.dropY=level.height+1;
-    schedule('fall-out-end',p.id,dir,time+3);
+    const rows=Math.max(1,p.dropY-p.y);
+    schedule('fall-out-end',p.id,dir,time+dropFrames(rows));
   };
   // A tile whose swing carries it past the platform edge keeps falling: it
   // drops to the next platform, or leaves the board when there is none.
@@ -229,11 +230,30 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
       const rows=Math.max(1,landingY-p.y);
       p.state='dropping';p.finish=null;p.dropStart=time;p.dropX=x;p.dropY=landingY;
       for(let k=1;k<rows;k++)schedule('drop-tick',p.id,dir,time+k);
-      schedule('land',p.id,dir,time+rows,{x,y:landingY});
+      splitterContact(p,x,landingY,dropFrames(rows));
+      schedule('land',p.id,dir,time+dropFrames(rows),{x,y:landingY});
       return true;
     }
     fallOut(p,dir);
     return true;
+  };
+  // DOS drops a falling domino two frames per row, with one extra frame on
+  // the rows that have no platform directly below.  One row therefore takes
+  // two frames and n rows take 3n-1.
+  // The DOS grid is half-height rows, so one logical platform row takes
+  // 4-6 frames; a half-row stair takes 2-3. Use five frames per full row.
+  // DOS moves a falling domino down one level row every two frames, with
+  // one extra frame on the rows that have no platform below them, so n rows
+  // take 3n-1 frames. This is the same row grid the levels use.
+  const dropFrames=(rows,minTwo=false)=>timing.frame?Math.max(2,Math.round(3*rows-1)):(minTwo?Math.max(2,rows):rows);
+  // A tile that falls onto a splitter is consumed as soon as its bottom
+  // reaches the splitter's top (one row above the splitter), and the splitter
+  // starts splitting at that same moment.
+  const splitterContact=(piece,x,landingY,units)=>{
+    if(!stones.some(s=>s.id!==piece.id&&s.type==='splitter'&&s.state==='upright'&&s.x===x&&s.y===landingY))return;
+    const rows=Math.max(1,landingY-piece.y);
+    const reach=Math.max(0,Math.round(units*(rows-1)/rows));
+    schedule('split-contact',piece.id,piece.dir||1,time+reach,{x,landingY});
   };
   // A bridge that is toppling after a drop must still span a one-cell gap.
   function spanBridge(piece,dir){
@@ -260,7 +280,8 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
           const rows=Math.max(1,landingY-piece.y);
           piece.state='dropping';piece.finish=null;piece.dropStart=time;piece.dropX=x;piece.dropY=landingY;
           for(let k=1;k<rows;k++)schedule('drop-tick',piece.id,piece.dir,time+k);
-          schedule('land',piece.id,piece.dir,time+rows,{x,y:landingY});
+          splitterContact(piece,x,landingY,dropFrames(rows));
+          schedule('land',piece.id,piece.dir,time+dropFrames(rows),{x,y:landingY});
           return;
         }
         fallOut(piece,piece.dir);
@@ -296,7 +317,7 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
       for(let i=events.length-1;i>=0;i--)if(events[i].id===q.id&&['drop-tick','land'].includes(events[i].kind))events.splice(i,1);
       const remaining=Math.max(1,by-current);
       q.dropY=by;
-      schedule('land',q.id,q.dir,time+remaining,{x:bx,y:by});
+      schedule('land',q.id,q.dir,time+dropFrames(Math.ceil(remaining)),{x:bx,y:by});
     }
   };
   let rollSerial=0;
@@ -307,27 +328,28 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
     return stones.find(s=>s.id!==p.id&&s.y===y&&s.state!=='vanished'&&
       (s.x===x||(s.state==='flat'&&s.x+(s.dir||0)===x)));
   };
-  // A bridge only lets a roller pass while it will actually span a gap; on
-  // solid ground it is an ordinary domino that has to be knocked over.
-  const bridgeSpans=(p,dir)=>{const x=p.x+dir;return !floor(x,p.y)&&x+dir>=0&&x+dir<level.width&&floor(x+dir,p.y);};
   function queueRoll(p,dir,resume=false){
     const x=p.x+dir,target=rollTarget(p,dir,x);
     const resisting=resistsDomino(target)||target?.type==='delay'&&target.state==='upright';
-    const passThrough=target&&(['exploder','vanish','ascender'].includes(target.type)||
-      target.type==='bridge'&&target.state==='upright'&&bridgeSpans(target,dir));
+    // A bridge is an upright domino until it falls, even when it will end up
+    // spanning a gap: the roller has to meet it at contact and knock it over.
+    const passThrough=target&&['vanish','ascender'].includes(target.type);
     const solid=target&&!passThrough;
     const contact=resisting||solid;
     const upright=(p.x-p.rollOriginX)*2*p.rollBaseDir;
     const relativeDir=dir*p.rollBaseDir,rollMs=timing.roll??timing.beat;
-    // A resumed roller first lies flat on the vacated cell (its support is
-    // gone), then rolls on from there. It must never swing back up to the old
-    // pressed angle.
-    p.rollFrom=resume?upright+relativeDir:p.rollPhase;
+    // A resumed roller continues from the angle it was actually pressed at:
+    // never swing back, and never snap forward onto the vacated cell either.
+    p.rollFrom=p.rollPhase;
     p.rollTo=upright+relativeDir*(contact?dominoContactPhase:!floor(x,p.y)?1:2);
     const returnMs=resume?0:reboundDuration(p.rollFrom-upright,timing);
     p.rollReturnDuration=returnMs;p.rollVia=resume?p.rollFrom:upright;
+    // The first cell starts from upright: DOS takes seven frames for it,
+    // while every later cell starts already leaning and takes thirteen.
+    const firstCell=!resume&&!contact&&p.rollFrom===0&&p.x===p.rollOriginX;
     p.rollDuration=contact?returnMs+reboundDuration(p.rollTo-upright,timing)
-      :resume?Math.max(1,rollMs*Math.abs(p.rollTo-p.rollFrom)/2):rollMs+returnMs;
+      :resume?Math.max(1,rollMs*Math.abs(p.rollTo-p.rollFrom)/2)
+      :(firstCell?(timing.rollFirst??rollMs):rollMs)+returnMs;
     p.rollSerial=++rollSerial;
     if(target?.type==='ascender'&&target.state==='upright'){
       // Touch the ascender during the existing roll, without shortening or
@@ -338,7 +360,7 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
     schedule('roll',p.id,dir,time+p.rollDuration/rollMs);
   }
   function beginRoll(p,dir,resume=false){
-    p.dir=dir;p.state='rolling';p.resumeRoll=0;
+    p.dir=dir;p.state='rolling';p.resumeRoll=0;delete p.lean;
     // A resumed roller keeps its original pivot and the pose it was pressed
     // in, so it continues rolling from that angle instead of snapping upright.
     if(!resume){p.rollOriginX=p.x;p.rollOriginY=p.y;p.rollBaseDir=dir;p.rollPhase=0;}
@@ -374,6 +396,10 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
     if(piece.type==='bridge'&&sourceId)piece.hitBy=sourceId;
     if (piece.type==='splitter' && !fromAbove) {crashed=true;piece.state='crashed';return;}
     if(piece.type==='exploder'&&level.rules==='dos'&&collisionEffects){
+      if(timing.exploder){
+        piece.dir=dir;piece.state='exploding';
+        schedule('explode',piece.id,dir,time+1);return;
+      }
       piece.dir=dir;explode(piece,collisionEffects);return;
     }
     if (piece.type==='tumbler') {
@@ -421,9 +447,10 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
         .sort((a,b)=>a[0]-b[0])[0];
       if(landing){
         const rows=Math.max(q.type==='tumbler'?2:1,landing[0]-hy);
-        q.finish=null;q.state='dropping';q.dropX=hx;q.dropY=landing[0];
+        q.finish=null;q.state='dropping';q.dropX=hx;q.dropY=landing[0];q.blastDrop=true;
         for(let k=1;k<rows;k++)schedule('drop-tick',q.id,q.dir,time+k);
-        schedule('land',q.id,q.dir,time+rows,{x:hx,y:landing[0]});
+        splitterContact(q,hx,landing[0],dropFrames(rows));
+        schedule('land',q.id,q.dir,time+dropFrames(rows),{x:hx,y:landing[0]});
       }
       else {q.state='vanished';q.finish=time;}
     }
@@ -448,6 +475,7 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
     const hits=[];
     for (const event of batch) {
       const p=find(event.id);
+      if(event.kind==='fall-out-end'){if(p){p.fallOut=false;p.fallOutDone=true;}continue;}
       if(!p||p.state==='vanished')continue;
       // Rising motion is separate; a brick released from the ant still uses
       // the shared carried landing and impact cleanup.
@@ -457,6 +485,21 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
         continue;
       }
       if (event.kind==='drop-tick') continue;
+      if (event.kind==='split-contact') {
+        // The falling tile vanishes at the touch and the splitter starts.
+        if(p.state==='dropping'){
+          for(let i=events.length-1;i>=0;i--)if(events[i].id===p.id&&['drop-tick','land'].includes(events[i].kind))events.splice(i,1);
+          const target=stones.find(s=>s.id!==p.id&&s.type==='splitter'&&s.state==='upright'&&s.x===event.x&&s.y===event.landingY);
+          p.x=event.x;p.y=event.landingY-1;
+          p.state='vanished';p.finish=time;
+          if(target){impacts.push({kind:'splitter-hit',sourceId:p.id,targetId:target.id});activate(target,event.dir,true,p.id);}
+        }
+        continue;
+      }
+      if (event.kind==='explode') {
+        if(p.state==='exploding')explode(p,effects);
+        continue;
+      }
       if (event.kind==='impact-end') {p.state='vanished';continue;}
       if(event.kind==='delay-start'){
         if(p.state==='waiting'){
@@ -478,6 +521,7 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
         if(x<0||x>=level.width){fallOut(p,event.dir);continue;}
         const target=rollTarget(p,event.dir,x);
         if(target){
+          const moving=['rolling','falling','landing','dropping','returning'].includes(target.state)&&(target.dir||0)!==event.dir;
           if(target.type==='stopper'){
             rebound(p,target,event.dir,effects);
             continue;
@@ -485,7 +529,7 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
           if(target.type==='splitter'){
             // A side contact cannot activate a splitter; the tumbler stops.
             if(level.rules!=='dos'){crashed=true;target.state='crashed';p.state='crashed';}
-            else {p.state='flat';p.finish=time;p.resumeRoll=event.dir;}
+            else {p.state='flat';p.finish=time;p.resumeRoll=event.dir;p.lean=dominoContactPhase*90;}
             continue;
           }
           if(target.state==='upright')activate(target,event.dir,false,p.id);
@@ -496,13 +540,21 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
             rebound(p,target,event.dir,effects);
             continue;
           }
-          if(target.type==='ascender'||level.rules==='dos'&&['exploder','vanish'].includes(target.type)||
-            level.rules==='dos'&&target.type==='bridge'&&target.state==='upright'&&bridgeSpans(target,event.dir)){
+          if(target.type==='ascender'||level.rules==='dos'&&target.type==='vanish'){
             p.x=x;queueRoll(p,event.dir);continue;
           }
+          if(moving){
+            // Two tiles that were already moving towards each other break
+            // on contact instead of quietly lying down next to each other.
+            crashed=true;target.state='crashed';p.state='crashed';continue;
+          }
           // Stopped against a body: remember the direction so the roller can
-          // continue once that body has moved away.
-          p.state='flat';p.finish=time;p.resumeRoll=event.dir;continue;
+          // continue once that body has moved away. A bomb is about to lose
+          // its support, so do not pin the contact angle: the roller falls
+          // flat during the fuse, exactly like an ordinary tile.
+          p.state='flat';p.finish=time;p.resumeRoll=event.dir;
+          if(target.type!=='exploder')p.lean=dominoContactPhase*90;
+          continue;
         }
         if(!floor(x,p.y)){
           const landingY=landingRow(x,p.y);
@@ -510,9 +562,10 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
             const rows=Math.max(1,landingY-p.y);
             p.state='dropping';p.dropStart=time;p.dropX=x;p.dropY=landingY;
             // Reserve one beat for the airborne half-turn, then fall upright.
-            const beats=Math.max(2,rows);
-            for(let k=1;k<beats;k++)schedule('drop-tick',p.id,event.dir,time+k);
-            schedule('land',p.id,event.dir,time+beats,{x,y:landingY});
+            const frames=dropFrames(rows,true);
+            for(let k=1;k<frames;k++)schedule('drop-tick',p.id,event.dir,time+k);
+            splitterContact(p,x,landingY,frames);
+            schedule('land',p.id,event.dir,time+frames,{x,y:landingY});
           }
           else fallOut(p,event.dir);
           continue;
@@ -564,7 +617,7 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
         continue;
       }
       if (event.kind==='land'||event.kind==='carried-land') {
-        p.x=event.x;p.y=event.y;p.finish=time;
+        p.x=event.x;p.y=event.y;p.finish=time;delete p.blastDrop;
         const target=stones.find(s=>s.id!==p.id&&s.x===event.x&&s.y===event.y&&s.state!=='vanished');
         // A vanishing tile is consumed by its own fall; it never breaks the
         // tile it lands on.
@@ -677,7 +730,8 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
           hit.source.state='dropping';hit.source.dropStart=time;
           hit.source.dropX=hit.x;hit.source.dropY=landingY;
           for(let k=1;k<rows;k++)schedule('drop-tick',hit.source.id,hit.dir,time+k);
-          schedule('land',hit.source.id,hit.dir,time+rows,{x:hit.x,y:landingY});
+          splitterContact(hit.source,hit.x,landingY,dropFrames(rows));
+          schedule('land',hit.source.id,hit.dir,time+dropFrames(rows),{x:hit.x,y:landingY});
         }
         // Same rule as a rolling tile: nothing below means it leaves the level.
         else fallOut(hit.source,hit.dir);
@@ -691,7 +745,13 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
       if(!floor(x,p.y))continue;
       const blocked=stones.some(s=>s.id!==p.id&&s.y===p.y&&s.state!=='vanished'&&
         (s.x===x||(s.state==='flat'&&s.x+(s.dir||0)===x)));
-      if(blocked)continue;
+      if(blocked){
+        // The body it leaned on has finished falling flat. Release the
+        // contact-angle pin so the roller settles onto that body.
+        if(stones.some(s=>s.id!==p.id&&s.y===p.y&&s.state==='flat'&&
+          (s.x===x||s.x+(s.dir||0)===x)))delete p.lean;
+        continue;
+      }
       p.resumeRoll=0;
       beginRoll(p,dir,true);
     }

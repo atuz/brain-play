@@ -2,22 +2,22 @@ import {tumblerDropMotion} from './domino-tumbler-motion.js';
 import {dominoContactAngle,tumblerRollTransform,tumblerRestTransform,advanceContactMotion} from './domino-contact-motion.js?v=5';
 import {dominoSessionOutcome,dominoSessionPieces,recordDominoCompletion} from './domino-outcome.js?v=4';
 import {useManualPush,carriedDropTiming} from './domino-actions.js';
-import {antFallTarget} from './domino-ant-gravity.js?v=4';
-import {dominoTiming} from './domino-timing.js?v=11';
+import {antFallTarget} from './domino-ant-gravity.js?v=7';
+import {dosFrameTiming as dominoTiming} from './domino-timing.js?v=18';
 import {createAscenderNode,renderAscender} from './domino-ascender-view.js?v=14';
 import {startGame} from './game-transition.js?v=48';
 import {gameRuntime} from './game-runtime.js?v=48';
 import {el,button,sound,finish,keyboardAndSwipe} from './shared.js?v=48';
 import {createMotion,motionEnabled} from './motion.js?v=48';
 import {t} from './i18n.js?v=69';
-import {levels,chapters} from './domino-levels.js?v=76';
-import {at,antAt,antPoint,antStepTarget,pushPieceAt,clone,hasFloor,antNeighbors as neighbors,antPathTo as pathTo,edit,initialPosition,simulate,createChain,validPosition,walkable,doorBlocked,entryCell,isLedgeDrop} from './domino-engine.js?v=179';
-import {failureSummary,nextGuide} from './domino-guide.js?v=54';
+import {levels,chapters} from './domino-levels.js?v=79';
+import {at,antAt,antPoint,antStepTarget,pushPieceAt,clone,hasFloor,antNeighbors as neighbors,antPathTo as pathTo,edit,initialPosition,simulate,createChain,validPosition,walkable,doorBlocked,entryCell,isLedgeDrop} from './domino-engine.js?v=196';
+import {failureSummary,nextGuide} from './domino-guide.js?v=57';
 import {mountCamera} from './domino-camera.js?v=51';
 import {antArtwork,createAntActor} from './domino-actor.js?v=59';
 import {sceneryForLevel,chapterSceneries} from './domino-scenery.js?v=53';
 import {dominoArtwork} from './domino-material.js?v=53';
-import {restingDominoes} from './domino-resting.js?v=52';
+import {restingDominoes} from './domino-resting.js?v=54';
 
 const types={
   normal:['普通牌','碰到下一张牌，继续连锁。',''],
@@ -67,12 +67,13 @@ export function restore(saved){
   } catch {return fresh();}
 }
 
-export const pageInfo=ctx=>{const i=ctx.load()?.level;return {level:String(Number.isInteger(i)&&i>=0&&i<levels.length?i+1:1)};};
+// Levels 1-40 are the rebuilt teaching set; the game only offers the 101
+// original Pushover levels. The first playable level (index 40) is shown as 1.
+const firstVisible=40;
+const displayLevel=index=>index+1-(index>=firstVisible?firstVisible:0);
+export const pageInfo=ctx=>{const i=ctx.load()?.level;return {level:String(Number.isInteger(i)&&i>=0&&i<levels.length?displayLevel(i):1)};};
 export function mount(root,ctx){
   root.classList.add('play-domino');
-  // Levels 1-40 are the rebuilt teaching set; the game now only offers the
-  // 101 original Pushover levels (HTML 41-141).
-  const firstVisible=40;
   let state=restore(ctx.load()),level=withLadders(levels[state.level],ladderReady(state)),result=null,frame=null,running=false,walking=false,facing=state.facing===-1?-1:1;
   const syncLadders=()=>{const next=withLadders(levels[state.level],ladderReady(state));if(next!==level)level=next;};
   if(state.phase==='exit'&&!result)result={won:true,bridges:state.structures?.bridges||[],holes:state.structures?.holes||[],pieces:level.rules==='dos'?dominoSessionPieces(state):[]};
@@ -329,7 +330,7 @@ export function mount(root,ctx){
     }
     for(const original of level.pieces){
       const stone=visible.find(q=>q.id===original.id),node=stoneNodes.get(original.id);
-      node.hidden=!stone;if(!stone)continue;
+      node.hidden=!stone||!!stone.fallOutDone;if(!stone)continue;
       const transferring=transfer?.kind==='place'&&transfer.piece.id===stone.id;
       node.style.visibility=transferring?'hidden':'';
       node.style.transition=transferring?'none':'';
@@ -350,16 +351,24 @@ export function mount(root,ctx){
       node.style.setProperty('--dc-contact-angle',`${dominoContactAngle}deg`);
       node.style.setProperty('--dc-return-duration',`${stone.returnDuration??dominoTiming.quarter}ms`);
       const contactMs=['normal','delay','trigger'].includes(stone.type)?dominoTiming.contact:dominoTiming.beat;
+      // A drop moves in the same frames as the engine (a half-row stair in 2,
+      // a full row in 5), while the flip keeps its own fall time so that it
+      // can finish after the tile has already reached the step.
+      const dropMs=rows=>dominoTiming.frame?Math.max(2,Math.round(3*rows-1))*dominoTiming.frame:rows*dominoTiming.beat;
       if(stone.type==='delay'){
         node.style.setProperty('--dc-delay-fall-duration',`${dominoTiming.contact}ms`);
+      }
+      if(stone.type==='exploder'){
+        node.style.setProperty('--dc-explode-duration',`${dominoTiming.exploder??220}ms`);
       }
       if(stone.type==='normal'||stone.type==='delay'){
         node.style.setProperty('--dc-contact-duration',`${contactMs}ms`);
         node.style.setProperty('--dc-quarter-duration',`${dominoTiming.quarter}ms`);
-        // A short stair drop must finish its airborne half-turn before landing.
-        const flightMs=Math.max(1,(stone.dropY??stone.y)-stone.y)*contactMs;
-        node.style.setProperty('--dc-drop-duration',`${Math.min(320*contactMs/dominoTiming.beat,flightMs)}ms`);
       }
+      // One drop animation for every tile type: its length comes from the
+      // distance fallen, never from the kind of domino.
+      const fallRows=Math.max(1,(stone.dropY??stone.y)-stone.y);
+      node.style.setProperty('--dc-drop-duration',`${Math.max(contactMs,dropMs(fallRows))}ms`);
       const prevStage=node.dataset.stage||'upright';
       if(stone.type==='normal'||stone.type==='delay'){
         // Preserve the actual half-turn from the airborne flip across all
@@ -378,7 +387,8 @@ export function mount(root,ctx){
           const pose=getComputedStyle(faceNode).transform;
           const values=pose.startsWith('matrix(')?pose.slice(7,-1).split(',').map(Number):null;
           const angle=values?Math.atan2(values[1],values[0])*180/Math.PI:0;
-          faceNode.style.setProperty('--dc-drop-from',`${angle}deg`);
+          const start=stage==='dropping'&&prevStage!=='dropping'?(stone.dir||1)*90:angle;
+          faceNode.style.setProperty('--dc-drop-from',`${start}deg`);
           if(prevStage==='landing'&&stage==='flat')faceNode.style.setProperty('--dc-normal-contact-pose',pose==='none'?'rotate(0deg)':pose);
         }
         if(prevStage==='landing'&&stage==='flat')node.dataset.landed='1';
@@ -393,7 +403,7 @@ export function mount(root,ctx){
           else{
             const values=transform.startsWith('matrix(')?transform.slice(7,-1).split(',').map(Number):null;
             const angle=values?Math.atan2(values[1],values[0])*180/Math.PI:0;
-            faceNode.style.setProperty('--dc-drop-from',`${angle}deg`);
+            faceNode.style.setProperty('--dc-drop-from',`${(stone.dir||1)*90}deg`);
             if(stone.type==='tumbler'){
               const rollingAngle=faceNode.style.transform.match(/rotate\(([-\d.e+]+)rad\)/);
               const continuousAngle=rollingAngle?Number(rollingAngle[1])*180/Math.PI:angle;
@@ -402,9 +412,12 @@ export function mount(root,ctx){
                 width:parseFloat(face.width),height:parseFloat(face.height),
                 dx:parseFloat(root.left)-stone.x*node.offsetWidth,
                 dy:parseFloat(root.top)-(stone.y-viewTop())*node.offsetHeight});
-              faceNode.style.setProperty('--dc-tumbler-drop-from',motion.from);
-              faceNode.style.setProperty('--dc-tumbler-drop-to',motion.to);
               node.dataset.tumblerDropInverted=String(motion.inverted);
+              // Every tile uses the same drop flip, so clear the rolling
+              // matrix and use the ordinary pivot before the flip starts.
+              faceNode.style.transformOrigin='';
+              faceNode.style.transform='';
+              faceNode.style.transition='none';
             }
           }
         }
@@ -441,8 +454,12 @@ export function mount(root,ctx){
         }
         rollView.freezing=false;
         startRollLoop();
-      }else if(stone.state==='dropping'){
+      }else if(stage==='dropping'){
+        // Drop state owns the face and its pivot; the frozen roll view must
+        // not paint over it (it would restore the 0 0 origin and lift the
+        // tile a whole row while the common flip runs).
         if(rollView)rollViews.delete(stone.id);
+        rollView=null;
         frozenRolls.delete(stone.id);
       }else if(rollView&&!rollView.freezing){
         rollView.freezing=true;rollView.node=node;rollView.face=faceNode;rollView.last=performance.now();
@@ -467,7 +484,9 @@ export function mount(root,ctx){
       const effects=frame?.effects||[];
       node.classList.toggle('dc-stopper-hit',effects.some(event=>event.kind==='rebound'&&event.targetId===stone.id));
       node.classList.toggle('dc-rebounded',effects.some(event=>event.kind==='rebound'&&event.sourceId===stone.id));
-      node.classList.toggle('dc-exploding',effects.some(event=>event.kind==='explode'&&event.sourceId===stone.id));
+      // An exploder shows its blast from the moment the fuse starts; the
+      // effects frame only adds the single-frame flash after it is gone.
+      node.classList.toggle('dc-exploding',stage==='exploding'||effects.some(event=>event.kind==='explode'&&event.sourceId===stone.id));
       node.classList.toggle('dc-selected',!state.attempt&&p.side!==1&&at(stone,p));
       const problem=!running&&state.phase==='failed'&&result?.problemIds?.includes(stone.id);
       node.classList.toggle('dc-problem',!!problem);
@@ -485,10 +504,10 @@ export function mount(root,ctx){
       }
       const label=node.querySelector('.dc-problem-label');label.hidden=!problem;label.textContent=t(result?.reason==='tie'?(stone.type==='trigger'?'机关·同刻':'同刻'):'!');
       node.style.setProperty('--dc-dir',stone.dir||1);
-      node.style.setProperty('--dc-travel',stage==='dropping'?`${Math.max(1,stone.dropY-stone.y)*contactMs}ms`:stage==='ascending'?'180ms':'150ms');
+      const dropRows=Math.max(1,stone.dropY-stone.y);
+      node.style.setProperty('--dc-travel',stage==='dropping'?`${dropMs(dropRows)}ms`:stage==='ascending'?'180ms':'150ms');
       if(stage==='dropping'&&!transferring){
-        const rows=Math.max(1,stone.dropY-stone.y);
-        node.style.transition=rows>1?`left ${contactMs}ms ease, top ${(rows-1)*contactMs}ms ease ${contactMs}ms`:`left ${contactMs}ms ease, top ${contactMs}ms ease`;
+        node.style.transition=`left ${dropMs(dropRows)/dropRows}ms ease, top ${dropMs(dropRows)}ms ease`;
       }
       const heldView=rollViews.get(stone.id)||frozenRolls.get(stone.id);
       let placeAt=stage==='dropping'?{x:stone.dropX,y:stone.dropY}:heldView?{x:heldView.startX,y:heldView.startY}:stone;
@@ -505,11 +524,11 @@ export function mount(root,ctx){
         node.style.transition='none';
         placeNode(node,{x:stone.x,y:stone.y});
         void node.offsetHeight;
-        const beats=Math.max(2,stone.dropY-stone.y);
-        node.style.transition=`left 200ms linear, top ${(beats-1)*200}ms linear 200ms`;
+        const rows=Math.max(1,stone.dropY-stone.y);
+        node.style.transition=`left ${dropMs(rows)/rows}ms ease, top ${dropMs(rows)}ms ease`;
       }else if(stage==='dropping'&&stone.type==='tumbler'){
-        const beats=Math.max(2,stone.dropY-stone.y);
-        node.style.transition=`left 200ms linear, top ${(beats-1)*200}ms linear 200ms`;
+        const rows=Math.max(1,stone.dropY-stone.y);
+        node.style.transition=`left ${dropMs(rows)/rows}ms ease, top ${dropMs(rows)}ms ease`;
       }else if(stage!=='dropping'&&node.dataset.dropCommit){
         delete node.dataset.dropCommit;
       }
@@ -539,7 +558,7 @@ export function mount(root,ctx){
   }
   function renderText(){
     const piece=currentPiece(),held=state.position.carrying;
-    levelNumber.textContent=String(state.level+1).padStart(2,'0');levelName.textContent=t(level.name);
+    levelNumber.textContent=String(displayLevel(state.level)).padStart(2,'0');levelName.textContent=t(level.name);
     const visible=levels.map((_,i)=>i).filter(i=>i>=firstVisible);
     progress.textContent=`${visible.filter(i=>Number.isSafeInteger(records[i])).length}/${visible.length}`;
     if(running){badge.textContent='↝';instruction.textContent=t(level.rules==='dos'&&!state.pushUsed?'连锁进行中…可以继续走或推。':'连锁进行中…');}
@@ -774,7 +793,7 @@ export function mount(root,ctx){
     if(acting||gravityFall||walking||state.attempt||state.position.carrying||['failed','won'].includes(state.phase))return;
     if(player().side===1){
       const gap={x:player().x,y:player().y};
-      push(dir);stepOutOfGap(dir,gap);return;
+      void (async()=>{await push(dir);stepOutOfGap(dir,gap);})();return;
     }
     const plan=pushPlan(dir);
     if(!plan||!plan.gap)return;
@@ -782,10 +801,12 @@ export function mount(root,ctx){
     void (async()=>{
       await runWalk([plan.gap]);
       if(!(alive&&!walking&&!acting&&!state.attempt&&player().side===1))return;
-      push(dir);stepOutOfGap(dir,plan.gap);
+      await push(dir);stepOutOfGap(dir,plan.gap);
     })();
   }
   async function push(dir){
+    // DOS starts the domino one animation frame after the push frame.
+    if(level.rules==='dos')await wait(1000/18);
     const starter=pushPiece(dir);
     if(!starter||acting||gravityFall||walking||state.attempt||state.position.carrying||['failed','won'].includes(state.phase))return;
     if(level.rules==='dos'){
@@ -942,7 +963,7 @@ export function mount(root,ctx){
       }
       state.attempt=null;state.walker=null;state.postHistory=[];state.phase='arrange';state.death=false;result=null;frame=null;notice='';syncLadders();save();render();
     };
-    return notify?startGame(ctx,'restart',reset,{level:String(state.level+1)}):reset();
+    return notify?startGame(ctx,'restart',reset,{level:String(displayLevel(state.level))}):reset();
   }
   function undoAction(){
     if(state.chainBackup&&(running||state.phase==='failed'||state.phase==='exit'||!state.history.length)){retryAction(false);return;}
@@ -952,16 +973,16 @@ export function mount(root,ctx){
     }
     if(state.history.length){stop();state.position=state.history.pop();state.phase='arrange';state.death=false;ant.dataset.dead='false';notice='';refreshCompletedDoor();syncLadders();save();render();}
   }
-  function loadLevel(index,reason='select'){stop();return startGame(ctx,reason,()=>{state=fresh(index);level=withLadders(levels[index],false);result=null;frame=null;notice='';guideActive=false;facing=1;buildWorld();save();render();settleStage();void playIntro();void motion.play(viewport,[{opacity:.25,transform:'translateY(6px)'},{opacity:1,transform:'translateY(0)'}],280);},{level:String(index+1)});}
+  function loadLevel(index,reason='select'){stop();return startGame(ctx,reason,()=>{state=fresh(index);level=withLadders(levels[index],false);result=null;frame=null;notice='';guideActive=false;facing=1;buildWorld();save();render();settleStage();void playIntro();void motion.play(viewport,[{opacity:.25,transform:'translateY(6px)'},{opacity:1,transform:'translateY(0)'}],280);},{level:String(displayLevel(index))});}
   function chooseLevel(){
     const modal=el('dialog',{class:'app-dialog dc-level-dialog','aria-label':'选择骨牌关卡'});
     const close=()=>modal.close();
     modal.append(el('div',{class:'dialog-header'},[el('h2',{text:'关卡'}),el('button',{class:'app-icon',type:'button',text:'×','aria-label':'关闭',onclick:close})]));
     chapters.forEach((chapter,chapterIndex)=>{
       const grid=el('div',{class:'dc-level-grid'});
-      levels.forEach((item,index)=>{if(index<firstVisible||item.chapter!==chapterIndex)return;grid.append(el('button',{type:'button',class:`dc-level-option${index===state.level?' active':''}`,'aria-label':`${t(`第 ${index+1} 关`)} ${t(item.name)}`,onclick:()=>{
+      levels.forEach((item,index)=>{if(index<firstVisible||item.chapter!==chapterIndex)return;grid.append(el('button',{type:'button',class:`dc-level-option${index===state.level?' active':''}`,'aria-label':`${t(`第 ${displayLevel(index)} 关`)} ${t(item.name)}`,onclick:()=>{
         close();motion.confirmRestart(state.phase!=='won'&&(state.history.length>0||!!state.attempt),()=>loadLevel(index));
-      }},[el('span',{text:`${index+1}${Number.isSafeInteger(records[index])?' ✓':''}`})]));});
+      }},[el('span',{text:`${displayLevel(index)}${Number.isSafeInteger(records[index])?' ✓':''}`})]));});
       if(!grid.childElementCount)return;
       modal.append(el('h3',{class:'dc-chapter-title'},[
         el('span',{text:chapter}),el('span',{class:'dc-chapter-scene',text:chapterSceneries[chapterIndex].label}),

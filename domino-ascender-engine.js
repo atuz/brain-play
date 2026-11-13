@@ -17,7 +17,8 @@ export function createAscenderMechanic({level,stones,floor,schedule,activate,get
   // Half-row stair treads count as ceilings too: the body must not pass
   // through a short step while rising.
   const ceilingAbove=(piece,y)=>floor(piece.x,y-1)||floor(piece.x,y-0.5);
-  const swingDuration=(piece,dir)=>floor(piece.x+dir,piece.y-1)||floor(piece.x+dir,piece.y-0.5)?timing.quarter:gapTurn;
+  const swingDuration=(piece,dir)=>floor(piece.x+dir,piece.y-1)||floor(piece.x+dir,piece.y-0.5)
+    ?(timing.ascenderSwing??timing.quarter):gapTurn;
   function rebound(piece,target,dir,time,effects){
     effects.push({kind:'rebound',sourceId:piece.id,targetId:target.id});
     piece.finish=null;piece.state='ceiling-return';
