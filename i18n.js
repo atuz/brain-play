@@ -1,5 +1,5 @@
 import {dominoEnglish,dominoTraditional} from './domino-i18n.js?v=62';
-import {pushoverEnglish} from './domino-i18n-pushover.js?v=3';
+import {pushoverEnglish} from './domino-i18n-pushover.js?v=4';
 import {machineEnglish,machineTraditional} from './machine-i18n.js?v=48';
 import {classicEnglish,classicTraditional} from './classic-i18n.js?v=48';
 import {rescueEnglish} from './lemmings-i18n.js?v=48';

@@ -28,7 +28,7 @@ test('The trigger may tie the last domino, but not fall while the chain is still
   assert.equal(dominoOutcome({pieces:complete(),expectedPieces:expected}).won,true);
   const tied=complete();tied.find(p=>p.id==='t').finish=2;
   assert.equal(dominoOutcome({pieces:tied,expectedPieces:expected}).won,true);
-  const early=complete();early.find(p=>p.id==='t').finish=1;
+  const early=complete();early.find(p=>p.id==='t').finish=0.5;
   assert.equal(dominoOutcome({pieces:early,expectedPieces:expected}).reason,'early');
 });
 
@@ -77,7 +77,7 @@ test('Restoring a DOS exit rechecks ordering, carrying and death instead of trus
 test('The shared live outcome exactly matches simulation for early, simultaneous and final triggers',()=>{
   const cases=[
     {reason:'clear',pieces:[{id:'source',type:'normal',x:4,y:5},{id:'trigger',type:'trigger',x:5,y:5}]},
-    {reason:'early',pieces:[{id:'source',type:'trigger',x:4,y:5},{id:'normal',type:'normal',x:5,y:5}]},
+    {reason:'early',pieces:[{id:'source',type:'trigger',x:4,y:5},{id:'normal',type:'normal',x:5,y:5},{id:'more',type:'normal',x:6,y:5}]},
     {reason:'clear',platforms:[[1,0,2],[5,0,8]],pieces:[{id:'source',type:'normal',x:2,y:1},
       {id:'split',type:'splitter',x:3,y:5},{id:'left',type:'normal',x:2,y:5},{id:'trigger',type:'trigger',x:4,y:5}]},
   ];
@@ -96,9 +96,22 @@ test('The shared live outcome exactly matches simulation for early, simultaneous
 test('Only a vanished bridge tile may finish after the trigger',()=>{
   const base=[{id:'a',type:'normal',state:'flat',finish:1},{id:'t',type:'trigger',state:'flat',finish:2}];
   const vanished=[...base,{id:'b',type:'bridge',state:'vanished',finish:2.3,hitBy:'t'}];
-  const flat=[...base,{id:'b',type:'bridge',state:'flat',finish:2.3,hitBy:'t'}];
+  const flat=[...base,{id:'b',type:'bridge',state:'flat',finish:3.3,hitBy:'t'}];
   assert.equal(dominoOutcome({pieces:vanished,expectedPieces:vanished}).won,true);
   const lost=dominoOutcome({pieces:flat,expectedPieces:flat});
+  assert.equal(lost.won,false);
+  assert.equal(lost.reason,'early');
+});
+
+test('A riser still hanging at the ceiling does not finish after the trigger',()=>{
+  const pieces=[
+    {id:'a',type:'normal',state:'flat',finish:90},
+    {id:'r',type:'ascender',state:'ceiling',finish:101.837,hitTime:42.39,leftAt:42.39},
+    {id:'t',type:'trigger',state:'flat',finish:100.56},
+  ];
+  assert.equal(dominoOutcome({pieces,expectedPieces:pieces}).won,true);
+  const lateRiser=pieces.map(p=>p.id==='r'?{...p,hitTime:102.2,leftAt:102.2}:p);
+  const lost=dominoOutcome({pieces:lateRiser,expectedPieces:lateRiser});
   assert.equal(lost.won,false);
   assert.equal(lost.reason,'early');
 });

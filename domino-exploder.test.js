@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {simulate} from './domino-engine.js';
+import {simulate,createChain,walkable} from './domino-engine.js';
 import {levels} from './domino-levels.js';
 import {dominoTiming,dosFrameTiming} from './domino-timing.js';
 import {dominoContactPhase} from './domino-contact-motion.js';
@@ -70,4 +70,72 @@ for(const dir of [-1,1])test(`A tumbler starts the bomb at contact without rolli
   assert.ok(blast.time>fuse.time,'the bomb explodes after its six-frame fuse');
   assert.ok(sim.trace.filter(f=>f.time<=blast.time).every(f=>f.pieces.find(p=>p.id==='a').x===5-dir),'no extra turn into the bomb cell');
   assert.equal(blast.pieces.find(p=>p.id==='a').state,'dropping');
+});
+
+// A blast and a bridge change the same floor cell in the order they happen.
+// The engine keeps one state per cell: whichever came last is what stands.
+const gapLevel=()=>({width:10,height:9,rules:'dos',platforms:[[5,0,4],[5,6,9],[7,0,9]],ladders:[]});
+const settle=chain=>{let g=0;while(!chain.done()&&g++<600)chain.step();return chain.snapshot();};
+
+test('A bomb standing on a bridge blows the bridge away and opens the hole',()=>{
+  const level=gapLevel();
+  const pieces=[{id:'bomb',type:'exploder',x:5,y:5},{id:'n1',type:'normal',x:4,y:5}];
+  const chain=createChain(level,pieces,{bridges:[{x:5,y:5,dir:1}]},dominoTiming);
+  chain.activateStone('bomb',1);
+  let snap=settle(chain);
+  assert.ok(snap.holes.some(h=>h.x===5&&h.y===5),'the blast leaves a hole');
+  assert.ok(!snap.bridges.some(b=>b.x===5&&b.y===5),'the bridge that was there is gone');
+  chain.activateStone('n1',1);
+  snap=settle(chain);
+  assert.equal(snap.pieces.find(p=>p.id==='n1').y,7,'the tile above falls through the opened hole');
+});
+
+test('A bridge landing after the blast fills the hole again',()=>{
+  const level=gapLevel();
+  const pieces=[{id:'bomb',type:'exploder',x:5,y:5},{id:'br',type:'bridge',x:4,y:5}];
+  const chain=createChain(level,pieces,{bridges:[{x:5,y:5,dir:1}]},dominoTiming);
+  chain.activateStone('bomb',1);
+  let snap=settle(chain);
+  assert.ok(snap.holes.some(h=>h.x===5&&h.y===5));
+  chain.activateStone('br',1);
+  snap=settle(chain);
+  assert.ok(snap.bridges.some(b=>b.x===5&&b.y===5),'the later bridge spans the gap');
+  assert.ok(!snap.holes.some(h=>h.x===5&&h.y===5),'the cell has one floor state: the hole is filled');
+  assert.ok(walkable(level,{x:5,y:5},snap.bridges,snap.holes),'the ant can use the new bridge');
+});
+
+test('Blast and bridge repeat in order: bridge, blast, bridge, blast, bridge',()=>{
+  const level=gapLevel();
+  const chain=createChain(level,[{id:'bomb1',type:'exploder',x:5,y:5},
+    {id:'br1',type:'bridge',x:4,y:5}],{bridges:[{x:5,y:5,dir:1}]},dominoTiming);
+  chain.activateStone('bomb1',1);
+  let snap=settle(chain);
+  assert.ok(snap.holes.some(h=>h.x===5&&h.y===5),'1. first blast opens the hole');
+  assert.ok(!snap.bridges.some(b=>b.x===5&&b.y===5));
+  chain.activateStone('br1',1);
+  snap=settle(chain);
+  assert.ok(snap.bridges.some(b=>b.x===5&&b.y===5),'2. the next bridge fills it');
+  chain.addStone({id:'bomb2',type:'exploder',x:5,y:5});
+  chain.activateStone('bomb2',1);
+  snap=settle(chain);
+  assert.ok(snap.holes.some(h=>h.x===5&&h.y===5),'3. a bomb placed on that bridge opens it again');
+  assert.ok(!snap.bridges.some(b=>b.x===5&&b.y===5));
+  chain.addStone({id:'br2',type:'bridge',x:4,y:5});
+  chain.activateStone('br2',1);
+  snap=settle(chain);
+  assert.ok(snap.bridges.some(b=>b.x===5&&b.y===5),'4. another bridge fills it again');
+  assert.ok(!snap.holes.some(h=>h.x===5&&h.y===5));
+  assert.ok(walkable(level,{x:5,y:5},snap.bridges,snap.holes));
+});
+
+test('A bridge pushed into a bomb still fills the hole the blast leaves',()=>{
+  const level={width:10,height:9,rules:'dos',platforms:[[5,0,9]],ladders:[]};
+  const chain=createChain(level,[{id:'br',type:'bridge',x:4,y:5},
+    {id:'bomb',type:'exploder',x:5,y:5}],{},dominoTiming);
+  chain.activateStone('br',1);
+  const snap=settle(chain);
+  assert.equal(snap.pieces.find(p=>p.id==='bomb').state,'vanished','the bomb explodes on contact');
+  assert.ok(snap.bridges.some(b=>b.x===5&&b.y===5),'the bridge spans the hole it falls into');
+  assert.ok(!snap.holes.some(h=>h.x===5&&h.y===5),'the hole is filled');
+  assert.ok(walkable(level,{x:5,y:5},snap.bridges,snap.holes));
 });

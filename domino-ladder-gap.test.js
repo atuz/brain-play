@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {levels} from './domino-levels.js';
-import {hasFloor,neighbors,pathTo,edit,initialPosition} from './domino-engine.js';
+import {hasFloor,neighbors,pathTo,edit,initialPosition,isLedgeDrop} from './domino-engine.js';
 import {spawnSync} from 'node:child_process';
 
 test('All open gaps use terrain support, independent of ladder presence or level number',()=>{
@@ -58,4 +58,17 @@ test('DOS 25 blocks horizontal passage through the open ladder shaft',()=>{
   position.pieces=position.pieces.filter(p=>p.id!==carried.id);
   position.player=shaft;position.carrying=carried;
   assert.equal(edit(level,position,{type:'place'}),null);
+});
+
+test('Auto-pathing walks the ladder instead of dropping off a nearby ledge',()=>{
+  const level={width:7,height:6,rules:'dos',platforms:[[1,0,4],[4,0,6]],ladders:[{x:0,from:1,to:4}],exit:{x:6,y:4}};
+  const start={x:4,y:1},target={x:5,y:4};
+  assert.ok(neighbors(level,start).some(q=>q.x===5&&q.y===4),'the ledge drop exists as an edge');
+  const path=pathTo(level,start,target);
+  assert.ok(path.length>1,'the one-step drop is used only when no connected route exists');
+  let from=start;
+  for(const step of path){
+    assert.equal(isLedgeDrop(level,from,step),false,`ledge drop at ${JSON.stringify(step)}`);
+    from=step;
+  }
 });

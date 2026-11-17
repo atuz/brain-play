@@ -1,8 +1,8 @@
-import {baseDominoTiming,eventBeatDuration} from './domino-timing.js?v=19';
+import {baseDominoTiming,eventBeatDuration} from './domino-timing.js?v=20';
 import {dominoContactPhase,resistsDomino,reboundDuration} from './domino-contact-motion.js?v=2';
-import {dominoOutcome} from './domino-outcome.js?v=4';
+import {dominoOutcome} from './domino-outcome.js?v=10';
 import {carriedDropTiming} from './domino-actions.js';
-import {createAscenderMechanic} from './domino-ascender-engine.js?v=24';
+import {createAscenderMechanic} from './domino-ascender-engine.js?v=25';
 // Independent, discrete JavaScript rules for the original Brain Play domino puzzles.
 // No Domino-Chain/Pushover program, graphics, sounds or levels are included.
 export const TYPES = ['normal', 'stopper', 'tumbler', 'delay', 'splitter', 'exploder', 'bridge', 'vanish', 'trigger', 'ascender'];
@@ -27,7 +27,7 @@ export function pushPieceAt(pieces,player,dir){
   return pieces.find(p=>p.x===player.x+(dir===1?1:0)&&p.y===player.y&&
     (p.state===undefined||p.state==='upright')&&!['stopper','splitter'].includes(p.type))||null;
 }
-export function neighbors(level, p, bridges = [], holes = []) {
+export function neighbors(level, p, bridges = [], holes = [], options = {}) {
   const out = [];
   for (const dx of [-1, 1]) {
     const q = {x:p.x + dx, y:p.y};
@@ -65,7 +65,7 @@ export function neighbors(level, p, bridges = [], holes = []) {
   }
   // In the original game the ant may walk off a ledge and drop straight down
   // to the next platform. Original Pushover levels rely on this constantly.
-  if (level.rules === 'dos' && hasFloor(level, p.x, p.y, bridges, holes)) {
+  if (options.allowLedge !== false && level.rules === 'dos' && hasFloor(level, p.x, p.y, bridges, holes)) {
     for (const dx of [-1, 1]) {
       const x = p.x + dx;
       if (hasFloor(level, x, p.y, bridges, holes)) continue;
@@ -95,8 +95,7 @@ export function isLedgeDrop(level,from,to){
   return true;
 }
 
-export function pathTo(level, start, target, bridges = [], holes = []) {
-  if (!walkable(level, start, bridges, holes) || !walkable(level, target, bridges, holes)) return null;
+function searchPath(level,start,target,bridges,holes,allowLedge){
   const key = p => `${p.x},${p.y}`, queue = [start], previous = new Map([[key(start), null]]);
   for (let i=0;i<queue.length;i++) {
     const p = queue[i];
@@ -105,7 +104,7 @@ export function pathTo(level, start, target, bridges = [], holes = []) {
       while (previous.get(key(cursor))) {path.push(cursor);cursor=previous.get(key(cursor));}
       return path.reverse();
     }
-    for (const q of neighbors(level,p,bridges,holes)) {
+    for (const q of neighbors(level,p,bridges,holes,{allowLedge})) {
       // Auto-pathing must not choose a drop that would kill the ant.
       if (level.rules==='dos' && q.y - p.y > 3) continue;
       if (!previous.has(key(q))) {previous.set(key(q),p);queue.push(q);}
@@ -113,19 +112,24 @@ export function pathTo(level, start, target, bridges = [], holes = []) {
   }
   return null;
 }
+// Walking a ladder or a stair is always preferred: only fall back to stepping
+// off a ledge when no connected route reaches the target at all.
+export function pathTo(level, start, target, bridges = [], holes = []) {
+  if (!walkable(level, start, bridges, holes) || !walkable(level, target, bridges, holes)) return null;
+  return searchPath(level,start,target,bridges,holes,false) || searchPath(level,start,target,bridges,holes,true);
+}
 
 // The ant has a front lane for carrying and a gap lane for pushing.
 // Walking stays in front. A gap is a fixed pushing stop; leave it to walk.
-export function antNeighbors(level,p,bridges=[],holes=[]){
+export function antNeighbors(level,p,bridges=[],holes=[],options={}){
   if(!walkable(level,p,bridges,holes))return [];
   if(p.side===1)return [{x:p.x,y:p.y},{x:p.x+1,y:p.y}]
     .filter(q=>walkable(level,q,bridges,holes));
-  return [...neighbors(level,p,bridges,holes),...[{x:p.x-1,y:p.y,side:1},{x:p.x,y:p.y,side:1}]
+  return [...neighbors(level,p,bridges,holes,options),...[{x:p.x-1,y:p.y,side:1},{x:p.x,y:p.y,side:1}]
     .filter(q=>walkable(level,q,bridges,holes))];
 }
 
-export function antPathTo(level,start,target,bridges=[],holes=[]){
-  if(!walkable(level,start,bridges,holes)||!walkable(level,target,bridges,holes))return null;
+function searchAntPath(level,start,target,bridges,holes,allowLedge){
   const key=p=>`${p.x},${p.y},${p.side===1?1:0}`,queue=[start],previous=new Map([[key(start),null]]);
   for(let i=0;i<queue.length;i++){
     const p=queue[i];
@@ -134,12 +138,16 @@ export function antPathTo(level,start,target,bridges=[],holes=[]){
       while(previous.get(key(cursor))){path.push(cursor);cursor=previous.get(key(cursor));}
       return path.reverse();
     }
-    for(const q of antNeighbors(level,p,bridges,holes)){
+    for(const q of antNeighbors(level,p,bridges,holes,{allowLedge})){
       if(level.rules==='dos'&&q.y-p.y>3)continue;
       if(!previous.has(key(q))){previous.set(key(q),p);queue.push(q);}
     }
   }
   return null;
+}
+export function antPathTo(level,start,target,bridges=[],holes=[]){
+  if(!walkable(level,start,bridges,holes)||!walkable(level,target,bridges,holes))return null;
+  return searchAntPath(level,start,target,bridges,holes,false)||searchAntPath(level,start,target,bridges,holes,true);
 }
 
 export function antStepTarget(level,p,direction,facing=1,bridges=[],holes=[]){
@@ -222,9 +230,11 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
   // A tile whose swing carries it past the platform edge keeps falling: it
   // drops to the next platform, or leaves the board when there is none.
   const dropOverEdge=(p,dir)=>{
+    // A vanishing domino never falls past an edge; it is gone at once.
+    if(p.type==='vanish'){p.state='vanished';p.finish=time;return true;}
     const x=p.x+dir;
     if(x<0||x>=level.width||floor(x,p.y))return false;
-    if(floor(x,p.y-.5)){p.lean=45;p.state='flat';p.finish=time;return true;}
+    if(stepFace(x,p.y)){p.lean=45;p.state='flat';p.finish=time;return true;}
     const landingY=landingRow(x,p.y);
     if(landingY!==undefined){
       const rows=Math.max(1,landingY-p.y);
@@ -261,6 +271,7 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
     if(piece.type!=='bridge'||piece.state==='vanished'||floor(x,piece.y)||
       x<0||x>=level.width||!floor(x+dir,piece.y))return false;
     bridges.push({x,y:piece.y,dir});
+    fillHole(x,piece.y);
     piece.state='vanished';piece.finish=time;
     catchDroppingOnBridge(x,piece.y);
     const above=stones.find(s=>s.type==='ascender'&&s.x===x&&s.y===piece.y-1&&s.state==='ceiling');
@@ -268,13 +279,22 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
     return true;
   }
   function finishFall(piece,fromLanding=false){
+    // A blast can consume this tile before its swing finishes.
+    if(piece.state==='vanished')return;
+    // A vanishing domino is consumed as soon as its topple ends. It still
+    // pushes the neighbour it leans on, but it never drops off a ledge and
+    // never touches anything below the edge.
+    if(piece.type==='vanish'&&fromLanding){piece.state='vanished';piece.finish=time;return;}
     piece.state='flat';piece.finish=time;
     if(fromLanding){
       const x=piece.x+piece.dir;
       if(!floor(x,piece.y)){
+        // A bridge that keeps falling into a one-cell hole left by a blast
+        // still spans it instead of dropping through.
+        if(spanBridge(piece,piece.dir))return;
         // A half-row stair riser in the target column: rest leaning on the
         // step edge instead of dropping past it.
-        if(floor(x,piece.y-.5)){piece.lean=45;return;}
+        if(stepFace(x,piece.y)){piece.lean=45;return;}
         const landingY=landingRow(x,piece.y);
         if(landingY!==undefined){
           const rows=Math.max(1,landingY-piece.y);
@@ -298,8 +318,18 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
   }
   const capture=(impacts=[],effects=[])=>trace.push({time,pieces:clone(stones),bridges:clone(bridges),holes:clone(holes),crashed,impacts:clone(impacts),effects:clone(effects)});
   const bridged=(x,y)=>bridges.some(b=>b.x===x&&b.y===y);
+  // A cell has one floor state, changed in the order things happen: a blast
+  // removes the bridge that was there, and a bridge landing later fills the
+  // gap again.  Keep both lists from describing the same cell at once.
+  const unbridge=(x,y)=>{for(let i=bridges.length-1;i>=0;i--)if(bridges[i].x===x&&bridges[i].y===y)bridges.splice(i,1);};
+  const fillHole=(x,y)=>{for(let i=holes.length-1;i>=0;i--)if(holes[i].x===x&&holes[i].y===y)holes.splice(i,1);};
   // A bridge covers a blown hole: the cell is walkable again.
   const floor=(x,y)=>bridged(x,y)||(hasFloor(level,x,y,bridges)&&!holes.some(h=>h.x===x&&h.y===y));
+  // A stair tread sits half a row above a tile's base, so its vertical face
+  // blocks any body that swings or rolls into that cell. Every path that
+  // moves a tile sideways must consult this or the tile drops through the
+  // gap beside the tread.
+  const stepFace=(x,y)=>floor(x,y-.5);
   // A landing can be a platform row or a bridge cell; both stop a falling tile.
   const landingRow=(x,fromY)=>{
     const rows=level.platforms.filter(([,from,to])=>x>=from&&x<=to).map(([y])=>y);
@@ -393,6 +423,13 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
   }
   const activate=(piece,dir,fromAbove=false,sourceId=null)=>{
     if (!piece || piece.state!=='upright') return;
+    // Record who knocked this tile down, and where it stood. Used by the
+    // replay/analysis tooling to explain chains that stop early.
+    if(sourceId){
+      piece.hitBy=sourceId;
+      piece.hitTime=time;
+      piece.hitAt={x:piece.x,y:piece.y};
+    }
     if(piece.type==='bridge'&&sourceId)piece.hitBy=sourceId;
     if (piece.type==='splitter' && !fromAbove) {crashed=true;piece.state='crashed';return;}
     if(piece.type==='exploder'&&level.rules==='dos'&&collisionEffects){
@@ -418,8 +455,9 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
     // A domino knocked over to the right is processed again in the same
     // frame that pushed it and gains one step; one pushed to the left has
     // already been passed by the frame scan and waits.
-    const linkMs=dir===1&&!fromAbove&&sourceId&&timing.chainRight?timing.chainRight:timing.contact;
-    schedule('settle',piece.id,dir,time+linkMs/timing.contact);
+    const settleMs=eventBeatDuration('settle',piece.type,timing);
+    const rightLink=dir===1&&!fromAbove&&sourceId&&timing.chainRight;
+    schedule('settle',piece.id,dir,time+(rightLink?timing.chainRight:settleMs)/settleMs);
   };
   const ascenders=createAscenderMechanic({level,stones,floor,schedule,activate,getTime:()=>time,timing});
   // An exploder tears a hole in the floor under itself.  It does not knock
@@ -428,18 +466,22 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
   const explode = (piece, effects) => {
     const hx=piece.x, hy=piece.y;
     piece.state='vanished';piece.finish=time;
+    // The blast wins over any bridge built before it: that floor is gone.
+    unbridge(hx,hy);
     if(!holes.some(h=>h.x===hx&&h.y===hy))holes.push({x:hx,y:hy});
     effects.push({kind:'explode',sourceId:piece.id,x:hx,y:hy});
-    // A bridge tile already lying over the new hole spans it immediately.
+    // A bridge tile that was already falling into this cell spans the new
+    // hole instead of dropping through it.
     for(const q of stones){
       if(q.type!=='bridge'||q.state==='vanished'||q.y!==hy)continue;
       const covering=(q.state==='flat'||q.state==='falling'||q.state==='landing')&&q.x+(q.dir||0)===hx;
       if(!(q.x===hx||covering))continue;
       bridges.push({x:hx,y:hy,dir:q.dir||1});
+      fillHole(hx,hy);
       q.state='vanished';q.finish=time;
     }
     for(const q of stones){
-      // A hole that was just bridged keeps carrying the tiles above it.
+      // Whatever was resting on the opened floor loses its support.
       if(bridged(hx,hy)||q===piece||q.type==='ascender'||q.y!==hy)continue;
       const leaning=q.state==='flat'&&q.x+q.dir===hx;
       const rolling=q.state==='rolling'&&(q.x===hx||q.x+q.dir===hx);
@@ -545,7 +587,14 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
             rebound(p,target,event.dir,effects);
             continue;
           }
-          if(target.type==='ascender'||level.rules==='dos'&&target.type==='vanish'){
+          if(target.type==='vanish'&&level.rules==='dos'){
+            // The roller knocks the vanish over and waits for it to disappear
+            // before rolling into its cell, exactly like the original.
+            activate(target,event.dir,false,p.id);
+            p.state='flat';p.finish=time;p.resumeRoll=event.dir;
+            continue;
+          }
+          if(target.type==='ascender'){
             p.x=x;queueRoll(p,event.dir);continue;
           }
           if(moving){
@@ -562,6 +611,9 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
           continue;
         }
         if(!floor(x,p.y)){
+          // The roller's body meets the tread's face and stops leaning on it
+          // instead of dropping through the gap beside the step.
+          if(stepFace(x,p.y)){p.state='flat';p.finish=time;p.lean=45;continue;}
           const landingY=landingRow(x,p.y);
           if(landingY!==undefined){
             const rows=Math.max(1,landingY-p.y);
@@ -647,7 +699,7 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
         if(p.type==='exploder'){
         if(level.rules==='dos'){ explode(p, effects); }
         else {
-          p.state='vanished';p.finish=time;holes.push({x:p.x,y:p.y});
+          p.state='vanished';p.finish=time;unbridge(p.x,p.y);holes.push({x:p.x,y:p.y});
           effects.push({kind:'explode',sourceId:p.id,x:p.x,y:p.y});
           hits.push({x:p.x+event.dir,y:p.y,dir:event.dir,source:p});
         }
@@ -688,7 +740,7 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
       if(p.type==='exploder'){
         if(level.rules==='dos'){ explode(p, effects); }
         else {
-          p.state='vanished';p.finish=time;holes.push({x:p.x,y:p.y});
+          p.state='vanished';p.finish=time;unbridge(p.x,p.y);holes.push({x:p.x,y:p.y});
           effects.push({kind:'explode',sourceId:p.id,x:p.x,y:p.y});
           hits.push({x:p.x+event.dir,y:p.y,dir:event.dir,source:p});
         }
@@ -725,9 +777,9 @@ export function createChain(level, pieces, structures = {}, timing = baseDominoT
         else if(target.state==='falling'||target.state==='waiting') {
           if(target.dir!==hit.dir){target.state='crashed';crashed=true;}
         }
-      } else if (hit.source&&!floor(hit.x,hit.y)&&hit.x>=0&&hit.x<level.width) {
+      } else if (hit.source&&hit.source.state!=='vanished'&&!floor(hit.x,hit.y)&&hit.x>=0&&hit.x<level.width) {
         // A half-row stair riser in the target column blocks the fall.
-        if(floor(hit.x,hit.y-.5)){hit.source.lean=45;hit.source.state='flat';hit.source.finish=time;continue;}
+        if(stepFace(hit.x,hit.y)){hit.source.lean=45;hit.source.state='flat';hit.source.finish=time;continue;}
         // A falling domino can start a lower chain only by landing on a splitter.
         const landingY=landingRow(hit.x,hit.y);
         if (landingY!==undefined) {

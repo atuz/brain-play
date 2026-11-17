@@ -57,6 +57,8 @@ export function createAscenderMechanic({level,stones,floor,schedule,activate,get
   function begin(piece,dir,passive=false) {
     if(piece?.type!=='ascender')return false;
     piece.dir=dir;piece.state='ascending';piece.passiveRise=!!passive;
+    // The riser leaves the floor here; its ceiling rest may finish much later.
+    if(!Number.isFinite(piece.leftAt))piece.leftAt=getTime();
     schedule('ascender-rise',piece.id,dir,getTime()+timing.riseStart/timing.rise);
     return true;
   }

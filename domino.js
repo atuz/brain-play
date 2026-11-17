@@ -1,19 +1,19 @@
 import {tumblerDropMotion} from './domino-tumbler-motion.js';
 import {dominoContactAngle,tumblerRollTransform,tumblerRestTransform,advanceContactMotion} from './domino-contact-motion.js?v=5';
-import {dominoSessionOutcome,dominoSessionPieces,recordDominoCompletion} from './domino-outcome.js?v=4';
+import {dominoSessionOutcome,dominoSessionPieces,recordDominoCompletion} from './domino-outcome.js?v=10';
 import {useManualPush,carriedDropTiming} from './domino-actions.js';
-import {antFallTarget} from './domino-ant-gravity.js?v=7';
-import {dosFrameTiming as dominoTiming} from './domino-timing.js?v=19';
+import {antFallTarget} from './domino-ant-gravity.js?v=17';
+import {dosFrameTiming as dominoTiming} from './domino-timing.js?v=20';
 import {createAscenderNode,renderAscender} from './domino-ascender-view.js?v=14';
 import {startGame} from './game-transition.js?v=48';
 import {gameRuntime} from './game-runtime.js?v=48';
 import {el,button,sound,finish,keyboardAndSwipe} from './shared.js?v=48';
 import {createMotion,motionEnabled} from './motion.js?v=48';
 import {t} from './i18n.js?v=69';
-import {levels,chapters} from './domino-levels.js?v=79';
-import {at,antAt,antPoint,antStepTarget,pushPieceAt,clone,hasFloor,antNeighbors as neighbors,antPathTo as pathTo,edit,initialPosition,simulate,createChain,validPosition,walkable,doorBlocked,entryCell,isLedgeDrop} from './domino-engine.js?v=197';
-import {failureSummary,nextGuide} from './domino-guide.js?v=57';
-import {mountCamera} from './domino-camera.js?v=51';
+import {levels,chapters} from './domino-levels.js?v=83';
+import {at,antAt,antPoint,antStepTarget,pushPieceAt,clone,hasFloor,antNeighbors as neighbors,antPathTo as pathTo,edit,initialPosition,simulate,createChain,validPosition,walkable,doorBlocked,entryCell,isLedgeDrop} from './domino-engine.js?v=211';
+import {failureSummary,nextGuide} from './domino-guide.js?v=67';
+import {mountCamera} from './domino-camera.js?v=53';
 import {antArtwork,createAntActor} from './domino-actor.js?v=59';
 import {sceneryForLevel,chapterSceneries} from './domino-scenery.js?v=53';
 import {dominoArtwork} from './domino-material.js?v=53';
@@ -40,7 +40,9 @@ const withLadders=(level,open)=>level.ladders.some(l=>Number.isFinite(l.closedTo
 function fresh(index=0){return {version:1,level:index,position:initialPosition(levels[index]),history:[],attempt:null,phase:'arrange',death:false,walker:null,postHistory:[],fallen:[],structures:{bridges:[],holes:[]},triggerDown:false,completion:null,pushUsed:false};}
 export function restore(saved){
   try {
-    if(saved?.version!==1||!Number.isInteger(saved.level)||!levels[saved.level])return fresh();
+    if(saved?.version!==1||!Number.isInteger(saved.level)||saved.level<0)return fresh();
+    if(saved.level>=levels.length)saved={...saved,level:levels.length-1};
+    if(!levels[saved.level])return fresh();
     const level=withLadders(levels[saved.level],ladderReady(saved));
     const context={resolvedPieces:[...(saved.completion?.pieces||[]),...(saved.fallen||[])],bridges:saved.structures?.bridges||[],holes:saved.structures?.holes||[]};
     if(!validPosition(level,saved.position,context)||!Array.isArray(saved.history)||saved.history.length>100||!saved.history.every(p=>validPosition(level,p,context)))return fresh(saved.level);
@@ -67,7 +69,7 @@ export function restore(saved){
   } catch {return fresh();}
 }
 
-// Levels 1-40 are the rebuilt teaching set; the game only offers the 101
+// Levels 1-40 are the rebuilt teaching set; the game only offers the 100
 // original Pushover levels. The first playable level (index 40) is shown as 1.
 const firstVisible=40;
 const displayLevel=index=>index+1-(index>=firstVisible?firstVisible:0);
@@ -120,9 +122,43 @@ export function mount(root,ctx){
   function clearRolls(){if(rollRaf){cancelAnimationFrame(rollRaf);rollRaf=0;}rollViews.clear();frozenRolls.clear();}
   let records=ctx.read('domino:records',{});
   if(!records||typeof records!=='object'||Array.isArray(records))records={};
+  // The duplicated 81st Pushover level (index 120) was removed. Score records
+  // are keyed by level index, so once move the entries after it down one slot.
+  if(records._layout!==2){
+    const shifted={_layout:2};
+    for(const [key,value] of Object.entries(records)){
+      const index=Number(key);
+      if(!Number.isSafeInteger(index)){
+        if(key!=='_layout')shifted[key]=value;   // keep completion times
+        continue;
+      }
+      if(index===120)continue;
+      shifted[index>120?index-1:index]=value;
+    }
+    records=shifted;
+    ctx.write('domino:records',records);
+  }
   const wait=ms=>{const timer=gameRuntime.delay(ms);timers.add(timer);return timer.finished.finally(()=>timers.delete(timer));};
+  let levelTimer=0,levelStartedAt=0;
   function stop(){clearRolls();runToken++;walkToken++;actionToken++;walking=false;running=false;acting=false;intro=false;ledgeFlight=false;gravityFall=null;liveChain=null;chainWalker=null;transfer=null;queuedWalk=null;moveKind='idle';ant.style.transition='';actor?.cancel();for(const timer of timers)timer.cancel();timers.clear();}
   const levelNumber=el('span',{class:'dc-level-number'}),levelName=el('span',{class:'dc-level-name'}),progress=el('span',{class:'dc-progress',title:'已完成关卡'});
+  const timerEl=el('span',{class:'dc-timer',title:'本关用时',text:'0:00:00'});
+  const bestTimeEl=el('div',{class:'dc-best-time',hidden:'hidden'});
+  const clock=ms=>{const s=Math.max(0,Math.floor(ms/1000));return `${Math.floor(s/3600)}:${String(Math.floor(s%3600/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;};
+  function stopLevelTimer(){if(levelTimer){clearInterval(levelTimer);levelTimer=0;}}
+  function startLevelTimer(resume=0){stopLevelTimer();const base=Number.isFinite(resume)?Math.max(0,resume):0;levelStartedAt=Date.now()-base;timerEl.textContent=clock(base);levelTimer=setInterval(()=>{timerEl.textContent=clock(Date.now()-levelStartedAt);},500);}
+  function placeBestTime(){
+    const tools=root.querySelector('.dc-camera-tools');
+    if(!tools)return;
+    let row=tools.closest('.dc-camera-row');
+    if(!row){row=el('div',{class:'dc-camera-row'});tools.before(row);row.append(tools);}
+    if(bestTimeEl.parentElement!==row)row.prepend(bestTimeEl);
+  }
+  function showBestTime(){
+    const best=records._best?.[state.level];
+    if(Number.isSafeInteger(best)){bestTimeEl.textContent=`${t('最好时间')} ${clock(best)}`;bestTimeEl.hidden=false;}
+    else bestTimeEl.hidden=true;
+  }
   const levelButton=el('button',{type:'button',class:'dc-level-button','aria-label':'选择骨牌关卡',onclick:chooseLevel},[levelNumber,levelName,el('span',{text:'⌄','aria-hidden':'true'})]);
   const viewport=el('div',{class:'dc-viewport'});
   const world=el('div',{class:'dc-world','aria-label':'骨牌棋盘'});
@@ -153,11 +189,11 @@ export function mount(root,ctx){
     legendItems.append(el('div',{class:'dc-legend-item'},[sample,el('div',{},[el('strong',{text:name}),el('p',{text:description})])]));
   }
   legend.append(legendItems);
-  root.append(el('div',{class:'game-toolbar dc-toolbar'},[levelButton,el('div',{class:'dc-toolbar-right'},[progress])]),viewport,readout,guideBox,
+  root.append(bestTimeEl,el('div',{class:'game-toolbar dc-toolbar'},[levelButton,el('div',{class:'dc-toolbar-right'},[timerEl,progress])]),viewport,readout,guideBox,
     el('div',{class:'dc-controls'},[pad,actions]),el('div',{class:'dc-tools'},[undo,retry,restart]),status,celebration,legend);
   const stageCamera=mountCamera(viewport,world,{focusPoint:playerFocusPoint,onSwipe:step});
 
-  function save(){state.facing=facing;ctx.save(state);}
+  function save(){state.facing=facing;if(levelTimer)state.timerElapsed=Date.now()-levelStartedAt;ctx.save(state);}
   function player(){return liveChain?chainWalker:(state.attempt?state.walker||state.position.player:state.position.player);}
   function playingPieces(){return frame?.pieces||result?.pieces||state.position.pieces;}
   function currentPiece(){if(player().side===1)return null;if(liveChain){const p=player();return liveChain.stones.find(q=>q.x===p.x&&q.y===p.y&&q.state==='upright');}return !state.attempt&&state.position.pieces.find(p=>at(p,state.position.player));}
@@ -273,7 +309,7 @@ export function mount(root,ctx){
     world.classList.add('dc-reset');
     world.style.setProperty('--dc-cols',level.width);world.style.setProperty('--dc-rows',viewRows());
     world.style.aspectRatio=`${level.width}/${viewRows()}`;
-    // Level 101 is the original all-yellow/dim stage: every domino shares one
+    // Level 100 is the original all-yellow/dim stage: every domino shares one
     // look, so its type has to be recognised from behaviour alone.
     root.classList.toggle('dc-mono',!!level.mono);
     const landscape=sceneryForLevel(level);
@@ -432,6 +468,9 @@ export function mount(root,ctx){
         }
       }
       node.dataset.stage=stage;
+      node.dataset.state=stone.state;
+      node.dataset.cell=stone.x+','+stone.y;
+      node.dataset.hitBy=stone.hitBy||'';
       node.className=`dc-stone dc-${stone.type} dc-${stage}${stone.carriedDrop?' dc-carried-drop':''}${stone.crashPile?' dc-rubble-pile':''}${stone.crashCovered?' dc-rubble-covered':''}`;
       if(stone.crashPile&&!node.querySelector('.dc-rubble'))node.append(el('span',{class:'dc-rubble','aria-hidden':'true'},[el('i'),el('i'),el('i'),el('i')]));
 
@@ -608,11 +647,12 @@ export function mount(root,ctx){
   }
   function render(){
     if(!alive)return;
+    placeBestTime();
     if(!guideActive||running||state.phase==='won')guide=null;
     else if(state.attempt)guide=state.phase==='exit'?{kind:'exit',target:level.exit}:{kind:'retry'};
     else {
       const next=nextGuide(level,state.position);
-      // The 101 original levels have no recorded step plan; show their written solution instead.
+      // The 100 original levels have no recorded step plan; show their written solution instead.
       guide=next.kind==='unavailable'&&level.hint?{kind:'text',text:level.hint}:next;
     }
     renderScene();renderText();
@@ -624,6 +664,14 @@ export function mount(root,ctx){
     const moves=state.position.moves+state.postHistory.length;
     ctx.result?.('won',{moves});
     records[state.level]=Math.min(Number.isSafeInteger(records[state.level])?records[state.level]:Infinity,moves);
+    if(!records._at||typeof records._at!=='object'||Array.isArray(records._at))records._at={};
+    if(!Number.isSafeInteger(records._at[state.level]))records._at[state.level]=Date.now();
+    stopLevelTimer();
+    const elapsed=Math.max(0,Date.now()-levelStartedAt);
+    state.timerElapsed=elapsed;timerEl.textContent=clock(elapsed);
+    if(!records._best||typeof records._best!=='object'||Array.isArray(records._best))records._best={};
+    if(!Number.isSafeInteger(records._best[state.level])||elapsed<records._best[state.level])records._best[state.level]=elapsed;
+    showBestTime();
     ctx.write('domino:records',records);finish('domino');
   }
   function walkOne(to,{landed=false,released=false}={}){
@@ -961,7 +1009,7 @@ export function mount(root,ctx){
         state.pushUsed=typeof b.pushUsed==='boolean'?b.pushUsed:!!b.completion;
         state.chainBackup=null;
       }
-      state.attempt=null;state.walker=null;state.postHistory=[];state.phase='arrange';state.death=false;result=null;frame=null;notice='';syncLadders();save();render();
+      state.attempt=null;state.walker=null;state.postHistory=[];state.phase='arrange';state.death=false;ant.dataset.dead='false';result=null;frame=null;notice='';syncLadders();save();render();
     };
     return notify?startGame(ctx,'restart',reset,{level:String(displayLevel(state.level))}):reset();
   }
@@ -973,14 +1021,14 @@ export function mount(root,ctx){
     }
     if(state.history.length){stop();state.position=state.history.pop();state.phase='arrange';state.death=false;ant.dataset.dead='false';notice='';refreshCompletedDoor();syncLadders();save();render();}
   }
-  function loadLevel(index,reason='select'){stop();return startGame(ctx,reason,()=>{state=fresh(index);level=withLadders(levels[index],false);result=null;frame=null;notice='';guideActive=false;facing=1;buildWorld();save();render();settleStage();void playIntro();void motion.play(viewport,[{opacity:.25,transform:'translateY(6px)'},{opacity:1,transform:'translateY(0)'}],280);},{level:String(displayLevel(index))});}
+  function loadLevel(index,reason='select'){stop();return startGame(ctx,reason,()=>{state=fresh(index);level=withLadders(levels[index],false);result=null;frame=null;notice='';guideActive=false;facing=1;buildWorld();save();render();startLevelTimer();showBestTime();settleStage();void playIntro();void motion.play(viewport,[{opacity:.25,transform:'translateY(6px)'},{opacity:1,transform:'translateY(0)'}],280);},{level:String(displayLevel(index))});}
   function chooseLevel(){
     const modal=el('dialog',{class:'app-dialog dc-level-dialog','aria-label':'选择骨牌关卡'});
     const close=()=>modal.close();
     modal.append(el('div',{class:'dialog-header'},[el('h2',{text:'关卡'}),el('button',{class:'app-icon',type:'button',text:'×','aria-label':'关闭',onclick:close})]));
     chapters.forEach((chapter,chapterIndex)=>{
       const grid=el('div',{class:'dc-level-grid'});
-      levels.forEach((item,index)=>{if(index<firstVisible||item.chapter!==chapterIndex)return;grid.append(el('button',{type:'button',class:`dc-level-option${index===state.level?' active':''}`,'aria-label':`${t(`第 ${displayLevel(index)} 关`)} ${t(item.name)}`,onclick:()=>{
+      levels.forEach((item,index)=>{if(index<firstVisible||item.chapter!==chapterIndex)return;grid.append(el('button',{type:'button',class:`dc-level-option${index===state.level?' active':''}`,'aria-label':`${t(`第 ${displayLevel(index)} 关`)} ${t(item.name)}`,title:Number.isSafeInteger(records._at?.[index])?`${t('首次通关')}：${new Date(records._at[index]).toLocaleString()}${Number.isSafeInteger(records[index])?` · ${t('步数')} ${records[index]}`:''}`:'',onclick:()=>{
         close();motion.confirmRestart(state.phase!=='won'&&(state.history.length>0||!!state.attempt),()=>loadLevel(index));
       }},[el('span',{text:`${displayLevel(index)}${Number.isSafeInteger(records[index])?' ✓':''}`})]));});
       if(!grid.childElementCount)return;
@@ -996,9 +1044,11 @@ export function mount(root,ctx){
     if(e.code==='Space'&&e.target===document.body){e.preventDefault();carryOrPlace();}
   };
   window.addEventListener('keydown',shortcuts);
+  const persistTimer=()=>{if(levelTimer)state.timerElapsed=Date.now()-levelStartedAt;save();};
+  window.addEventListener('pagehide',persistTimer);
   const detach=keyboardAndSwipe(world,step,{swipe:false});
   if(state.attempt)result=simulate(level,state.position.pieces,state.attempt.id,state.attempt.dir,{},dominoTiming);
-  buildWorld();render();settleStage();void playIntro();
+  buildWorld();render();if(state.phase!=='won')startLevelTimer(Number.isFinite(state.timerElapsed)?state.timerElapsed:0);else timerEl.textContent=clock(Number.isFinite(state.timerElapsed)?state.timerElapsed:0);showBestTime();settleStage();void playIntro();
   if(state.phase==='exit'&&antAt(player(),level.exit))void enterExit();
-  return()=>{alive=false;stop();detach();stageCamera.dispose();window.removeEventListener('keydown',shortcuts);for(const modal of dialogs)modal.close();dialogs.clear();motion.dispose();};
+  return()=>{alive=false;stopLevelTimer();stop();detach();stageCamera.dispose();window.removeEventListener('keydown',shortcuts);window.removeEventListener('pagehide',persistTimer);for(const modal of dialogs)modal.close();dialogs.clear();motion.dispose();};
 }

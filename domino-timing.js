@@ -8,8 +8,8 @@ export const dominoTiming=Object.freeze({beat:200,contact:275,quarter:550,rise:4
 // The original DOS frame counts. Used by the playable game.
 //   normal fall 6-7 frames, contact at 4-5, delay waits 20 frames then falls
 //   6, tumbler first cell 7 and later cells 13, exploder opens after 6,
-//   a drop takes 2-3 frames per row, a riser climbs its first row in 5
-//   frames and later rows in 4, and the ceiling flip takes 7.
+//   a drop takes 2-3 frames per row, a riser climbs one level row in 8
+//   frames, and the ceiling flip takes 7.
 export const dosFrameTiming=Object.freeze({
   beat: 200,                 // internal clock unit for event scheduling
   frame: FRAME,              // one DOS animation frame
@@ -21,10 +21,11 @@ export const dosFrameTiming=Object.freeze({
   chainRight: 4 * FRAME,     // 222.2  right-going chain link
   quarter: 10 * FRAME,       // 555.6  reverse swing
   flat: 7 * FRAME,           // 388.9  upright -> fully flat (state 15)
-  // The riser climbs one level row in four frames; the first row takes five
-  // because of the startup beat.
-  rise: 4 * FRAME,           // 222.2  riser, each row after the first
-  riseStart: 1 * FRAME,      // 55.6   riser start delay
+  // The original grid is half-height and the riser climbs one half-row every
+  // four frames, so one level row takes eight. The short start delay keeps
+  // the whole climb close to the original (about 4 s for ten rows).
+  rise: 8 * FRAME,           // 444.4  riser, each row after the first
+  riseStart: 2 * FRAME,      // 111.1  riser start delay
   delayWait: 20 * FRAME,     // 1111.1 delay timer before it starts falling
   delayFall: 5 * FRAME,      // 277.8  delay fall after the timer expires
   delayContact: 25 * FRAME,  // 1388.9 push -> next tile (20 + 5 frames)

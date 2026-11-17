@@ -1,4 +1,4 @@
-import {hasFloor,walkable} from './domino-engine.js?v=197';
+import {hasFloor,walkable} from './domino-engine.js?v=211';
 
 // Re-evaluate after every terrain change, rather than at chain completion.
 export function antFallTarget(level,player,{bridges=[],holes=[]}={}){

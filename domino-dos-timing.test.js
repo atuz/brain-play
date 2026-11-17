@@ -48,3 +48,42 @@ test('DOS timing: right-going chains link every 4 frames, left-going every 5',()
   assert.ok(Math.abs(lt('p3')-lt('p4')-T.contact)<1e-6,'left chain links five frames');
   assert.ok(Math.abs(lt('p2')-lt('p3')-T.contact)<1e-6,'left chain stays at five frames');
 });
+
+test('DOS timing: a vanishing tile is consumed at the ledge and never starts a splitter below',()=>{
+  const level={width:20,height:14,rules:'dos',platforms:[[8,3,9],[11,3,17]],ladders:[]};
+  const sim=simulate(level,[{id:'v',type:'vanish',x:9,y:8},{id:'s',type:'splitter',x:10,y:11}],'v',1,{},T);
+  assert.equal(sim.pieces.find(p=>p.id==='v').state,'vanished');
+  assert.equal(sim.pieces.find(p=>p.id==='s').state,'upright');
+});
+
+test('DOS timing: a vanishing tile still passes the chain to its neighbour',()=>{
+  const level={width:20,height:14,rules:'dos',platforms:[[8,3,12],[11,3,17]],ladders:[]};
+  const sim=simulate(level,[{id:'v',type:'vanish',x:9,y:8},{id:'n',type:'normal',x:10,y:8}],'v',1,{},T);
+  assert.equal(sim.pieces.find(p=>p.id==='v').state,'vanished');
+  assert.equal(sim.pieces.find(p=>p.id==='n').state,'flat');
+});
+
+test('DOS timing: an ordinary tile off the ledge still starts a splitter below',()=>{
+  const level={width:20,height:14,rules:'dos',platforms:[[8,3,9],[11,3,17]],ladders:[]};
+  const sim=simulate(level,[{id:'a',type:'normal',x:9,y:8},{id:'s',type:'splitter',x:10,y:11}],'a',1,{},T);
+  assert.equal(sim.pieces.find(p=>p.id==='a').state,'vanished');
+  assert.notEqual(sim.pieces.find(p=>p.id==='s').state,'upright');
+});
+
+test('DOS timing: a tumbler meets a stair face instead of dropping through the gap',()=>{
+  const level={width:20,height:14,rules:'dos',platforms:[[3,7,7],[3.5,8,8],[6,0,19]],ladders:[]};
+  const sim=simulate(level,[{id:'t',type:'tumbler',x:8,y:3.5}],'t',-1,{},T);
+  const p=sim.pieces[0];
+  assert.equal(p.state,'flat');
+  assert.equal(p.x,8);
+  assert.equal(p.y,3.5);
+  assert.equal(p.lean,45);
+});
+
+test('DOS timing: a tumbler still rolls down the treads away from the face',()=>{
+  const level={width:20,height:14,rules:'dos',platforms:[[3,7,7],[3.5,8,8],[6,0,19]],ladders:[]};
+  for(const [x,y] of [[7,3],[8,3.5]]){
+    const sim=simulate(level,[{id:'t',type:'tumbler',x,y}],'t',1,{},T);
+    assert.equal(sim.pieces[0].y,6,`tumbler at ${x},${y} descends`);
+  }
+});

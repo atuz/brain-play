@@ -198,12 +198,12 @@ test('Level 98: the top ladder only reaches the platform after the door opens',(
   assert.ok(pathTo(level,{x:10,y:6},{x:10,y:1}));
 });
 
-test('Level 101 is the original all-yellow stage with the dark hint',()=>{
-  const level=levels[140];
-  assert.equal(level.name,'希腊 101');
+test('Level 100 is the original all-yellow stage with the dark hint',()=>{
+  const level=levels[139];
+  assert.equal(level.name,'希腊 100');
   assert.equal(level.mono,true);
   assert.equal(level.chapter,15,'the finale lives in the last chapter, so it is listed last');
-  assert.deepEqual(levels.filter(l=>l.chapter===15).map(l=>l.name),['希腊 101']);
+  assert.deepEqual(levels.filter(l=>l.chapter===15).map(l=>l.name),['希腊 100']);
   assert.ok(level.hint.startsWith('全黄/昏暗关：所有砖颜色都一样'));
   assert.equal(translate(level.hint,'en'),"You're in the dark!");
   assert.equal(level.pieces.length,21);

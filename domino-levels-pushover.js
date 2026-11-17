@@ -407,7 +407,7 @@ export const pushoverDefinitions = [
     exit:{x:4,y:4},
     platforms:[[0,3,18],[2,3,3],[2,5,18],[4,3,13],[4,15,18],[6,3,16],[8,5,18],[10,3,18]],
     ladders:[{x:9,from:4,to:10}],ramps:[],
-    pieces:[{type:'stopper',x:3,y:2},{type:'normal',x:5,y:2},{type:'normal',x:6,y:2},{type:'normal',x:7,y:2},{type:'normal',x:8,y:2},{type:'normal',x:9,y:2},{type:'normal',x:10,y:2},{type:'normal',x:11,y:2},{type:'normal',x:12,y:2},{type:'normal',x:13,y:2},{type:'normal',x:14,y:2},{type:'normal',x:15,y:2},{type:'normal',x:16,y:2},{type:'normal',x:17,y:2},{type:'ascender',x:4,y:4},{type:'normal',x:5,y:4},{type:'normal',x:6,y:4},{type:'normal',x:7,y:4},{type:'normal',x:8,y:4},{type:'normal',x:9,y:4},{type:'normal',x:10,y:4},{type:'normal',x:11,y:4},{type:'normal',x:12,y:4},{type:'normal',x:13,y:4},{type:'delay',x:15,y:4},{type:'normal',x:16,y:4},{type:'normal',x:17,y:4},{type:'normal',x:5,y:6},{type:'normal',x:6,y:6},{type:'normal',x:7,y:6},{type:'normal',x:8,y:6},{type:'normal',x:9,y:6},{type:'normal',x:10,y:6},{type:'normal',x:11,y:6},{type:'normal',x:12,y:6},{type:'normal',x:13,y:6},{type:'normal',x:14,y:6},{type:'normal',x:15,y:6},{type:'normal',x:16,y:6},{type:'normal',x:5,y:8},{type:'normal',x:6,y:8},{type:'normal',x:7,y:8},{type:'normal',x:8,y:8},{type:'ascender',x:9,y:8},{type:'normal',x:10,y:8},{type:'normal',x:11,y:8},{type:'normal',x:12,y:8},{type:'normal',x:13,y:8},{type:'normal',x:14,y:8},{type:'normal',x:15,y:8},{type:'normal',x:16,y:8},{type:'stopper',x:18,y:8},{type:'stopper',x:3,y:10},{type:'normal',x:5,y:10},{type:'normal',x:6,y:10},{type:'normal',x:7,y:10},{type:'normal',x:8,y:10},{type:'normal',x:9,y:10},{type:'normal',x:10,y:10},{type:'normal',x:11,y:10},{type:'normal',x:12,y:10},{type:'normal',x:13,y:10},{type:'normal',x:14,y:10},{type:'normal',x:15,y:10},{type:'normal',x:16,y:10},{type:'trigger',x:17,y:10}],
+    pieces:[{type:'stopper',x:3,y:2},{type:'normal',x:5,y:2},{type:'normal',x:6,y:2},{type:'normal',x:7,y:2},{type:'normal',x:8,y:2},{type:'normal',x:9,y:2},{type:'normal',x:10,y:2},{type:'normal',x:11,y:2},{type:'normal',x:12,y:2},{type:'normal',x:13,y:2},{type:'normal',x:14,y:2},{type:'normal',x:15,y:2},{type:'normal',x:16,y:2},{type:'normal',x:17,y:2},{type:'ascender',x:4,y:4},{type:'normal',x:5,y:4},{type:'normal',x:6,y:4},{type:'normal',x:7,y:4},{type:'normal',x:8,y:4},{type:'normal',x:9,y:4},{type:'normal',x:10,y:4},{type:'normal',x:11,y:4},{type:'normal',x:12,y:4},{type:'normal',x:13,y:4},{type:'delay',x:15,y:4},{type:'normal',x:16,y:4},{type:'normal',x:17,y:4},{type:'normal',x:5,y:6},{type:'normal',x:6,y:6},{type:'normal',x:7,y:6},{type:'normal',x:8,y:6},{type:'normal',x:9,y:6},{type:'normal',x:10,y:6},{type:'normal',x:11,y:6},{type:'normal',x:12,y:6},{type:'normal',x:13,y:6},{type:'normal',x:14,y:6},{type:'normal',x:15,y:6},{type:'normal',x:16,y:6},{type:'normal',x:5,y:8},{type:'normal',x:6,y:8},{type:'normal',x:7,y:8},{type:'normal',x:8,y:8},{type:'ascender',x:9,y:8},{type:'normal',x:10,y:8},{type:'normal',x:11,y:8},{type:'normal',x:12,y:8},{type:'normal',x:13,y:8},{type:'normal',x:14,y:8},{type:'normal',x:15,y:8},{type:'normal',x:16,y:8},{type:'stopper',x:18,y:8},{type:'stopper',x:3,y:10},{type:'normal',x:5,y:10},{type:'normal',x:6,y:10},{type:'normal',x:7,y:10},{type:'normal',x:8,y:10},{type:'normal',x:9,y:10},{type:'normal',x:10,y:10},{type:'normal',x:11,y:10},{type:'normal',x:12,y:10},{type:'normal',x:13,y:10},{type:'normal',x:14,y:10},{type:'normal',x:15,y:10},{type:'delay',x:16,y:10},{type:'trigger',x:17,y:10}],
   },
   {
     name:'电子世界 38',chapter:9,theme:'electro',
@@ -600,10 +600,10 @@ export const pushoverDefinitions = [
     name:'希腊 55',chapter:10,theme:'greek',
     passcode:'22558',dos:true,hint:'唯一有多个触发器的关（必须同时倒）；两处需要速度（第五包 Quavers）。',
     width:20,height:13,viewTop:0,
-    player:{x:8,y:6},
-    entry:{x:8,y:6},
+    player:{x:8,y:6.5},
+    entry:{x:8,y:6.5},
     exit:{x:7,y:11},
-    platforms:[[3,3,6],[5,3,3],[5,5,15],[6,8,8],[8,3,9],[8,11,17],[11,3,17]],
+    platforms:[[3,3,6],[5,3,3],[5,5,15],[8,3,9],[8,11,17],[11,3,17]],
     ladders:[{x:7,from:5,to:8}],ramps:[],
     pieces:[{type:'stopper',x:3,y:5},{type:'normal',x:5,y:5},{type:'normal',x:6,y:5},{type:'normal',x:7,y:5},{type:'normal',x:8,y:5},{type:'delay',x:9,y:5},{type:'normal',x:10,y:5},{type:'delay',x:11,y:5},{type:'normal',x:12,y:5},{type:'normal',x:13,y:5},{type:'normal',x:14,y:5},{type:'normal',x:15,y:5},{type:'stopper',x:3,y:8},{type:'ascender',x:4,y:8},{type:'vanish',x:5,y:8},{type:'vanish',x:6,y:8},{type:'vanish',x:7,y:8},{type:'tumbler',x:8,y:8},{type:'vanish',x:9,y:8},{type:'normal',x:12,y:8},{type:'normal',x:13,y:8},{type:'normal',x:14,y:8},{type:'normal',x:15,y:8},{type:'bridge',x:16,y:8},{type:'stopper',x:17,y:8},{type:'trigger',x:4,y:11},{type:'delay',x:5,y:11},{type:'exploder',x:6,y:11},{type:'bridge',x:7,y:11},{type:'tumbler',x:8,y:11},{type:'delay',x:9,y:11},{type:'splitter',x:10,y:11},{type:'delay',x:11,y:11},{type:'tumbler',x:12,y:11},{type:'bridge',x:13,y:11},{type:'exploder',x:14,y:11},{type:'delay',x:15,y:11},{type:'trigger',x:16,y:11}],
   },
@@ -884,17 +884,6 @@ export const pushoverDefinitions = [
   },
   {
     name:'地牢 81',chapter:13,theme:'dungeon',
-    passcode:'28927',dos:true,hint:'主要难点是两个翻倒砖，要让它们不互相挡路；用延迟砖/阻挡砖控制。',
-    width:20,height:13,viewTop:0,
-    player:{x:13,y:5},
-    entry:{x:13,y:4},
-    exit:{x:6,y:11},
-    platforms:[[1,17,18],[3,10,16],[3,18,18],[5,4,10],[5,12,15],[7,6,18],[9,9,16],[11,2,17]],
-    ladders:[{x:12,from:7,to:9}],ramps:[],
-    pieces:[{type:'exploder',x:10,y:3},{type:'normal',x:11,y:3},{type:'normal',x:12,y:3},{type:'normal',x:13,y:3},{type:'normal',x:14,y:3},{type:'normal',x:15,y:3},{type:'normal',x:16,y:3},{type:'stopper',x:18,y:3},{type:'normal',x:6,y:5},{type:'normal',x:7,y:5},{type:'normal',x:8,y:5},{type:'normal',x:9,y:5},{type:'tumbler',x:14,y:5},{type:'tumbler',x:15,y:5},{type:'tumbler',x:8,y:7},{type:'delay',x:9,y:7},{type:'delay',x:10,y:7},{type:'delay',x:11,y:7},{type:'delay',x:12,y:7},{type:'delay',x:13,y:7},{type:'ascender',x:17,y:7},{type:'stopper',x:18,y:7},{type:'normal',x:9,y:9},{type:'normal',x:10,y:9},{type:'delay',x:11,y:9},{type:'delay',x:12,y:9},{type:'delay',x:13,y:9},{type:'normal',x:14,y:9},{type:'exploder',x:16,y:9},{type:'stopper',x:2,y:11},{type:'ascender',x:9,y:11},{type:'normal',x:10,y:11},{type:'trigger',x:13,y:11}],
-  },
-  {
-    name:'地牢 82',chapter:13,theme:'dungeon',
     passcode:'29439',dos:true,hint:'主要难点是两个翻倒砖，要让它们不互相挡路；用延迟砖/阻挡砖控制。',
     width:20,height:13,viewTop:0,
     player:{x:16,y:5},
@@ -905,7 +894,7 @@ export const pushoverDefinitions = [
     pieces:[{type:'stopper',x:3,y:3},{type:'normal',x:5,y:3},{type:'normal',x:6,y:3},{type:'tumbler',x:5,y:5},{type:'normal',x:6,y:5},{type:'bridge',x:8,y:5},{type:'bridge',x:12,y:5},{type:'tumbler',x:13,y:5},{type:'stopper',x:3,y:7},{type:'bridge',x:6,y:7},{type:'stopper',x:8,y:7},{type:'normal',x:9,y:7},{type:'normal',x:10,y:7},{type:'trigger',x:12,y:7},{type:'normal',x:16,y:7},{type:'normal',x:3,y:9},{type:'normal',x:4,y:9},{type:'normal',x:5,y:9},{type:'normal',x:6,y:9},{type:'ascender',x:7,y:9},{type:'ascender',x:14,y:9},{type:'splitter',x:15,y:9}],
   },
   {
-    name:'地牢 83',chapter:13,theme:'dungeon',
+    name:'地牢 82',chapter:13,theme:'dungeon',
     passcode:'30463',dos:true,hint:'把一个翻倒砖关在两个阻挡砖之间，之后完成链条；释放时快速把阻挡砖放回；触发器倒下时蚂蚁不能还拿着它。',
     width:20,height:13,viewTop:0,
     player:{x:3,y:3},
@@ -916,7 +905,7 @@ export const pushoverDefinitions = [
     pieces:[{type:'delay',x:5,y:3},{type:'normal',x:6,y:3},{type:'normal',x:7,y:3},{type:'normal',x:4,y:5},{type:'normal',x:5,y:5},{type:'stopper',x:7,y:5},{type:'normal',x:9,y:5},{type:'normal',x:14,y:5},{type:'normal',x:15,y:5},{type:'normal',x:16,y:5},{type:'trigger',x:17,y:5},{type:'stopper',x:3,y:7},{type:'normal',x:5,y:7},{type:'ascender',x:6,y:7},{type:'normal',x:11,y:7},{type:'tumbler',x:12,y:7},{type:'exploder',x:13,y:7},{type:'ascender',x:4,y:9},{type:'normal',x:5,y:9},{type:'ascender',x:6,y:11},{type:'vanish',x:7,y:11},{type:'vanish',x:8,y:11},{type:'vanish',x:9,y:11},{type:'vanish',x:10,y:11},{type:'vanish',x:11,y:11},{type:'vanish',x:12,y:11},{type:'stopper',x:14,y:11},{type:'ascender',x:15,y:11},{type:'stopper',x:16,y:11},{type:'normal',x:17,y:11}],
   },
   {
-    name:'地牢 84',chapter:13,theme:'dungeon',
+    name:'地牢 83',chapter:13,theme:'dungeon',
     passcode:'29951',dos:true,hint:'相对简单；速度快，但思路几次就能看出。',
     width:20,height:13,viewTop:0,
     player:{x:13,y:1},
@@ -927,7 +916,7 @@ export const pushoverDefinitions = [
     pieces:[{type:'normal',x:11,y:1},{type:'normal',x:12,y:1},{type:'splitter',x:14,y:1},{type:'tumbler',x:15,y:1},{type:'bridge',x:16,y:1},{type:'tumbler',x:17,y:1},{type:'vanish',x:5,y:3},{type:'vanish',x:6,y:3},{type:'normal',x:11,y:3},{type:'normal',x:12,y:3},{type:'normal',x:13,y:3},{type:'normal',x:14,y:3},{type:'normal',x:15,y:3},{type:'normal',x:16,y:3},{type:'normal',x:12,y:5},{type:'normal',x:13,y:5},{type:'normal',x:14,y:5},{type:'normal',x:15,y:5},{type:'normal',x:16,y:5},{type:'stopper',x:18,y:5},{type:'stopper',x:3,y:7},{type:'bridge',x:8,y:7},{type:'exploder',x:9,y:7},{type:'delay',x:11,y:7},{type:'delay',x:12,y:7},{type:'delay',x:13,y:7},{type:'delay',x:14,y:7},{type:'delay',x:15,y:7},{type:'normal',x:16,y:7},{type:'delay',x:6,y:9},{type:'delay',x:7,y:9},{type:'delay',x:8,y:9},{type:'stopper',x:10,y:9},{type:'normal',x:12,y:10},{type:'trigger',x:13,y:10},{type:'normal',x:14,y:10},{type:'normal',x:15,y:10}],
   },
   {
-    name:'地牢 85',chapter:13,theme:'dungeon',
+    name:'地牢 84',chapter:13,theme:'dungeon',
     passcode:'31999',dos:true,hint:'推之前和之后都要做事；有多种解法，但要让翻倒砖在触发器倒前停下来。',
     width:20,height:13,viewTop:0,
     player:{x:17,y:1},
@@ -938,7 +927,7 @@ export const pushoverDefinitions = [
     pieces:[{type:'normal',x:4,y:1},{type:'normal',x:5,y:1},{type:'normal',x:6,y:1},{type:'normal',x:7,y:1},{type:'normal',x:8,y:1},{type:'normal',x:9,y:1},{type:'splitter',x:11,y:1},{type:'splitter',x:12,y:1},{type:'splitter',x:13,y:1},{type:'splitter',x:14,y:1},{type:'splitter',x:15,y:1},{type:'splitter',x:16,y:1},{type:'delay',x:18,y:1},{type:'normal',x:9,y:3},{type:'normal',x:11,y:3},{type:'normal',x:12,y:3},{type:'normal',x:13,y:3},{type:'normal',x:14,y:3},{type:'normal',x:15,y:3},{type:'normal',x:16,y:3},{type:'normal',x:3,y:5},{type:'normal',x:4,y:5},{type:'normal',x:5,y:5},{type:'normal',x:6,y:5},{type:'normal',x:7,y:5},{type:'normal',x:9,y:5},{type:'normal',x:10,y:5},{type:'normal',x:11,y:5},{type:'normal',x:15,y:5},{type:'normal',x:16,y:5},{type:'normal',x:18,y:5},{type:'splitter',x:3,y:7},{type:'splitter',x:4,y:7},{type:'splitter',x:5,y:7},{type:'splitter',x:6,y:7},{type:'normal',x:8,y:7},{type:'normal',x:9,y:7},{type:'normal',x:10,y:7},{type:'normal',x:11,y:7},{type:'normal',x:15,y:7},{type:'normal',x:16,y:7},{type:'normal',x:5,y:9},{type:'normal',x:6,y:9},{type:'normal',x:8,y:9},{type:'normal',x:16,y:9},{type:'normal',x:18,y:9},{type:'normal',x:3,y:11},{type:'normal',x:5,y:11},{type:'normal',x:7,y:11},{type:'normal',x:8,y:11},{type:'normal',x:10,y:11},{type:'normal',x:13,y:11},{type:'normal',x:14,y:11},{type:'trigger',x:17,y:11}],
   },
   {
-    name:'地牢 86',chapter:13,theme:'dungeon',
+    name:'地牢 85',chapter:13,theme:'dungeon',
     passcode:'32511',dos:true,hint:'把分裂砖放进正确缺口，注意别在放砖时砸坏；时间够，不难。',
     width:20,height:13,viewTop:0,
     player:{x:4,y:1},
@@ -949,7 +938,7 @@ export const pushoverDefinitions = [
     pieces:[{type:'stopper',x:3,y:1},{type:'delay',x:15,y:1},{type:'normal',x:16,y:1},{type:'normal',x:17,y:1},{type:'stopper',x:18,y:1},{type:'stopper',x:3,y:3},{type:'trigger',x:5,y:3},{type:'bridge',x:8,y:3},{type:'bridge',x:11,y:3},{type:'tumbler',x:12,y:3},{type:'delay',x:13,y:3},{type:'delay',x:16,y:3},{type:'normal',x:17,y:3},{type:'stopper',x:18,y:3},{type:'stopper',x:3,y:5},{type:'normal',x:4,y:5},{type:'normal',x:5,y:5},{type:'normal',x:6,y:5},{type:'bridge',x:9,y:5},{type:'bridge',x:12,y:5},{type:'tumbler',x:13,y:5},{type:'delay',x:14,y:5},{type:'stopper',x:18,y:5},{type:'stopper',x:3,y:7},{type:'normal',x:4,y:7},{type:'normal',x:5,y:7},{type:'normal',x:6,y:7},{type:'normal',x:7,y:7},{type:'bridge',x:10,y:7},{type:'tumbler',x:11,y:7},{type:'normal',x:12,y:7},{type:'normal',x:13,y:7},{type:'normal',x:14,y:7},{type:'ascender',x:15,y:7},{type:'tumbler',x:16,y:7},{type:'stopper',x:18,y:7},{type:'normal',x:5,y:9},{type:'normal',x:6,y:9},{type:'normal',x:7,y:9},{type:'normal',x:8,y:9},{type:'stopper',x:10,y:9},{type:'delay',x:12,y:9},{type:'tumbler',x:13,y:9},{type:'bridge',x:14,y:9},{type:'stopper',x:18,y:9},{type:'stopper',x:3,y:11},{type:'normal',x:5,y:11},{type:'normal',x:6,y:11},{type:'normal',x:7,y:11},{type:'normal',x:8,y:11},{type:'normal',x:9,y:11},{type:'normal',x:10,y:11},{type:'normal',x:11,y:11},{type:'normal',x:12,y:11},{type:'tumbler',x:13,y:11},{type:'normal',x:14,y:11},{type:'ascender',x:15,y:11},{type:'ascender',x:17,y:11},{type:'stopper',x:18,y:11}],
   },
   {
-    name:'地牢 87',chapter:13,theme:'dungeon',
+    name:'地牢 86',chapter:13,theme:'dungeon',
     passcode:'31487',dos:true,hint:'时间不紧；看懂不太明显的思路后准备很快；推完可休息。',
     width:20,height:13,viewTop:0,
     player:{x:6,y:9},
@@ -960,7 +949,7 @@ export const pushoverDefinitions = [
     pieces:[{type:'stopper',x:3,y:3},{type:'normal',x:5,y:3},{type:'normal',x:6,y:3},{type:'normal',x:7,y:3},{type:'normal',x:8,y:3},{type:'normal',x:11,y:3},{type:'normal',x:12,y:3},{type:'normal',x:13,y:3},{type:'normal',x:14,y:3},{type:'normal',x:15,y:3},{type:'normal',x:16,y:3},{type:'stopper',x:18,y:3},{type:'normal',x:8,y:5},{type:'normal',x:9,y:5},{type:'normal',x:10,y:5},{type:'delay',x:11,y:5},{type:'delay',x:12,y:5},{type:'trigger',x:6,y:7},{type:'normal',x:14,y:7},{type:'stopper',x:3,y:9},{type:'ascender',x:5,y:9},{type:'normal',x:7,y:9},{type:'normal',x:8,y:9},{type:'normal',x:9,y:9},{type:'normal',x:13,y:9},{type:'normal',x:14,y:9},{type:'splitter',x:15,y:9},{type:'stopper',x:16,y:9},{type:'normal',x:5,y:11},{type:'normal',x:6,y:11},{type:'normal',x:7,y:11},{type:'normal',x:8,y:11},{type:'normal',x:9,y:11},{type:'splitter',x:10,y:11},{type:'normal',x:11,y:11},{type:'normal',x:12,y:11},{type:'normal',x:13,y:11},{type:'normal',x:14,y:11},{type:'normal',x:15,y:11},{type:'normal',x:16,y:11},{type:'ascender',x:17,y:11}],
   },
   {
-    name:'地牢 88',chapter:13,theme:'dungeon',
+    name:'地牢 87',chapter:13,theme:'dungeon',
     passcode:'30975',dos:true,hint:'把中层两个延迟砖和两个黄砖交换位置；时间很多；重制版布局不同（086_）。',
     width:20,height:13,viewTop:0,
     player:{x:18,y:2},
@@ -971,7 +960,7 @@ export const pushoverDefinitions = [
     pieces:[{type:'trigger',x:4,y:2},{type:'normal',x:7,y:2},{type:'normal',x:8,y:2},{type:'normal',x:9,y:2},{type:'normal',x:10,y:2},{type:'exploder',x:11,y:2},{type:'exploder',x:7,y:4},{type:'normal',x:8,y:4},{type:'splitter',x:9,y:4},{type:'normal',x:10,y:4},{type:'delay',x:11,y:4},{type:'delay',x:12,y:4},{type:'normal',x:13,y:4},{type:'bridge',x:15,y:4},{type:'normal',x:16,y:4},{type:'normal',x:17,y:4},{type:'splitter',x:18,y:4},{type:'splitter',x:7,y:6},{type:'normal',x:8,y:6},{type:'normal',x:9,y:6},{type:'normal',x:10,y:6},{type:'normal',x:11,y:6},{type:'normal',x:12,y:6},{type:'exploder',x:13,y:6},{type:'normal',x:15,y:6},{type:'normal',x:16,y:6},{type:'normal',x:17,y:6},{type:'ascender',x:5,y:8},{type:'normal',x:6,y:8},{type:'normal',x:7,y:8},{type:'normal',x:8,y:8},{type:'normal',x:9,y:8},{type:'normal',x:10,y:8},{type:'normal',x:11,y:8},{type:'normal',x:12,y:8},{type:'splitter',x:13,y:8},{type:'normal',x:14,y:8},{type:'normal',x:15,y:8},{type:'normal',x:16,y:8}],
   },
   {
-    name:'地牢 89',chapter:13,theme:'dungeon',
+    name:'地牢 88',chapter:13,theme:'dungeon',
     passcode:'26879',dos:true,hint:'别被架桥砖骗了，这里不需要补缺口；因为从分裂砖位置回不到推动点，要等推完再放它。',
     width:20,height:13,viewTop:0,
     player:{x:8,y:1},
@@ -982,7 +971,7 @@ export const pushoverDefinitions = [
     pieces:[{type:'normal',x:7,y:1},{type:'normal',x:9,y:1},{type:'delay',x:10,y:1},{type:'exploder',x:4,y:3},{type:'delay',x:5,y:3},{type:'splitter',x:6,y:3},{type:'delay',x:7,y:3},{type:'delay',x:8,y:3},{type:'delay',x:13,y:3},{type:'delay',x:16,y:3},{type:'stopper',x:3,y:5},{type:'delay',x:5,y:5},{type:'delay',x:6,y:5},{type:'delay',x:7,y:5},{type:'exploder',x:9,y:5},{type:'normal',x:3,y:7},{type:'exploder',x:4,y:7},{type:'vanish',x:5,y:7},{type:'delay',x:6,y:7},{type:'delay',x:7,y:7},{type:'stopper',x:9,y:7},{type:'splitter',x:4,y:9},{type:'normal',x:5,y:9},{type:'normal',x:6,y:9},{type:'normal',x:7,y:9},{type:'exploder',x:8,y:9},{type:'ascender',x:12,y:11},{type:'ascender',x:15,y:11},{type:'trigger',x:18,y:11}],
   },
   {
-    name:'东方 90',chapter:14,theme:'japanese',
+    name:'东方 89',chapter:14,theme:'japanese',
     passcode:'27647',dos:true,hint:'推完要尽快完成多个动作（倒数第二包）。',
     width:20,height:13,viewTop:0,
     player:{x:3,y:5},
@@ -993,7 +982,7 @@ export const pushoverDefinitions = [
     pieces:[{type:'vanish',x:16,y:1},{type:'vanish',x:17,y:1},{type:'exploder',x:18,y:1},{type:'normal',x:4,y:5},{type:'tumbler',x:5,y:5},{type:'bridge',x:6,y:5},{type:'vanish',x:8,y:5},{type:'vanish',x:9,y:5},{type:'vanish',x:10,y:5},{type:'vanish',x:11,y:5},{type:'vanish',x:12,y:5},{type:'vanish',x:13,y:5},{type:'bridge',x:14,y:5},{type:'vanish',x:16,y:5},{type:'vanish',x:17,y:5},{type:'stopper',x:18,y:5},{type:'vanish',x:16,y:9},{type:'trigger',x:17,y:9},{type:'stopper',x:18,y:9}],
   },
   {
-    name:'东方 91',chapter:14,theme:'japanese',
+    name:'东方 90',chapter:14,theme:'japanese',
     passcode:'28671',dos:true,hint:'东方主题第一关；难度陡增，先推再看。',
     width:20,height:13,viewTop:0,
     player:{x:18,y:1},
@@ -1004,7 +993,7 @@ export const pushoverDefinitions = [
     pieces:[{type:'exploder',x:16,y:1},{type:'delay',x:17,y:1},{type:'delay',x:15,y:3},{type:'delay',x:17,y:3},{type:'delay',x:12,y:5},{type:'delay',x:13,y:5},{type:'delay',x:15,y:5},{type:'delay',x:16,y:5},{type:'delay',x:17,y:5},{type:'delay',x:9,y:7},{type:'delay',x:10,y:7},{type:'delay',x:12,y:7},{type:'delay',x:13,y:7},{type:'delay',x:14,y:7},{type:'delay',x:15,y:7},{type:'delay',x:16,y:7},{type:'delay',x:17,y:7},{type:'delay',x:6,y:9},{type:'delay',x:7,y:9},{type:'delay',x:9,y:9},{type:'delay',x:10,y:9},{type:'delay',x:11,y:9},{type:'delay',x:12,y:9},{type:'delay',x:13,y:9},{type:'delay',x:14,y:9},{type:'delay',x:15,y:9},{type:'delay',x:16,y:9},{type:'delay',x:17,y:9},{type:'delay',x:3,y:11},{type:'delay',x:4,y:11},{type:'delay',x:6,y:11},{type:'delay',x:7,y:11},{type:'delay',x:8,y:11},{type:'delay',x:9,y:11},{type:'delay',x:10,y:11},{type:'delay',x:11,y:11},{type:'delay',x:12,y:11},{type:'trigger',x:17,y:11}],
   },
   {
-    name:'东方 92',chapter:14,theme:'japanese',
+    name:'东方 91',chapter:14,theme:'japanese',
     passcode:'28159',dos:true,hint:'光快不够；必须把梯子上方的延迟砖带走，用它和门边的延迟砖补到触发器前的缺口；别忘了门层梯子后面的砖。',
     width:20,height:13,viewTop:0,
     player:{x:11,y:2},
@@ -1015,7 +1004,7 @@ export const pushoverDefinitions = [
     pieces:[{type:'tumbler',x:9,y:2},{type:'vanish',x:10,y:2},{type:'tumbler',x:14,y:2},{type:'vanish',x:15,y:2},{type:'vanish',x:16,y:2},{type:'stopper',x:18,y:2},{type:'stopper',x:7,y:4},{type:'vanish',x:9,y:4},{type:'vanish',x:10,y:4},{type:'vanish',x:11,y:4},{type:'vanish',x:12,y:4},{type:'tumbler',x:13,y:4},{type:'tumbler',x:5,y:6},{type:'vanish',x:6,y:6},{type:'vanish',x:7,y:6},{type:'vanish',x:8,y:6},{type:'vanish',x:9,y:6},{type:'vanish',x:10,y:6},{type:'vanish',x:11,y:6},{type:'vanish',x:12,y:6},{type:'vanish',x:13,y:6},{type:'stopper',x:15,y:6},{type:'normal',x:14,y:8},{type:'stopper',x:3,y:10},{type:'vanish',x:5,y:10},{type:'vanish',x:6,y:10},{type:'vanish',x:7,y:10},{type:'vanish',x:8,y:10},{type:'vanish',x:9,y:10},{type:'vanish',x:10,y:10},{type:'vanish',x:11,y:10},{type:'vanish',x:12,y:10},{type:'vanish',x:13,y:10},{type:'vanish',x:14,y:10},{type:'vanish',x:15,y:10},{type:'vanish',x:16,y:10},{type:'ascender',x:17,y:10},{type:'trigger',x:18,y:10}],
   },
   {
-    name:'东方 93',chapter:14,theme:'japanese',
+    name:'东方 92',chapter:14,theme:'japanese',
     passcode:'26111',dos:true,hint:'几乎全在推之后；有多种解法，最简单见视频；PC 版可走左梯，SNES 版没有左梯。',
     width:20,height:13,viewTop:0,
     player:{x:3,y:6},
@@ -1026,7 +1015,7 @@ export const pushoverDefinitions = [
     pieces:[{type:'vanish',x:7,y:6},{type:'vanish',x:8,y:6},{type:'vanish',x:9,y:6},{type:'ascender',x:10,y:6},{type:'vanish',x:11,y:6},{type:'vanish',x:12,y:6},{type:'vanish',x:13,y:6},{type:'stopper',x:3,y:9},{type:'ascender',x:4,y:9},{type:'ascender',x:5,y:9},{type:'ascender',x:6,y:9},{type:'ascender',x:7,y:9},{type:'ascender',x:8,y:9},{type:'ascender',x:9,y:9},{type:'tumbler',x:12,y:9},{type:'exploder',x:13,y:9},{type:'normal',x:14,y:9},{type:'delay',x:15,y:9},{type:'ascender',x:16,y:9},{type:'vanish',x:17,y:9},{type:'trigger',x:4,y:11},{type:'delay',x:5,y:11},{type:'delay',x:6,y:11},{type:'delay',x:7,y:11},{type:'delay',x:8,y:11},{type:'delay',x:9,y:11},{type:'delay',x:10,y:11},{type:'delay',x:11,y:11},{type:'delay',x:12,y:11},{type:'delay',x:13,y:11},{type:'delay',x:14,y:11},{type:'delay',x:15,y:11},{type:'delay',x:16,y:11},{type:'splitter',x:17,y:11},{type:'stopper',x:18,y:11}],
   },
   {
-    name:'东方 94',chapter:14,theme:'japanese',
+    name:'东方 93',chapter:14,theme:'japanese',
     passcode:'26623',dos:true,hint:'按图摆好，然后尽快用剩下的消失砖挡住翻倒砖；它第二次回来时用黄砖挡住；时间极紧，每一步都要准。',
     width:20,height:13,viewTop:0,
     player:{x:5,y:1},
@@ -1037,7 +1026,7 @@ export const pushoverDefinitions = [
     pieces:[{type:'tumbler',x:7,y:1},{type:'exploder',x:8,y:1},{type:'stopper',x:3,y:3},{type:'tumbler',x:5,y:3},{type:'exploder',x:6,y:3},{type:'vanish',x:7,y:3},{type:'stopper',x:9,y:3},{type:'stopper',x:5,y:5},{type:'vanish',x:7,y:5},{type:'exploder',x:8,y:5},{type:'tumbler',x:12,y:5},{type:'normal',x:13,y:5},{type:'ascender',x:14,y:5},{type:'exploder',x:6,y:7},{type:'vanish',x:7,y:7},{type:'stopper',x:9,y:7},{type:'trigger',x:13,y:7},{type:'stopper',x:5,y:9},{type:'vanish',x:7,y:9},{type:'exploder',x:8,y:9},{type:'stopper',x:3,y:11},{type:'ascender',x:4,y:11},{type:'vanish',x:5,y:11},{type:'vanish',x:6,y:11},{type:'vanish',x:7,y:11},{type:'vanish',x:9,y:11},{type:'ascender',x:10,y:11},{type:'stopper',x:11,y:11},{type:'bridge',x:13,y:11},{type:'delay',x:14,y:11},{type:'stopper',x:18,y:11}],
   },
   {
-    name:'东方 95',chapter:14,theme:'japanese',
+    name:'东方 94',chapter:14,theme:'japanese',
     passcode:'25599',dos:true,hint:'非常复杂的连锁，推之后还要大量搬动；看视频。',
     width:20,height:13,viewTop:0,
     player:{x:8,y:8},
@@ -1048,7 +1037,7 @@ export const pushoverDefinitions = [
     pieces:[{type:'ascender',x:3,y:2},{type:'normal',x:4,y:2},{type:'normal',x:5,y:2},{type:'normal',x:6,y:2},{type:'normal',x:7,y:2},{type:'normal',x:8,y:2},{type:'normal',x:9,y:2},{type:'normal',x:10,y:2},{type:'bridge',x:12,y:2},{type:'normal',x:13,y:2},{type:'delay',x:14,y:2},{type:'delay',x:16,y:2},{type:'ascender',x:3,y:4},{type:'normal',x:4,y:4},{type:'normal',x:5,y:4},{type:'normal',x:6,y:4},{type:'normal',x:7,y:4},{type:'normal',x:8,y:4},{type:'normal',x:9,y:4},{type:'bridge',x:11,y:4},{type:'normal',x:12,y:4},{type:'delay',x:13,y:4},{type:'delay',x:15,y:4},{type:'stopper',x:18,y:4},{type:'ascender',x:3,y:6},{type:'normal',x:4,y:6},{type:'normal',x:5,y:6},{type:'normal',x:6,y:6},{type:'normal',x:7,y:6},{type:'normal',x:8,y:6},{type:'bridge',x:10,y:6},{type:'normal',x:11,y:6},{type:'delay',x:12,y:6},{type:'delay',x:14,y:6},{type:'ascender',x:3,y:8},{type:'normal',x:4,y:8},{type:'normal',x:5,y:8},{type:'normal',x:6,y:8},{type:'normal',x:7,y:8},{type:'bridge',x:9,y:8},{type:'normal',x:10,y:8},{type:'delay',x:11,y:8},{type:'delay',x:13,y:8},{type:'stopper',x:18,y:8},{type:'bridge',x:3,y:10},{type:'exploder',x:4,y:10},{type:'normal',x:5,y:10},{type:'normal',x:6,y:10},{type:'normal',x:7,y:10},{type:'splitter',x:8,y:10},{type:'delay',x:9,y:10},{type:'delay',x:10,y:10},{type:'vanish',x:11,y:10},{type:'ascender',x:12,y:10},{type:'trigger',x:13,y:10},{type:'stopper',x:17,y:10}],
   },
   {
-    name:'东方 96',chapter:14,theme:'japanese',
+    name:'东方 95',chapter:14,theme:'japanese',
     passcode:'25087',dos:true,hint:'关键是用上升砖跨过缺口推砖；分裂砖可提供“第二次推动”。',
     width:20,height:13,viewTop:0,
     player:{x:16,y:1},
@@ -1059,7 +1048,7 @@ export const pushoverDefinitions = [
     pieces:[{type:'bridge',x:3,y:1},{type:'normal',x:4,y:1},{type:'normal',x:5,y:1},{type:'splitter',x:8,y:1},{type:'bridge',x:9,y:1},{type:'splitter',x:10,y:1},{type:'bridge',x:11,y:1},{type:'splitter',x:12,y:1},{type:'bridge',x:13,y:1},{type:'splitter',x:14,y:1},{type:'bridge',x:15,y:1},{type:'normal',x:3,y:3},{type:'normal',x:4,y:3},{type:'normal',x:5,y:3},{type:'splitter',x:6,y:3},{type:'normal',x:7,y:3},{type:'normal',x:8,y:3},{type:'normal',x:3,y:5},{type:'normal',x:4,y:5},{type:'normal',x:5,y:5},{type:'tumbler',x:8,y:5},{type:'normal',x:10,y:5},{type:'normal',x:3,y:7},{type:'normal',x:4,y:7},{type:'normal',x:5,y:7},{type:'normal',x:6,y:7},{type:'normal',x:7,y:7},{type:'tumbler',x:10,y:7},{type:'normal',x:12,y:7},{type:'normal',x:3,y:9},{type:'normal',x:4,y:9},{type:'normal',x:5,y:9},{type:'normal',x:6,y:9},{type:'normal',x:7,y:9},{type:'normal',x:8,y:9},{type:'normal',x:9,y:9},{type:'tumbler',x:12,y:9},{type:'normal',x:14,y:9},{type:'trigger',x:8,y:11},{type:'delay',x:9,y:11},{type:'delay',x:10,y:11},{type:'normal',x:11,y:11},{type:'tumbler',x:14,y:11},{type:'normal',x:16,y:11}],
   },
   {
-    name:'东方 97',chapter:14,theme:'japanese',
+    name:'东方 96',chapter:14,theme:'japanese',
     passcode:'08703',dos:true,hint:'准备时间长，但难度不高；触发器后面可以放架桥砖，只要它倒下时补上缺口，触发器仍算最后倒。',
     width:20,height:13,viewTop:0,
     player:{x:17,y:5},
@@ -1070,7 +1059,7 @@ export const pushoverDefinitions = [
     pieces:[{type:'tumbler',x:3,y:1},{type:'tumbler',x:4,y:1},{type:'tumbler',x:5,y:1},{type:'tumbler',x:6,y:1},{type:'tumbler',x:7,y:1},{type:'tumbler',x:8,y:1},{type:'ascender',x:9,y:1},{type:'ascender',x:10,y:1},{type:'ascender',x:11,y:1},{type:'ascender',x:12,y:1},{type:'ascender',x:13,y:1},{type:'ascender',x:14,y:1},{type:'ascender',x:15,y:1},{type:'ascender',x:16,y:1},{type:'ascender',x:17,y:1},{type:'ascender',x:18,y:1},{type:'stopper',x:3,y:3},{type:'vanish',x:6,y:3},{type:'vanish',x:10,y:3},{type:'vanish',x:14,y:3},{type:'exploder',x:7,y:5},{type:'vanish',x:8,y:5},{type:'exploder',x:9,y:5},{type:'exploder',x:11,y:5},{type:'vanish',x:12,y:5},{type:'exploder',x:13,y:5},{type:'stopper',x:18,y:5},{type:'stopper',x:3,y:7},{type:'bridge',x:5,y:7},{type:'bridge',x:7,y:7},{type:'bridge',x:9,y:7},{type:'bridge',x:11,y:7},{type:'bridge',x:13,y:7},{type:'normal',x:15,y:7},{type:'tumbler',x:16,y:7},{type:'ascender',x:5,y:9},{type:'ascender',x:6,y:9},{type:'ascender',x:7,y:9},{type:'ascender',x:8,y:9},{type:'ascender',x:9,y:9},{type:'ascender',x:10,y:9},{type:'ascender',x:11,y:9},{type:'ascender',x:12,y:9},{type:'ascender',x:13,y:9},{type:'ascender',x:14,y:9},{type:'ascender',x:15,y:9},{type:'ascender',x:16,y:9},{type:'stopper',x:18,y:9},{type:'stopper',x:3,y:11},{type:'vanish',x:5,y:11},{type:'vanish',x:6,y:11},{type:'vanish',x:7,y:11},{type:'vanish',x:8,y:11},{type:'vanish',x:9,y:11},{type:'vanish',x:10,y:11},{type:'vanish',x:11,y:11},{type:'vanish',x:12,y:11},{type:'vanish',x:13,y:11},{type:'vanish',x:14,y:11},{type:'vanish',x:15,y:11},{type:'trigger',x:17,y:11}],
   },
   {
-    name:'东方 98',chapter:14,theme:'japanese',
+    name:'东方 97',chapter:14,theme:'japanese',
     passcode:'09215',dos:true,hint:'最上面的梯子一开始只到一半，开门后才会伸到平台；开门后沿它爬上去出门。其余照旧：推完只需移开一个阻挡砖。',
     width:20,height:13,viewTop:0,
     player:{x:17,y:1},
@@ -1081,7 +1070,7 @@ export const pushoverDefinitions = [
     pieces:[{type:'tumbler',x:6,y:1},{type:'delay',x:7,y:1},{type:'delay',x:8,y:1},{type:'delay',x:9,y:1},{type:'delay',x:10,y:1},{type:'delay',x:11,y:1},{type:'exploder',x:12,y:1},{type:'exploder',x:13,y:1},{type:'stopper',x:3,y:3},{type:'stopper',x:5,y:3},{type:'tumbler',x:7,y:3},{type:'stopper',x:14,y:3},{type:'delay',x:16,y:3},{type:'trigger',x:17,y:3},{type:'stopper',x:7,y:9},{type:'delay',x:16,y:9},{type:'stopper',x:18,y:9},{type:'stopper',x:3,y:11},{type:'delay',x:5,y:11},{type:'ascender',x:6,y:11},{type:'delay',x:13,y:11},{type:'ascender',x:16,y:11},{type:'stopper',x:18,y:11}],
   },
   {
-    name:'东方 99',chapter:14,theme:'japanese',
+    name:'东方 98',chapter:14,theme:'japanese',
     passcode:'10239',dos:true,hint:'推前几块、推后更多；新机制：只能上不能下的梯子。',
     width:20,height:13,viewTop:0,
     player:{x:19,y:7},
@@ -1092,7 +1081,7 @@ export const pushoverDefinitions = [
     pieces:[{type:'exploder',x:5,y:3},{type:'normal',x:6,y:3},{type:'splitter',x:7,y:3},{type:'normal',x:8,y:3},{type:'normal',x:9,y:3},{type:'normal',x:10,y:3},{type:'normal',x:11,y:3},{type:'normal',x:12,y:3},{type:'normal',x:13,y:3},{type:'normal',x:14,y:3},{type:'exploder',x:15,y:3},{type:'exploder',x:4,y:5},{type:'normal',x:5,y:5},{type:'normal',x:6,y:5},{type:'normal',x:7,y:5},{type:'normal',x:8,y:5},{type:'normal',x:9,y:5},{type:'normal',x:10,y:5},{type:'normal',x:11,y:5},{type:'normal',x:12,y:5},{type:'normal',x:13,y:5},{type:'normal',x:14,y:5},{type:'normal',x:15,y:5},{type:'exploder',x:16,y:5},{type:'splitter',x:4,y:7},{type:'normal',x:5,y:7},{type:'normal',x:6,y:7},{type:'normal',x:7,y:7},{type:'normal',x:8,y:7},{type:'normal',x:9,y:7},{type:'normal',x:10,y:7},{type:'bridge',x:11,y:7},{type:'normal',x:14,y:7},{type:'normal',x:15,y:7},{type:'splitter',x:16,y:7},{type:'normal',x:17,y:7},{type:'exploder',x:18,y:7},{type:'normal',x:5,y:9},{type:'normal',x:6,y:9},{type:'normal',x:7,y:9},{type:'normal',x:8,y:9},{type:'normal',x:9,y:9},{type:'exploder',x:12,y:9},{type:'normal',x:13,y:9},{type:'normal',x:14,y:9},{type:'normal',x:15,y:9},{type:'trigger',x:17,y:9},{type:'splitter',x:18,y:9},{type:'tumbler',x:10,y:11},{type:'ascender',x:12,y:11}],
   },
   {
-    name:'东方 100',chapter:14,theme:'japanese',
+    name:'东方 99',chapter:14,theme:'japanese',
     passcode:'09727',dos:true,hint:'全游戏最难；很多砖是误导性的，解法不用它们；下层要先用爆炸砖炸开地板才能进入。',
     width:20,height:13,viewTop:0,
     player:{x:12,y:3},
@@ -1103,7 +1092,7 @@ export const pushoverDefinitions = [
     pieces:[{type:'vanish',x:3,y:1},{type:'vanish',x:4,y:1},{type:'vanish',x:5,y:1},{type:'vanish',x:6,y:1},{type:'vanish',x:7,y:1},{type:'vanish',x:8,y:1},{type:'vanish',x:9,y:1},{type:'vanish',x:10,y:1},{type:'vanish',x:11,y:1},{type:'vanish',x:12,y:1},{type:'bridge',x:13,y:1},{type:'normal',x:15,y:1},{type:'normal',x:16,y:1},{type:'normal',x:17,y:1},{type:'vanish',x:3,y:3},{type:'vanish',x:4,y:3},{type:'normal',x:5,y:3},{type:'normal',x:6,y:3},{type:'splitter',x:7,y:3},{type:'splitter',x:8,y:3},{type:'splitter',x:9,y:3},{type:'splitter',x:10,y:3},{type:'tumbler',x:3,y:5},{type:'tumbler',x:4,y:5},{type:'tumbler',x:5,y:5},{type:'vanish',x:9,y:5},{type:'vanish',x:10,y:5},{type:'vanish',x:11,y:5},{type:'vanish',x:12,y:5},{type:'vanish',x:13,y:5},{type:'vanish',x:14,y:5},{type:'vanish',x:15,y:5},{type:'vanish',x:16,y:5},{type:'vanish',x:18,y:5},{type:'stopper',x:3,y:7},{type:'normal',x:5,y:7},{type:'bridge',x:6,y:7},{type:'normal',x:8,y:7},{type:'normal',x:9,y:7},{type:'normal',x:10,y:7},{type:'normal',x:11,y:7},{type:'normal',x:12,y:7},{type:'bridge',x:14,y:7},{type:'trigger',x:17,y:7},{type:'stopper',x:3,y:9},{type:'ascender',x:4,y:9},{type:'delay',x:5,y:9},{type:'normal',x:8,y:9},{type:'normal',x:9,y:9},{type:'normal',x:10,y:9},{type:'normal',x:11,y:9},{type:'normal',x:12,y:9},{type:'normal',x:13,y:9},{type:'normal',x:14,y:9},{type:'normal',x:15,y:9},{type:'normal',x:16,y:9},{type:'normal',x:17,y:9},{type:'stopper',x:18,y:9},{type:'stopper',x:3,y:11},{type:'normal',x:4,y:11},{type:'delay',x:5,y:11},{type:'normal',x:8,y:11},{type:'normal',x:9,y:11},{type:'normal',x:10,y:11},{type:'normal',x:11,y:11},{type:'normal',x:12,y:11},{type:'normal',x:13,y:11},{type:'normal',x:14,y:11},{type:'normal',x:15,y:11},{type:'normal',x:16,y:11},{type:'normal',x:17,y:11},{type:'stopper',x:18,y:11}],
   },
   {
-    name:'希腊 101',chapter:15,theme:'greek',
+    name:'希腊 100',chapter:15,theme:'greek',
     passcode:'44543',dos:true,mono:true,hint:'全黄/昏暗关：所有砖颜色都一样，只能靠行为辨认（阻挡砖推不倒、延迟砖延迟倒、分裂砖不能站到推动位、上升砖会升、触发器不能搬）。按图摆好再推，推完不用再动。',
     width:20,height:13,viewTop:0,
     player:{x:17,y:11},
